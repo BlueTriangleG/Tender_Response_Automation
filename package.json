@@ -1,0 +1,12 @@
+{
+  "name": "pans-software",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "cd backend && UV_CACHE_DIR=/tmp/pans-software-uv-cache uv run uvicorn app.main:app --reload"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
