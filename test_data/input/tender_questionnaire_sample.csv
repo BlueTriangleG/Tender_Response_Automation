@@ -1,0 +1,13 @@
+question_id,domain,question,client_priority,compliance_sensitivity
+q-001,Security,"Do you support SSL and TLS, and can you confirm that production traffic is restricted to TLS 1.2 or higher?",High,High
+q-002,Architecture,"Does the platform support SAML 2.0 or OpenID Connect single sign-on with role-based access control?",High,Medium
+q-003,Compliance,"Can customer data for this tender be hosted in Australia to satisfy local data residency requirements?",High,High
+q-004,Infrastructure,"Please confirm your production disaster recovery targets, including RPO and RTO.",High,High
+q-005,AI,"Are customer prompts, uploaded documents, or generated outputs used to train shared AI models by default?",High,High
+q-006,AI,"If AI-generated content informs a procurement workflow, can users inspect citations or explanations before a final decision is made?",Medium,Medium
+q-007,Security,"Do you provide immutable audit logs for administrator actions, and how long are they retained?",Medium,High
+q-008,Compliance,"Can you support right-to-erasure requests and what is the expected deletion timeframe once a request is verified?",Medium,High
+q-009,Security,"Do you perform independent penetration testing and can evidence be shared during procurement under NDA?",Medium,Medium
+q-010,Infrastructure,"Can the platform be deployed as a single-tenant environment or customer-managed installation for agencies with isolation requirements?",Medium,High
+q-011,Pricing,"Can you commit to fixed pricing for five years including unlimited AI token usage across all business units?",High,High
+q-012,Compliance,"Do you currently hold FedRAMP High authorization for the platform environment proposed in this tender?",High,High

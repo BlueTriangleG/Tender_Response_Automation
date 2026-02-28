@@ -1,0 +1,256 @@
+{
+  "sessionId": "sample-pan-tender-2026-001",
+  "fileName": "tender_questionnaire_sample.xlsx",
+  "summary": {
+    "totalQuestions": 12,
+    "successCount": 10,
+    "failedCount": 1,
+    "highRiskCount": 2,
+    "inconsistentCount": 1,
+    "overallStatus": "partial success"
+  },
+  "results": [
+    {
+      "id": "q-001",
+      "question": "Do you support SSL and TLS, and can you confirm that production traffic is restricted to TLS 1.2 or higher?",
+      "domain": "Security",
+      "alignment": "aligned",
+      "confidence": 0.95,
+      "risk": "low",
+      "status": "success",
+      "generatedAnswer": "Yes. Production traffic is restricted to TLS 1.2 or higher for external service endpoints, and stronger cipher controls can be enabled in supported environments. Legacy SSL is not enabled for public production access; any legacy protocol handling would only occur in isolated migration scenarios rather than normal platform traffic.",
+      "riskFlags": [],
+      "historicalMatches": [
+        {
+          "title": "Security Platform Overview",
+          "source": "historical_repository/security_platform_overview.md",
+          "similarity": 0.94
+        }
+      ]
+    },
+    {
+      "id": "q-002",
+      "question": "Does the platform support SAML 2.0 or OpenID Connect single sign-on with role-based access control?",
+      "domain": "Architecture",
+      "alignment": "aligned",
+      "confidence": 0.92,
+      "risk": "low",
+      "status": "success",
+      "generatedAnswer": "Yes. The platform supports both SAML 2.0 and OpenID Connect based single sign-on, with role-based access control available across tenant, workspace, and feature levels to support least-privilege access patterns.",
+      "riskFlags": [],
+      "historicalMatches": [
+        {
+          "title": "Security Platform Overview",
+          "source": "historical_repository/security_platform_overview.md",
+          "similarity": 0.9
+        }
+      ]
+    },
+    {
+      "id": "q-003",
+      "question": "Can customer data for this tender be hosted in Australia to satisfy local data residency requirements?",
+      "domain": "Compliance",
+      "alignment": "aligned",
+      "confidence": 0.9,
+      "risk": "low",
+      "status": "success",
+      "generatedAnswer": "Yes. The service can be provisioned in supported Australian regions for customers with local data residency requirements, subject to the selected deployment design, cloud provider availability, and any agreed subprocessor constraints.",
+      "riskFlags": [],
+      "historicalMatches": [
+        {
+          "title": "Compliance and Privacy Baseline",
+          "source": "historical_repository/compliance_privacy.md",
+          "similarity": 0.89
+        },
+        {
+          "title": "Infrastructure Resilience and Deployment Notes",
+          "source": "historical_repository/infrastructure_resilience.md",
+          "similarity": 0.75
+        }
+      ]
+    },
+    {
+      "id": "q-004",
+      "question": "Please confirm your production disaster recovery targets, including RPO and RTO.",
+      "domain": "Infrastructure",
+      "alignment": "aligned",
+      "confidence": 0.91,
+      "risk": "low",
+      "status": "success",
+      "generatedAnswer": "For the managed production service, the documented recovery point objective is 15 minutes and the recovery time objective is 4 hours. These targets are supported by a multi-zone design and should be confirmed against the final contracted deployment scope.",
+      "riskFlags": [],
+      "historicalMatches": [
+        {
+          "title": "Infrastructure Resilience and Deployment Notes",
+          "source": "historical_repository/infrastructure_resilience.md",
+          "similarity": 0.93
+        }
+      ]
+    },
+    {
+      "id": "q-005",
+      "question": "Are customer prompts, uploaded documents, or generated outputs used to train shared AI models by default?",
+      "domain": "AI",
+      "alignment": "aligned",
+      "confidence": 0.96,
+      "risk": "low",
+      "status": "success",
+      "generatedAnswer": "No. Customer prompts, uploaded documents, and generated outputs are not used to train shared AI models by default. Any use of customer data for model improvement would require explicit opt-in and documented approval.",
+      "riskFlags": [],
+      "historicalMatches": [
+        {
+          "title": "AI Governance",
+          "source": "historical_repository/ai_governance.json",
+          "similarity": 0.95
+        }
+      ]
+    },
+    {
+      "id": "q-006",
+      "question": "If AI-generated content informs a procurement workflow, can users inspect citations or explanations before a final decision is made?",
+      "domain": "AI",
+      "alignment": "aligned",
+      "confidence": 0.87,
+      "risk": "low",
+      "status": "success",
+      "generatedAnswer": "Yes. In supported workflows the platform can return source citations, confidence cues, and review checkpoints so users can inspect supporting context before a final decision is made. The approved positioning remains that the service supports human decision-making rather than autonomous final procurement decisions.",
+      "riskFlags": [],
+      "historicalMatches": [
+        {
+          "title": "AI Governance",
+          "source": "historical_repository/ai_governance.json",
+          "similarity": 0.86
+        }
+      ]
+    },
+    {
+      "id": "q-007",
+      "question": "Do you provide immutable audit logs for administrator actions, and how long are they retained?",
+      "domain": "Security",
+      "alignment": "aligned",
+      "confidence": 0.85,
+      "risk": "low",
+      "status": "success",
+      "generatedAnswer": "Administrative activity is logged through the platform audit trail, with retention of at least 365 days in the standard regulated deployment profile. If immutability is required as a contractual term, that control should be confirmed against the target deployment architecture and any downstream log storage design.",
+      "riskFlags": [],
+      "historicalMatches": [
+        {
+          "title": "Security Platform Overview",
+          "source": "historical_repository/security_platform_overview.md",
+          "similarity": 0.82
+        }
+      ]
+    },
+    {
+      "id": "q-008",
+      "question": "Can you support right-to-erasure requests and what is the expected deletion timeframe once a request is verified?",
+      "domain": "Compliance",
+      "alignment": "aligned",
+      "confidence": 0.84,
+      "risk": "low",
+      "status": "success",
+      "generatedAnswer": "Yes. The service supports verified deletion workflows and operationally targets completion within 30 days, subject to any applicable legal or contractual retention obligations.",
+      "riskFlags": [],
+      "historicalMatches": [
+        {
+          "title": "Compliance and Privacy Baseline",
+          "source": "historical_repository/compliance_privacy.md",
+          "similarity": 0.88
+        }
+      ]
+    },
+    {
+      "id": "q-009",
+      "question": "Do you perform independent penetration testing and can evidence be shared during procurement under NDA?",
+      "domain": "Security",
+      "alignment": "aligned",
+      "confidence": 0.83,
+      "risk": "low",
+      "status": "success",
+      "generatedAnswer": "Yes. Independent penetration testing is performed at least annually and after material architectural change. Recent testing summaries and supporting security review material can be shared during procurement under NDA.",
+      "riskFlags": [],
+      "historicalMatches": [
+        {
+          "title": "Security Platform Overview",
+          "source": "historical_repository/security_platform_overview.md",
+          "similarity": 0.84
+        },
+        {
+          "title": "Compliance and Privacy Baseline",
+          "source": "historical_repository/compliance_privacy.md",
+          "similarity": 0.71
+        }
+      ]
+    },
+    {
+      "id": "q-010",
+      "question": "Can the platform be deployed as a single-tenant environment or customer-managed installation for agencies with isolation requirements?",
+      "domain": "Infrastructure",
+      "alignment": "partial",
+      "confidence": 0.73,
+      "risk": "medium",
+      "status": "warning",
+      "generatedAnswer": "A single-tenant virtual private cloud deployment is supported for customers with stronger isolation requirements. Customer-managed installation is not the default product model and would need separate scoping through professional services, so the exact deployment pattern should be confirmed during solution design.",
+      "riskFlags": [
+        "Customer-managed deployment is only partially supported",
+        "Requires solution-design validation"
+      ],
+      "historicalMatches": [
+        {
+          "title": "Infrastructure Resilience and Deployment Notes",
+          "source": "historical_repository/infrastructure_resilience.md",
+          "similarity": 0.8
+        }
+      ]
+    },
+    {
+      "id": "q-011",
+      "question": "Can you commit to fixed pricing for five years including unlimited AI token usage across all business units?",
+      "domain": "Pricing",
+      "alignment": "inconsistent",
+      "confidence": 0.36,
+      "risk": "high",
+      "status": "failed",
+      "generatedAnswer": "",
+      "riskFlags": [
+        "Historical pricing positions conflict on term and usage assumptions",
+        "Unlimited AI token commitment is not supported by approved material",
+        "Requires commercial owner review"
+      ],
+      "errorMessage": "The approved pricing library does not support a five-year fixed commitment with unlimited AI token usage. Historical records show narrower fixed-fee terms and variable usage assumptions.",
+      "historicalMatches": [
+        {
+          "title": "Enterprise Subscription Pricing",
+          "source": "historical_repository/pricing_enterprise_subscription.json",
+          "similarity": 0.61
+        },
+        {
+          "title": "Public Sector Pricing Extension",
+          "source": "historical_repository/pricing_public_sector_extension.txt",
+          "similarity": 0.57
+        }
+      ]
+    },
+    {
+      "id": "q-012",
+      "question": "Do you currently hold FedRAMP High authorization for the platform environment proposed in this tender?",
+      "domain": "Compliance",
+      "alignment": "partial",
+      "confidence": 0.24,
+      "risk": "high",
+      "status": "warning",
+      "generatedAnswer": "FedRAMP High authorization is not an approved claim in the current response library. Based on the available historical material, this should be answered conservatively and referred for human validation rather than asserted in the tender response.",
+      "riskFlags": [
+        "Unsupported certification claim",
+        "Human review required before submission"
+      ],
+      "historicalMatches": [
+        {
+          "title": "Certifications Register Excerpt",
+          "source": "historical_repository/certifications_register.md",
+          "similarity": 0.91
+        }
+      ]
+    }
+  ]
+}

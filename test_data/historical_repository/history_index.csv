@@ -1,0 +1,11 @@
+document_id,domain,source_file,topic,approved_summary
+hist-sec-001,Security,security_platform_overview.md,tls_tls13,"External endpoints enforce TLS 1.2+ and legacy SSL is not enabled for public production traffic."
+hist-sec-002,Security,security_platform_overview.md,sso_rbac,"Supports SAML 2.0, OIDC, and role-based access control."
+hist-sec-003,Security,security_platform_overview.md,audit_logging,"Audit logs retained for at least 365 days and can be exported to SIEM."
+hist-sec-004,Security,security_platform_overview.md,penetration_testing,"Independent penetration testing occurs annually and after material change."
+hist-inf-001,Infrastructure,infrastructure_resilience.md,availability_dr,"Managed production service targets 99.9% uptime with RPO 15 minutes and RTO 4 hours."
+hist-inf-002,Infrastructure,infrastructure_resilience.md,deployment_models,"Managed SaaS is preferred; single-tenant VPC is available; customer-managed deployment is limited and separately scoped."
+hist-com-001,Compliance,compliance_privacy.md,data_residency,"Australian region hosting is supported for clients with local residency requirements."
+hist-com-002,Compliance,compliance_privacy.md,privacy_rights,"Verified deletion requests are targeted within 30 days, subject to retention obligations."
+hist-ai-001,AI,ai_governance.json,training_data_use,"Customer data is not used to train shared models by default; opt-in is required."
+hist-prc-001,Pricing,pricing_enterprise_subscription.json,commercial_model,"Pricing is annual or multi-year with renewal reviews; unlimited usage is not part of the default offer."

@@ -1,0 +1,51 @@
+# Tender Test Dataset
+
+This dataset is designed for the Pan Software multi-agent tender response use case.
+It gives you a realistic local demo pack with:
+
+- A mixed-format historical tender repository
+- A new tender questionnaire in both CSV and Excel formats
+- An example expected output JSON aligned with the current frontend result shape
+
+## Contents
+
+- `historical_repository/`
+  - Mixed Markdown, TXT, and JSON prior tender responses
+  - Includes overlapping answers, tone variations, and one deliberate commercial conflict
+- `input/tender_questionnaire_sample.csv`
+  - Human-readable source version of the sample questionnaire
+- `input/tender_questionnaire_sample.xlsx`
+  - Excel file for upload and processing demos
+- `expected_output/tender_response_expected.json`
+  - Example structured output with alignment, confidence, risk, and summary fields
+
+## Scenario Coverage
+
+The dataset covers these domains:
+
+- Architecture
+- Security
+- Infrastructure
+- AI
+- Compliance
+- Pricing
+
+It intentionally includes:
+
+- Strong historical matches for encryption, SSO, audit logging, data residency, and AI governance
+- A partial-match deployment question that should be answered carefully
+- A pricing question with conflicting historical assumptions
+- A certification question that must not be answered with an unsupported claim
+
+## Recommended Demo Flow
+
+1. Load the files in `historical_repository/` into your retrieval or memory layer.
+2. Upload `input/tender_questionnaire_sample.xlsx`.
+3. Run the LangGraph workflow per question.
+4. Compare generated output with `expected_output/tender_response_expected.json`.
+
+## Assumptions
+
+- Historical answers represent approved prior positioning, not guaranteed product truth.
+- Unsupported certifications should be flagged for human review rather than invented.
+- Pricing answers must stay conservative when historical commercial assumptions conflict.

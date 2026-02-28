@@ -1,0 +1,9 @@
+Source: State digital services extension
+Submission year: 2024
+Domain: Pricing
+
+Approved commercial notes:
+
+- A three-year term was offered with fixed platform fees for the contracted base volume only.
+- Excess usage, optional modules, and third-party AI consumption were excluded from the fixed fee schedule.
+- Any assumption of unlimited usage required explicit executive approval and was not part of the standard offer.

@@ -1,0 +1,21 @@
+{
+  "source": {
+    "client": "AI capability questionnaire",
+    "submission_year": 2025,
+    "domain": "AI"
+  },
+  "approved_positioning": [
+    {
+      "topic": "training_data_use",
+      "answer": "Customer prompts, documents, and outputs are not used to train shared foundation models by default. Any use of customer data for model improvement requires explicit opt-in and documented approval."
+    },
+    {
+      "topic": "explainability",
+      "answer": "Where generative or retrieval-assisted outputs influence business decisions, the platform can return source citations, confidence cues, and workflow checkpoints for human review. The service is positioned as decision support, not autonomous final decision making."
+    },
+    {
+      "topic": "safety_controls",
+      "answer": "The AI workflow includes prompt filtering, access controls, logging, and configurable review steps for sensitive use cases."
+    }
+  ]
+}

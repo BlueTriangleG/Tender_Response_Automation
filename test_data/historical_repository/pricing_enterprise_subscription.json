@@ -1,0 +1,21 @@
+{
+  "source": {
+    "client": "Enterprise software panel",
+    "submission_year": 2025,
+    "domain": "Pricing"
+  },
+  "approved_positioning": [
+    {
+      "topic": "commercial_model",
+      "answer": "Pricing is typically structured as an annual subscription with implementation services scoped separately."
+    },
+    {
+      "topic": "usage_components",
+      "answer": "Variable AI or token-driven consumption may be priced through agreed usage bands or capped service tiers depending on the customer profile."
+    },
+    {
+      "topic": "term_commitment",
+      "answer": "Multi-year agreements are available, but commercial assumptions are reviewed at renewal or extension points."
+    }
+  ]
+}
