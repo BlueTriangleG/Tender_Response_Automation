@@ -1,7 +1,7 @@
 from app.features.tender_response.domain.models import (
+    GroundedAnswerResult,
     HistoricalAlignmentResult,
     HistoricalReference,
-    ResponseReviewResult,
     TenderQuestion,
 )
 from app.features.tender_response.infrastructure.services.domain_tagging_service import (
@@ -32,16 +32,23 @@ class FakeAnswerGenerationService:
     def __init__(self) -> None:
         self.answer_calls: list[str] = []
 
-    async def generate_answer(
+    async def generate_grounded_response(
         self,
         *,
         question: TenderQuestion,
         usable_references,
-    ) -> str:
+    ) -> GroundedAnswerResult:
         self.answer_calls.append(question.question_id)
         if question.question_id == "q-003":
             raise RuntimeError("generation failed")
-        return f"Aligned answer for {question.question_id}"
+        return GroundedAnswerResult(
+            generated_answer=f"Aligned answer for {question.question_id}",
+            confidence_level="high",
+            confidence_reason="Direct historical evidence supports the answer.",
+            risk_level="medium",
+            risk_reason="Security response should still be reviewed.",
+            inconsistent_response=False,
+        )
 
 
 class FakeReferenceAssessmentService:
@@ -49,21 +56,6 @@ class FakeReferenceAssessmentService:
         self.results = results
 
     async def assess(self, *, question: TenderQuestion, references):
-        return self.results[question.question_id]
-
-
-class FakeResponseReviewService:
-    def __init__(self, results: dict[str, ResponseReviewResult]) -> None:
-        self.results = results
-
-    async def review_response(
-        self,
-        *,
-        question: TenderQuestion,
-        generated_answer: str | None,
-        grounding_status: str,
-        references,
-    ):
         return self.results[question.question_id]
 
 
@@ -121,24 +113,6 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
             }
         ),
         domain_tagging_service=DomainTaggingService(),
-        response_review_service=FakeResponseReviewService(
-            {
-                "q-001": ResponseReviewResult(
-                    confidence_level="high",
-                    confidence_reason="Direct historical evidence supports the answer.",
-                    risk_level="medium",
-                    risk_reason="Security response should still be reviewed.",
-                    inconsistent_response=False,
-                ),
-                "q-002": ResponseReviewResult(
-                    confidence_level="low",
-                    confidence_reason="No grounded answer was produced.",
-                    risk_level="low",
-                    risk_reason="No grounded answer was produced.",
-                    inconsistent_response=False,
-                ),
-            }
-        ),
     )
 
     result = await workflow.ainvoke(
@@ -183,6 +157,10 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
     assert result["question_results"][1].generated_answer is None
     assert result["question_results"][1].status == "unanswered"
     assert result["question_results"][1].grounding_status == "no_reference"
+    assert (
+        result["question_results"][1].confidence_reason
+        == "Insufficient supporting evidence to answer safely."
+    )
     assert result["question_results"][1].references == []
     assert result["summary"].total_questions_processed == 2
     assert result["summary"].completed_questions == 1
@@ -251,24 +229,6 @@ async def test_tender_response_graph_keeps_processing_when_one_question_fails() 
             }
         ),
         domain_tagging_service=DomainTaggingService(),
-        response_review_service=FakeResponseReviewService(
-            {
-                "q-001": ResponseReviewResult(
-                    confidence_level="medium",
-                    confidence_reason="Grounded with relevant history.",
-                    risk_level="medium",
-                    risk_reason="Architecture response should be reviewed.",
-                    inconsistent_response=False,
-                ),
-                "q-003": ResponseReviewResult(
-                    confidence_level="medium",
-                    confidence_reason="Grounded with relevant history.",
-                    risk_level="medium",
-                    risk_reason="Architecture response should be reviewed.",
-                    inconsistent_response=False,
-                ),
-            }
-        ),
     )
 
     result = await workflow.ainvoke(
@@ -346,17 +306,6 @@ async def test_tender_response_graph_marks_flagged_responses_in_summary() -> Non
             }
         ),
         domain_tagging_service=DomainTaggingService(),
-        response_review_service=FakeResponseReviewService(
-            {
-                "q-004": ResponseReviewResult(
-                    confidence_level="low",
-                    confidence_reason="No grounded answer was produced.",
-                    risk_level="high",
-                    risk_reason="Compliance language remains sensitive.",
-                    inconsistent_response=False,
-                ),
-            }
-        ),
     )
 
     result = await workflow.ainvoke(
@@ -392,8 +341,12 @@ async def test_tender_response_graph_marks_flagged_responses_in_summary() -> Non
     )
     assert result["question_results"][0].references[0].used_for_answer is False
     assert result["question_results"][0].status == "unanswered"
-    assert result["question_results"][0].risk.level == "high"
-    assert result["summary"].flagged_high_risk_or_inconsistent_responses == 1
+    assert (
+        result["question_results"][0].confidence_reason
+        == "Candidate references are not sufficient."
+    )
+    assert result["question_results"][0].risk.level == "low"
+    assert result["summary"].flagged_high_risk_or_inconsistent_responses == 0
     assert result["summary"].overall_completion_status == "unanswered"
 
 
@@ -425,17 +378,6 @@ async def test_tender_response_graph_marks_batch_unanswered_when_no_answers_are_
             }
         ),
         domain_tagging_service=DomainTaggingService(),
-        response_review_service=FakeResponseReviewService(
-            {
-                "q-010": ResponseReviewResult(
-                    confidence_level="low",
-                    confidence_reason="No references support an answer.",
-                    risk_level="low",
-                    risk_reason="No answer was produced.",
-                    inconsistent_response=False,
-                )
-            }
-        ),
     )
 
     result = await workflow.ainvoke(

@@ -62,6 +62,8 @@ class ProcessTenderCsvUseCase:
                 "current_question": None,
                 "current_alignment": None,
                 "current_assessment": None,
+                "current_review": None,
+                "current_grounded_result": None,
                 "current_answer": None,
                 "current_result": None,
             },

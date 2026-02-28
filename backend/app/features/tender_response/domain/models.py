@@ -68,3 +68,15 @@ class ResponseReviewResult:
     risk_level: str
     risk_reason: str
     inconsistent_response: bool
+
+
+@dataclass(slots=True)
+class GroundedAnswerResult:
+    """Single-call grounded generation output for an answer plus review metadata."""
+
+    generated_answer: str
+    confidence_level: str
+    confidence_reason: str
+    risk_level: str
+    risk_reason: str
+    inconsistent_response: bool

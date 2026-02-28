@@ -5,9 +5,9 @@ from app.features.tender_response.application.process_tender_csv_use_case import
     ProcessTenderCsvUseCase,
 )
 from app.features.tender_response.domain.models import (
+    GroundedAnswerResult,
     HistoricalAlignmentResult,
     HistoricalReference,
-    ResponseReviewResult,
     TenderQuestion,
 )
 from app.features.tender_response.infrastructure.services.domain_tagging_service import (
@@ -62,13 +62,20 @@ class FakeAlignmentRepository:
 
 
 class FakeAnswerGenerationService:
-    async def generate_answer(
+    async def generate_grounded_response(
         self,
         *,
         question: TenderQuestion,
         usable_references,
-    ) -> str:
-        return "Yes. Production traffic is restricted to TLS 1.2 or higher."
+    ) -> GroundedAnswerResult:
+        return GroundedAnswerResult(
+            generated_answer="Yes. Production traffic is restricted to TLS 1.2 or higher.",
+            confidence_level="high",
+            confidence_reason="Direct historical evidence supports the answer.",
+            risk_level="medium",
+            risk_reason="Security posture responses should still be reviewed.",
+            inconsistent_response=False,
+        )
 
 
 class FakeReferenceAssessmentService:
@@ -88,39 +95,12 @@ class FakeReferenceAssessmentService:
         )
 
 
-class FakeResponseReviewService:
-    async def review_response(
-        self,
-        *,
-        question: TenderQuestion,
-        generated_answer: str | None,
-        grounding_status: str,
-        references,
-    ) -> ResponseReviewResult:
-        if question.question_id == "q-001":
-            return ResponseReviewResult(
-                confidence_level="high",
-                confidence_reason="Direct historical evidence supports the answer.",
-                risk_level="medium",
-                risk_reason="Security posture responses should still be reviewed.",
-                inconsistent_response=False,
-            )
-        return ResponseReviewResult(
-            confidence_level="low",
-            confidence_reason="No grounded answer was produced.",
-            risk_level="low",
-            risk_reason="No grounded answer was produced.",
-            inconsistent_response=False,
-        )
-
-
 def test_tender_response_route_processes_csv_end_to_end_with_fake_workflow_services() -> None:
     workflow = create_tender_response_graph(
         alignment_repository=FakeAlignmentRepository(),
         answer_generation_service=FakeAnswerGenerationService(),
         reference_assessment_service=FakeReferenceAssessmentService(),
         domain_tagging_service=DomainTaggingService(),
-        response_review_service=FakeResponseReviewService(),
     )
     use_case = ProcessTenderCsvUseCase(workflow=workflow)
     client = TestClient(app)

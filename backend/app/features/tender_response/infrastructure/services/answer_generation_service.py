@@ -1,12 +1,18 @@
-"""LLM-backed answer generation for grounded tender responses."""
+"""Single-call grounded answer generation plus confidence/risk review."""
+
+import json
 
 from app.core.config import settings
-from app.features.tender_response.domain.models import HistoricalReference, TenderQuestion
+from app.features.tender_response.domain.models import (
+    GroundedAnswerResult,
+    HistoricalReference,
+    TenderQuestion,
+)
 from app.integrations.openai.chat_completions_client import OpenAIChatCompletionsClient
 
 
 class AnswerGenerationService:
-    """Generate an answer using only the subset of references deemed usable."""
+    """Generate a grounded answer and review metadata in one LLM call."""
 
     def __init__(
         self,
@@ -16,13 +22,13 @@ class AnswerGenerationService:
             model=settings.openai_tender_response_model
         )
 
-    async def generate_answer(
+    async def generate_grounded_response(
         self,
         *,
         question: TenderQuestion,
         usable_references: list[HistoricalReference],
-    ) -> str:
-        """Render references into a prompt and ask the model for a grounded answer."""
+    ) -> GroundedAnswerResult:
+        """Render references into a prompt and ask for answer plus structured review."""
 
         reference_lines: list[str] = []
         for index, reference in enumerate(usable_references, start=1):
@@ -37,15 +43,28 @@ class AnswerGenerationService:
                 )
             )
 
-        return await self._completion_client.create_completion(
+        response = await self._completion_client.create_json_completion(
             system_prompt=(
-                "Generate a concise tender response using only the provided historical "
-                "references. Do not fabricate certifications, commitments, or unsupported "
-                "claims. If the references are insufficient, return an empty string."
+                "Generate a grounded tender response using only the provided historical "
+                "references. Return strict JSON with keys generated_answer, "
+                "confidence_level, confidence_reason, risk_level, risk_reason, "
+                "inconsistent_response. confidence_level and risk_level must be "
+                "high, medium, or low. Do not fabricate certifications, commitments, "
+                "or unsupported claims."
             ),
             user_prompt=(
                 f"Question: {question.original_question}\n"
                 f"{'\n\n'.join(reference_lines)}\n\n"
-                "Return only the final tender answer grounded in the references."
+                "Return a concise answer grounded only in the references, plus "
+                "confidence and risk metadata."
             ),
+        )
+        payload = json.loads(response)
+        return GroundedAnswerResult(
+            generated_answer=str(payload["generated_answer"]).strip(),
+            confidence_level=str(payload["confidence_level"]).lower(),
+            confidence_reason=str(payload["confidence_reason"]).strip(),
+            risk_level=str(payload["risk_level"]).lower(),
+            risk_reason=str(payload["risk_reason"]).strip(),
+            inconsistent_response=bool(payload.get("inconsistent_response", False)),
         )

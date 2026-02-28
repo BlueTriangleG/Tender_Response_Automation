@@ -10,6 +10,7 @@ from langgraph.types import Send
 from typing_extensions import TypedDict
 
 from app.features.tender_response.domain.models import (
+    GroundedAnswerResult,
     HistoricalAlignmentResult,
     HistoricalReference,
     ReferenceAssessmentResult,
@@ -31,9 +32,6 @@ from app.features.tender_response.infrastructure.services.domain_tagging_service
 )
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
     ReferenceAssessmentService,
-)
-from app.features.tender_response.infrastructure.services.response_review_service import (
-    ResponseReviewService,
 )
 from app.features.tender_response.schemas.responses import (
     QuestionFlags,
@@ -66,6 +64,7 @@ class BatchTenderResponseState(TypedDict):
     current_alignment: Annotated[HistoricalAlignmentResult | None, replace_reducer]
     current_assessment: Annotated[ReferenceAssessmentResult | None, replace_reducer]
     current_review: Annotated[ResponseReviewResult | None, replace_reducer]
+    current_grounded_result: Annotated[GroundedAnswerResult | None, replace_reducer]
     current_answer: Annotated[str | None, replace_reducer]
     current_result: Annotated[TenderQuestionResponse | None, replace_reducer]
 
@@ -78,6 +77,7 @@ class QuestionProcessingState(TypedDict):
     current_alignment: Annotated[HistoricalAlignmentResult | None, replace_reducer]
     current_assessment: Annotated[ReferenceAssessmentResult | None, replace_reducer]
     current_review: Annotated[ResponseReviewResult | None, replace_reducer]
+    current_grounded_result: Annotated[GroundedAnswerResult | None, replace_reducer]
     current_answer: Annotated[str | None, replace_reducer]
     current_result: Annotated[TenderQuestionResponse | None, replace_reducer]
 
@@ -103,6 +103,9 @@ def _build_reference_payload(
     ]
 
 
+UNANSWERED_CONFIDENCE_REASON = "Insufficient supporting evidence to answer safely."
+
+
 def _primary_domain_tag(
     *,
     question: TenderQuestion,
@@ -116,6 +119,19 @@ def _primary_domain_tag(
         generated_answer="",
         alignment=alignment,
     )
+
+
+def _unanswered_confidence_reason(
+    *,
+    assessment: ReferenceAssessmentResult,
+    alignment: HistoricalAlignmentResult,
+) -> str:
+    """Return a fixed message for no-reference cases and a specific reason otherwise."""
+
+    if assessment.grounding_status == "no_reference" or not alignment.references:
+        return UNANSWERED_CONFIDENCE_REASON
+
+    return assessment.reason.strip() or UNANSWERED_CONFIDENCE_REASON
 
 
 def _failed_question_result(question: TenderQuestion, error_message: str) -> TenderQuestionResponse:
@@ -149,7 +165,6 @@ def _create_question_processing_graph(
     answer_generation_service: AnswerGenerationService,
     reference_assessment_service: ReferenceAssessmentService,
     domain_tagging_service: DomainTaggingService,
-    response_review_service: ResponseReviewService,
 ) -> CompiledStateGraph:
     """Create the per-question graph that retrieves, grounds, and reviews answers."""
 
@@ -188,10 +203,12 @@ def _create_question_processing_graph(
         # service explicitly approved them as sufficient support.
         if assessment.can_answer and alignment.references:
             return "generate_answer"
-        return "review_unanswered"
+        return "finalize_unanswered"
 
-    async def generate_answer(state: QuestionProcessingState) -> dict[str, str]:
-        """Generate an answer from only the references approved by assessment."""
+    async def generate_answer(
+        state: QuestionProcessingState,
+    ) -> dict[str, GroundedAnswerResult | str | ResponseReviewResult]:
+        """Generate a grounded answer and review metadata in one call."""
 
         alignment = state["current_alignment"]
         assessment = state["current_assessment"]
@@ -203,41 +220,21 @@ def _create_question_processing_graph(
             for reference in alignment.references
             if reference.record_id in usable_reference_ids
         ]
-        answer = await answer_generation_service.generate_answer(
+        grounded_result = await answer_generation_service.generate_grounded_response(
             question=state["current_question"],
             usable_references=usable_references,
         )
-        return {"current_answer": answer}
-
-    async def review_response(
-        state: QuestionProcessingState,
-    ) -> dict[str, ResponseReviewResult]:
-        """Review the generated answer for confidence, risk, and consistency."""
-
-        alignment = state["current_alignment"]
-        # Review sees the full retrieved set so it can judge the answer against the
-        # broader evidence context, not only the subset used during generation.
-        review = await response_review_service.review_response(
-            question=state["current_question"],
-            generated_answer=state.get("current_answer"),
-            grounding_status=state["current_assessment"].grounding_status,
-            references=alignment.references,
-        )
-        return {"current_review": review}
-
-    async def review_unanswered(
-        state: QuestionProcessingState,
-    ) -> dict[str, ResponseReviewResult]:
-        """Review unanswered cases so clients still receive a useful rationale."""
-
-        alignment = state["current_alignment"]
-        review = await response_review_service.review_response(
-            question=state["current_question"],
-            generated_answer=None,
-            grounding_status=state["current_assessment"].grounding_status,
-            references=alignment.references,
-        )
-        return {"current_review": review}
+        return {
+            "current_grounded_result": grounded_result,
+            "current_answer": grounded_result.generated_answer,
+            "current_review": ResponseReviewResult(
+                confidence_level=grounded_result.confidence_level,
+                confidence_reason=grounded_result.confidence_reason,
+                risk_level=grounded_result.risk_level,
+                risk_reason=grounded_result.risk_reason,
+                inconsistent_response=grounded_result.inconsistent_response,
+            ),
+        }
 
     def finalize_unanswered(
         state: QuestionProcessingState,
@@ -247,7 +244,6 @@ def _create_question_processing_graph(
         question = state["current_question"]
         alignment = state["current_alignment"]
         assessment = state["current_assessment"]
-        review = state["current_review"]
         domain_tag = _primary_domain_tag(
             question=question,
             alignment=alignment,
@@ -260,15 +256,15 @@ def _create_question_processing_graph(
             generated_answer=None,
             domain_tag=domain_tag,
             confidence_level="low",
-            confidence_reason=review.confidence_reason,
+            confidence_reason=_unanswered_confidence_reason(
+                assessment=assessment,
+                alignment=alignment,
+            ),
             historical_alignment_indicator=alignment.matched,
             status="unanswered",
             grounding_status=assessment.grounding_status,
-            flags=QuestionFlags(
-                high_risk=review.risk_level == "high",
-                inconsistent_response=review.inconsistent_response,
-            ),
-            risk=QuestionRisk(level=review.risk_level, reason=review.risk_reason),
+            flags=QuestionFlags(high_risk=False, inconsistent_response=False),
+            risk=QuestionRisk(level="low", reason="No grounded answer was produced."),
             metadata=QuestionMetadata(
                 source_row_index=question.source_row_index,
                 alignment_record_id=alignment.record_id,
@@ -392,16 +388,12 @@ def _create_question_processing_graph(
     graph.add_node("retrieve_alignment", retrieve_alignment)
     graph.add_node("assess_references", assess_references)
     graph.add_node("generate_answer", generate_answer)
-    graph.add_node("review_response", review_response)
-    graph.add_node("review_unanswered", review_unanswered)
     graph.add_node("finalize_unanswered", finalize_unanswered)
     graph.add_node("assess_output", assess_output)
     graph.set_entry_point("retrieve_alignment")
     graph.add_edge("retrieve_alignment", "assess_references")
     graph.add_conditional_edges("assess_references", route_after_assessment)
-    graph.add_edge("generate_answer", "review_response")
-    graph.add_edge("review_response", "assess_output")
-    graph.add_edge("review_unanswered", "finalize_unanswered")
+    graph.add_edge("generate_answer", "assess_output")
     graph.add_edge("finalize_unanswered", END)
     graph.add_edge("assess_output", END)
 
@@ -414,7 +406,6 @@ def create_tender_response_graph(
     answer_generation_service: AnswerGenerationService | None = None,
     reference_assessment_service: ReferenceAssessmentService | None = None,
     domain_tagging_service: DomainTaggingService | None = None,
-    response_review_service: ResponseReviewService | None = None,
 ) -> CompiledStateGraph:
     """Create the batch graph that fans out tender questions and summarizes the run."""
 
@@ -424,14 +415,12 @@ def create_tender_response_graph(
         reference_assessment_service or ReferenceAssessmentService()
     )
     resolved_domain_tagging_service = domain_tagging_service or DomainTaggingService()
-    resolved_response_review_service = response_review_service or ResponseReviewService()
     # Build the single-question pipeline once, then reuse it for every question in the batch.
     question_graph = _create_question_processing_graph(
         alignment_repository=resolved_alignment_repository,
         answer_generation_service=resolved_answer_generation_service,
         reference_assessment_service=resolved_reference_assessment_service,
         domain_tagging_service=resolved_domain_tagging_service,
-        response_review_service=resolved_response_review_service,
     )
     checkpointer = MemorySaver()
 
@@ -453,6 +442,7 @@ def create_tender_response_graph(
                     "current_alignment": None,
                     "current_assessment": None,
                     "current_review": None,
+                    "current_grounded_result": None,
                     "current_answer": None,
                     "current_result": None,
                 },
@@ -476,6 +466,7 @@ def create_tender_response_graph(
                     "current_alignment": None,
                     "current_assessment": None,
                     "current_review": None,
+                    "current_grounded_result": None,
                     "current_answer": None,
                     "current_result": None,
                 }

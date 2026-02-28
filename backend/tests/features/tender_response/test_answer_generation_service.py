@@ -9,7 +9,7 @@ class FakeCompletionClient:
         self.response = response
         self.calls: list[tuple[str, str]] = []
 
-    async def create_completion(self, *, system_prompt: str, user_prompt: str) -> str:
+    async def create_json_completion(self, *, system_prompt: str, user_prompt: str) -> str:
         self.calls.append((system_prompt, user_prompt))
         return self.response
 
@@ -43,11 +43,16 @@ def test_answer_generation_service_uses_dedicated_tender_model_configuration(
     assert factory.model == "gpt-test-tender"
 
 
-async def test_generate_answer_uses_historical_context() -> None:
-    client = FakeCompletionClient("Aligned answer")
+async def test_generate_grounded_response_uses_historical_context_and_returns_review() -> None:
+    client = FakeCompletionClient(
+        '{"generated_answer":"Aligned answer","confidence_level":"high",'
+        '"confidence_reason":"Historical evidence directly supports the answer.",'
+        '"risk_level":"medium","risk_reason":"Security responses still need review.",'
+        '"inconsistent_response":false}'
+    )
     service = AnswerGenerationService(completion_client=client)
 
-    answer = await service.generate_answer(
+    result = await service.generate_grounded_response(
         question=TenderQuestion(
             question_id="q-001",
             original_question="Do you support TLS 1.2 or higher?",
@@ -67,6 +72,8 @@ async def test_generate_answer_uses_historical_context() -> None:
         ],
     )
 
-    assert answer == "Aligned answer"
+    assert result.generated_answer == "Aligned answer"
+    assert result.confidence_level == "high"
+    assert result.risk_level == "medium"
     assert "Reference 1 answer" in client.calls[0][1]
-    assert "using only the provided historical references" in client.calls[0][0].lower()
+    assert "strict json" in client.calls[0][0].lower()
