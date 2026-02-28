@@ -12,9 +12,67 @@ describe("App", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => mockHealthResponse,
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/health")) {
+          return {
+            ok: true,
+            json: async () => mockHealthResponse,
+          };
+        }
+
+        if (url.endsWith("/api/ingest/history") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => ({
+              request_id: "req-123",
+              total_file_count: 2,
+              processed_file_count: 2,
+              failed_file_count: 0,
+              request_options: {
+                output_format: "json",
+                similarity_threshold: 0.72,
+              },
+              files: [
+                {
+                  status: "processed",
+                  payload: {
+                    file_name: "history-a.json",
+                    extension: ".json",
+                    content_type: "application/json",
+                    size_bytes: 12,
+                    parsed_kind: "json",
+                    raw_text: "{\"a\":1}",
+                    structured_data: { a: 1 },
+                    row_count: 1,
+                    warnings: [],
+                  },
+                  error_code: null,
+                  error_message: null,
+                },
+                {
+                  status: "processed",
+                  payload: {
+                    file_name: "history-b.md",
+                    extension: ".md",
+                    content_type: "text/markdown",
+                    size_bytes: 8,
+                    parsed_kind: "markdown",
+                    raw_text: "# Notes",
+                    structured_data: null,
+                    row_count: null,
+                    warnings: [],
+                  },
+                  error_code: null,
+                  error_message: null,
+                },
+              ],
+            }),
+          };
+        }
+
+        throw new Error(`Unhandled fetch for ${url}`);
       }),
     );
   });
@@ -39,6 +97,18 @@ describe("App", () => {
     expect(screen.getByLabelText(/Upload tender workbook/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Process Tender/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Build knowledge base/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Ingest Knowledge Files/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: /Build knowledge base/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Upload tender workbook/i }),
     ).toBeInTheDocument();
   });
 
@@ -177,5 +247,69 @@ describe("App", () => {
     );
 
     expect(screen.getByText(/0.73/i)).toBeInTheDocument();
+  });
+
+  test("uploads multiple knowledge files through the standalone ingest module", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const input = screen.getByLabelText(/Upload knowledge base files/i);
+    const files = [
+      new File(['{"domain":"security"}'], "security.json", {
+        type: "application/json",
+      }),
+      new File(["# Architecture"], "architecture.md", {
+        type: "text/markdown",
+      }),
+    ];
+
+    await user.upload(input, files);
+    expect(
+      screen.getByRole("heading", { name: /Files queued for sync/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("security.json")).toBeInTheDocument();
+    expect(screen.getByText("architecture.md")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Ingest Knowledge Files/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Knowledge base sync complete: 2 processed, 0 failed\./i),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/history-a\.json/i)).toBeInTheDocument();
+    expect(screen.getByText(/history-b\.md/i)).toBeInTheDocument();
+  });
+
+  test("appends newly added knowledge files to the queued batch before ingest", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const input = screen.getByLabelText(/Upload knowledge base files/i);
+    const firstBatch = [
+      new File(['{"domain":"security"}'], "security.json", {
+        type: "application/json",
+      }),
+      new File(["# Architecture"], "architecture.md", {
+        type: "text/markdown",
+      }),
+    ];
+    const secondBatch = [
+      new File(["question,domain\nPricing,Commercial"], "pricing.csv", {
+        type: "text/csv",
+      }),
+    ];
+
+    await user.upload(input, firstBatch);
+    await user.upload(input, secondBatch);
+
+    expect(screen.getByText("security.json")).toBeInTheDocument();
+    expect(screen.getByText("architecture.md")).toBeInTheDocument();
+    expect(screen.getByText("pricing.csv")).toBeInTheDocument();
+    expect(
+      screen.getByText(/3 files staged for knowledge base ingest\./i),
+    ).toBeInTheDocument();
   });
 });

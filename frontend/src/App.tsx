@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 
+import { BatchUploadDropzone } from "./components/BatchUploadDropzone";
 import { MetricCard } from "./components/MetricCard";
 import { ResultRow } from "./components/ResultRow";
 import { SegmentedControl } from "./components/SegmentedControl";
@@ -9,9 +10,15 @@ import { UploadDropzone } from "./components/UploadDropzone";
 import {
   fetchBackendHealth,
   fetchHistoryStatus,
+  ingestHistoryFiles,
   processTenderWorkbook,
 } from "./lib/api";
-import type { HistoryStatus, ProcessOptions, TenderSession } from "./lib/types";
+import type {
+  HistoryIngestResponse,
+  HistoryStatus,
+  ProcessOptions,
+  TenderSession,
+} from "./lib/types";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
@@ -49,6 +56,17 @@ function healthTone(status: string) {
   return "danger" as const;
 }
 
+function mergeKnowledgeBaseFiles(currentFiles: File[], incomingFiles: File[]) {
+  const fileMap = new Map<string, File>();
+
+  for (const file of [...currentFiles, ...incomingFiles]) {
+    const fileKey = [file.name, file.size, file.lastModified, file.type].join(":");
+    fileMap.set(fileKey, file);
+  }
+
+  return Array.from(fileMap.values());
+}
+
 function App() {
   // The dashboard keeps network state local because the interaction surface is
   // small and the take-home brief explicitly does not need a state library.
@@ -59,10 +77,17 @@ function App() {
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus | null>(null);
   const [pageState, setPageState] = useState<LoadState>("loading");
   const [processState, setProcessState] = useState<LoadState>("idle");
+  const [knowledgeBaseState, setKnowledgeBaseState] = useState<LoadState>("idle");
   const [isDragActive, setIsDragActive] = useState(false);
   const [screenMessage, setScreenMessage] = useState(
     "Waiting for a tender workbook.",
   );
+  const [knowledgeBaseFiles, setKnowledgeBaseFiles] = useState<File[]>([]);
+  const [knowledgeBaseMessage, setKnowledgeBaseMessage] = useState(
+    "Upload history files to build the knowledge base.",
+  );
+  const [knowledgeBaseRun, setKnowledgeBaseRun] =
+    useState<HistoryIngestResponse | null>(null);
   const [options, setOptions] = useState<ProcessOptions>(defaultProcessOptions);
 
   useEffect(() => {
@@ -133,6 +158,11 @@ function App() {
     }),
     [session],
   );
+  const knowledgeBaseFileNames = useMemo(
+    () => knowledgeBaseFiles.map((file) => file.name),
+    [knowledgeBaseFiles],
+  );
+  const hasKnowledgeBaseFiles = knowledgeBaseFileNames.length > 0;
 
   function applySelectedFile(file: File | null) {
     setSelectedFile(file);
@@ -162,6 +192,22 @@ function App() {
       ...current,
       similarityThreshold: normalizedValue,
     }));
+  }
+
+  function applyKnowledgeBaseFiles(files: File[]) {
+    if (files.length === 0) {
+      setKnowledgeBaseFiles([]);
+      setKnowledgeBaseMessage("Upload history files to build the knowledge base.");
+      return;
+    }
+
+    setKnowledgeBaseFiles((currentFiles) => {
+      const mergedFiles = mergeKnowledgeBaseFiles(currentFiles, files);
+      setKnowledgeBaseMessage(
+        `${mergedFiles.length} files staged for knowledge base ingest.`,
+      );
+      return mergedFiles;
+    });
   }
 
   function handleDragEnter(event: DragEvent<HTMLDivElement>) {
@@ -223,6 +269,38 @@ function App() {
       setProcessState("error");
       setScreenMessage(
         error instanceof Error ? error.message : "Processing failed unexpectedly.",
+      );
+    }
+  }
+
+  async function handleKnowledgeBaseIngest() {
+    if (knowledgeBaseFiles.length === 0) {
+      setKnowledgeBaseMessage("Select one or more history files before starting ingest.");
+      return;
+    }
+
+    setKnowledgeBaseState("loading");
+    setKnowledgeBaseMessage(
+      `Syncing ${knowledgeBaseFiles.length} files to the knowledge base...`,
+    );
+
+    try {
+      const response = await ingestHistoryFiles(knowledgeBaseFiles);
+
+      setKnowledgeBaseRun(response);
+      setKnowledgeBaseState("ready");
+      setKnowledgeBaseMessage(
+        `Knowledge base sync complete: ${response.processedFileCount} processed, ${response.failedFileCount} failed.`,
+      );
+      setHistoryStatus((current) => ({
+        itemCount: (current?.itemCount ?? 0) + response.processedFileCount,
+        lastUpdated: new Date().toISOString(),
+        domainDistribution: current?.domainDistribution ?? [],
+      }));
+    } catch (error) {
+      setKnowledgeBaseState("error");
+      setKnowledgeBaseMessage(
+        error instanceof Error ? error.message : "Knowledge base ingest failed unexpectedly.",
       );
     }
   }
@@ -293,11 +371,118 @@ function App() {
           </div>
         </header>
 
-        <section className="control-strip">
+        <section
+          aria-labelledby="knowledge-base-builder-title"
+          className="knowledge-base-strip"
+        >
+          <article className="panel panel--knowledge-base">
+            <div className="panel__header">
+              <div>
+                <p className="panel__eyebrow">Knowledge base</p>
+                <h2 id="knowledge-base-builder-title">Build knowledge base</h2>
+              </div>
+              <StatusBadge
+                label={
+                  knowledgeBaseState === "loading"
+                    ? "syncing"
+                    : hasKnowledgeBaseFiles
+                      ? "files queued"
+                      : "awaiting files"
+                }
+                tone={
+                  knowledgeBaseState === "error"
+                    ? "danger"
+                    : hasKnowledgeBaseFiles
+                      ? "success"
+                      : "neutral"
+                }
+              />
+            </div>
+
+            <div className="knowledge-base-layout">
+              <div className="knowledge-base-layout__primary">
+                <BatchUploadDropzone
+                  inputId="knowledge-base-upload"
+                  label="Upload knowledge base files"
+                  onFilesChange={applyKnowledgeBaseFiles}
+                />
+
+                <button
+                  className="primary-button"
+                  disabled={knowledgeBaseState === "loading"}
+                  type="button"
+                  onClick={() => void handleKnowledgeBaseIngest()}
+                >
+                  {knowledgeBaseState === "loading"
+                    ? "Syncing..."
+                    : "Ingest Knowledge Files"}
+                </button>
+              </div>
+
+              <div className="knowledge-base-layout__secondary">
+                <div className="sync-summary">
+                  <p className="sync-summary__message">{knowledgeBaseMessage}</p>
+
+                  <div className="knowledge-queue">
+                    <h3>Files queued for sync</h3>
+                    {hasKnowledgeBaseFiles ? (
+                      <ul className="detail-list detail-list--stacked">
+                        {knowledgeBaseFileNames.map((fileName) => (
+                          <li key={fileName}>
+                            <span>{fileName}</span>
+                            <strong>queued</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="empty-state">
+                        Select multiple files to preview the batch before sending it.
+                      </p>
+                    )}
+                  </div>
+
+                  {knowledgeBaseRun ? (
+                    <div className="knowledge-results">
+                      <h3>Latest ingest result</h3>
+                      <ul className="detail-list detail-list--stacked">
+                        <li>
+                          <span>Batch request</span>
+                          <strong>{knowledgeBaseRun.requestId}</strong>
+                        </li>
+                        <li>
+                          <span>Processed</span>
+                          <strong>{knowledgeBaseRun.processedFileCount}</strong>
+                        </li>
+                        <li>
+                          <span>Failed</span>
+                          <strong>{knowledgeBaseRun.failedFileCount}</strong>
+                        </li>
+                        {knowledgeBaseRun.files.map((fileResult, index) => (
+                          <li
+                            key={`${fileResult.payload?.fileName ?? fileResult.errorCode}-${index}`}
+                          >
+                            <span>
+                              {fileResult.payload?.fileName ??
+                                fileResult.errorCode ??
+                                "unknown"}
+                            </span>
+                            <strong>{fileResult.status}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section className="tender-strip">
           <article className="panel panel--upload">
             <div className="panel__header">
               <div>
-                <p className="panel__eyebrow">Input</p>
+                <p className="panel__eyebrow">Autofill</p>
                 <h2>Upload tender workbook</h2>
               </div>
               <StatusBadge

@@ -5,6 +5,8 @@ export type BackendHealth = {
   status: string;
 };
 
+export type OutputFormat = "json" | "excel";
+
 export type DomainBreakdown = {
   domain: string;
   count: number;
@@ -14,6 +16,39 @@ export type HistoryStatus = {
   itemCount: number;
   lastUpdated: string;
   domainDistribution: DomainBreakdown[];
+};
+
+export type HistoryIngestRequestOptions = {
+  outputFormat: OutputFormat;
+  similarityThreshold: number;
+};
+
+export type ParsedHistoryFilePayload = {
+  fileName: string;
+  extension: string;
+  contentType: string | null;
+  sizeBytes: number;
+  parsedKind: string;
+  rawText: string;
+  structuredData: unknown;
+  rowCount: number | null;
+  warnings: string[];
+};
+
+export type ProcessedHistoryFileResult = {
+  status: "processed" | "failed";
+  payload: ParsedHistoryFilePayload | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
+export type HistoryIngestResponse = {
+  requestId: string;
+  totalFileCount: number;
+  processedFileCount: number;
+  failedFileCount: number;
+  requestOptions: HistoryIngestRequestOptions;
+  files: ProcessedHistoryFileResult[];
 };
 
 export type HistoricalMatch = {
@@ -59,6 +94,6 @@ export type TenderSession = {
 };
 
 export type ProcessOptions = {
-  outputFormat: "json" | "excel";
+  outputFormat: OutputFormat;
   similarityThreshold: number;
 };

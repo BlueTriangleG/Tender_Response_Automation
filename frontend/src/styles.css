@@ -214,6 +214,31 @@ button {
   margin-bottom: 1.25rem;
 }
 
+.knowledge-base-strip,
+.tender-strip {
+  margin-bottom: 1.25rem;
+}
+
+.knowledge-base-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.knowledge-base-layout__primary,
+.knowledge-base-layout__secondary {
+  display: grid;
+  gap: 1rem;
+}
+
+.knowledge-base-layout__secondary {
+  padding: 1rem;
+  border-radius: 22px;
+  border: 1px solid rgba(23, 23, 23, 0.08);
+  background: rgba(255, 255, 255, 0.48);
+}
+
 .spotlight__header {
   display: flex;
   justify-content: space-between;
@@ -664,6 +689,30 @@ button {
   border-top: 1px solid var(--border);
 }
 
+.sync-summary {
+  margin-top: 1rem;
+}
+
+.sync-summary__message {
+  margin: 0 0 0.85rem;
+  color: var(--ink-soft);
+}
+
+.knowledge-queue h3,
+.knowledge-results h3 {
+  margin: 0 0 0.7rem;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.knowledge-results {
+  margin-top: 1rem;
+}
+
+.detail-list--stacked {
+  margin-top: 0;
+}
+
 .summary-list p {
   margin: 0.35rem 0;
 }
@@ -698,6 +747,7 @@ select:focus-visible {
 
 @media (max-width: 1120px) {
   .app-header,
+  .knowledge-base-layout,
   .results-layout,
   .history-metrics,
   .metric-cluster,
