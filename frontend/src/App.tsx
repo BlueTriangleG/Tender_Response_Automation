@@ -35,6 +35,20 @@ const formatTimestamp = (value: string) =>
     timeStyle: "short",
   }).format(new Date(value));
 
+function healthTone(status: string) {
+  // "checking" is an in-flight state, not a failure. Keeping that distinct
+  // avoids flashing a red badge before the real backend result arrives.
+  if (status === "checking") {
+    return "neutral" as const;
+  }
+
+  if (status === "ok") {
+    return "success" as const;
+  }
+
+  return "danger" as const;
+}
+
 function App() {
   // The dashboard keeps network state local because the interaction surface is
   // small and the take-home brief explicitly does not need a state library.
@@ -270,7 +284,7 @@ function App() {
           <div className="app-header__status">
             <StatusBadge
               label={`Backend health: ${healthStatus}`}
-              tone={healthStatus === "ok" ? "success" : "danger"}
+              tone={healthTone(healthStatus)}
             />
             <StatusBadge
               label={summarySnapshot.overallStatus}
@@ -353,7 +367,7 @@ function App() {
               <div className="spotlight-card__chips">
                 <StatusBadge
                   label={`Backend health: ${healthStatus}`}
-                  tone={healthStatus === "ok" ? "success" : "danger"}
+                  tone={healthTone(healthStatus)}
                 />
                 <StatusBadge
                   label={

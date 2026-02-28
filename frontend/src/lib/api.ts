@@ -20,7 +20,18 @@ export async function fetchBackendHealth(): Promise<BackendHealth> {
     throw new Error("Backend health request failed.");
   }
 
-  return (await response.json()) as BackendHealth;
+  const payload = (await response.json()) as Partial<BackendHealth>;
+
+  // The backend contract is intentionally tiny. Normalizing it here keeps the
+  // UI resilient to harmless casing differences while still rejecting malformed
+  // payloads instead of silently drifting into a broken state.
+  if (typeof payload.status !== "string") {
+    throw new Error("Backend health payload is missing a status field.");
+  }
+
+  return {
+    status: payload.status.trim().toLowerCase(),
+  };
 }
 
 // The planning doc expects a history card, but the backend endpoint does not

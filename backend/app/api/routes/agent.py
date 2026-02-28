@@ -16,6 +16,6 @@ async def chat(req: ChatRequest) -> ChatResponse:
     returning the final answer. Conversation history is preserved across
     requests that share the same session_id.
     """
-    agent = agent_manager.get_agent(req.session_id)
+    agent = agent_manager.get_agent(req.session_id, workflow_name=req.workflow_name)
     response = await agent.chat(req.message)
     return ChatResponse(response=response, session_id=req.session_id)

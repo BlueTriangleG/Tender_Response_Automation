@@ -78,6 +78,45 @@ describe("App", () => {
     expect(screen.getByText(/72%/i)).toBeInTheDocument();
   });
 
+  test("keeps the health badge neutral while the backend check is still pending", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise(() => {
+            // Intentionally unresolved to keep the dashboard in its initial
+            // loading state so the health badge styling can be verified.
+          }),
+      ),
+    );
+
+    render(<App />);
+
+    const healthBadges = screen.getAllByText(/Backend health: checking/i);
+
+    expect(healthBadges).toHaveLength(2);
+
+    for (const badge of healthBadges) {
+      expect(badge).not.toHaveClass("status-badge--danger");
+    }
+  });
+
+  test("normalizes the backend health status before rendering success state", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: "OK" }),
+      }),
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Backend health: ok/i)).toHaveLength(2);
+    });
+  });
+
   test("supports drag and drop uploads with a visible drop state", async () => {
     render(<App />);
 
