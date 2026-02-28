@@ -319,6 +319,8 @@ describe("App", () => {
       screen.getByText(/The platform enforces TLS 1\.2\+/i),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/Completed With Warnings/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Workflow duration/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Workflow duration: \d+\.\d{2}s/i)).toBeInTheDocument();
     expect(screen.getByText(/Questions without a generated answer yet\./i)).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /Question/i })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /Generated answer/i })).toBeInTheDocument();
@@ -373,6 +375,7 @@ describe("App", () => {
     expect(document.body.style.overflow).toBe("");
     expect(screen.queryByText(/Backend health: ok/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Unanswered questions: 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/Workflow duration: \d+\.\d{2}s/i)).toBeInTheDocument();
   });
 
   test("hides backend health while the service is healthy", async () => {

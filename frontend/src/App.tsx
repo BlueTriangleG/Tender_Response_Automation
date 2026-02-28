@@ -111,6 +111,14 @@ function summarizeAnswer(answer: string) {
   return `${trimmed.slice(0, 177)}...`;
 }
 
+function formatWorkflowDuration(durationMs: number | null) {
+  if (durationMs == null) {
+    return "Pending";
+  }
+
+  return `${(durationMs / 1000).toFixed(2)}s`;
+}
+
 function reviewSignalSummary(question: TenderAutofillQuestion) {
   const signals: string[] = [];
 
@@ -155,6 +163,9 @@ function App() {
     useState<HistoryIngestResponse | null>(null);
   const [alignmentThreshold, setAlignmentThreshold] = useState(
     defaultAlignmentThreshold,
+  );
+  const [workflowDurationMs, setWorkflowDurationMs] = useState<number | null>(
+    null,
   );
 
   useEffect(() => {
@@ -226,6 +237,7 @@ function App() {
 
   function applySelectedFile(file: File | null) {
     setIsDragActive(false);
+    setWorkflowDurationMs(null);
 
     if (file && !isCsvFile(file)) {
       setSelectedFile(null);
@@ -325,22 +337,30 @@ function App() {
       return;
     }
 
+    const startedAt = Date.now();
+
     setProcessState("loading");
+    setWorkflowDurationMs(null);
     setScreenMessage(`Autofilling ${selectedFile.name}...`);
 
     try {
       const nextSession = await processTenderWorkbook(selectedFile, {
         alignmentThreshold,
       });
+      const durationMs = Math.max(0, Date.now() - startedAt);
 
       setSession(nextSession);
       setActiveQuestionId(null);
       setProcessState("ready");
+      setWorkflowDurationMs(durationMs);
       setScreenMessage(
         `${nextSession.summary.totalQuestionsProcessed} questions analyzed for ${selectedFile.name}.`,
       );
     } catch (error) {
+      const durationMs = Math.max(0, Date.now() - startedAt);
+
       setProcessState("error");
+      setWorkflowDurationMs(durationMs);
       setScreenMessage(
         error instanceof Error ? error.message : "Processing failed unexpectedly.",
       );
@@ -761,6 +781,11 @@ function App() {
                       detail="Questions that need extra human review."
                     />
                     <MetricCard
+                      eyebrow="Workflow duration"
+                      value={formatWorkflowDuration(workflowDurationMs)}
+                      detail="Measured from Autofill Tender click to API response."
+                    />
+                    <MetricCard
                       eyebrow="Unanswered"
                       value={String(progressSnapshot.unanswered)}
                       detail="Questions without a generated answer yet."
@@ -870,6 +895,9 @@ function App() {
                       </p>
                       <p>
                         Unanswered questions: {session.summary.unansweredQuestions}
+                      </p>
+                      <p>
+                        Workflow duration: {formatWorkflowDuration(workflowDurationMs)}
                       </p>
                       <p>
                         Overall status:{" "}
