@@ -2,7 +2,9 @@ from io import BytesIO
 
 from starlette.datastructures import Headers, UploadFile
 
-from app.file_processing.service import FileProcessingService
+from app.features.history_ingest.infrastructure.file_processing_service import (
+    FileProcessingService,
+)
 
 
 def make_upload_file(

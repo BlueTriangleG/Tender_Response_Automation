@@ -1,12 +1,19 @@
-from app.schemas.history_ingest import (
+from app.features.history_ingest.application.ingest_history_use_case import (
+    IngestHistoryUseCase,
+)
+from app.features.history_ingest.schemas.requests import HistoryIngestRequestOptions
+from app.features.history_ingest.schemas.responses import (
     DetectedCsvColumns,
-    HistoryIngestRequestOptions,
     ParsedFilePayload,
     ProcessedHistoryFileResult,
 )
-from app.services.csv_column_detection_service import CsvColumnDetectionResult
-from app.services.csv_qa_normalization_service import CsvQaNormalizationResult, NormalizedQaRecord
-from app.services.history_ingest_service import HistoryIngestService
+from app.features.history_ingest.infrastructure.services.csv_column_detection_service import (
+    CsvColumnDetectionResult,
+)
+from app.features.history_ingest.infrastructure.services.csv_qa_normalization_service import (
+    CsvQaNormalizationResult,
+    NormalizedQaRecord,
+)
 
 
 class DummyUploadFile:
@@ -115,7 +122,7 @@ async def test_process_files_runs_csv_parse_detect_normalize_embed_and_upsert() 
     embedding_service = FakeEmbeddingService([[0.1, 0.2, 0.3]])
     repository = FakeQaRepository()
 
-    service = HistoryIngestService(
+    service = IngestHistoryUseCase(
         file_processing_service=file_processing_service,
         csv_column_detection_service=detection_service,
         csv_qa_normalization_service=normalization_service,
@@ -158,7 +165,7 @@ async def test_process_files_marks_non_csv_files_as_unsupported_for_persistence(
         ]
     )
 
-    service = HistoryIngestService(file_processing_service=file_processing_service)
+    service = IngestHistoryUseCase(file_processing_service=file_processing_service)
 
     response = await service.process_files([DummyUploadFile("notes.md")])
 
@@ -249,7 +256,7 @@ async def test_process_files_continues_when_csv_column_detection_fails() -> None
     embedding_service = FakeEmbeddingService([[0.1, 0.2, 0.3]])
     repository = FakeQaRepository()
 
-    service = HistoryIngestService(
+    service = IngestHistoryUseCase(
         file_processing_service=file_processing_service,
         csv_column_detection_service=SequencedDetectionService(),
         csv_qa_normalization_service=normalization_service,

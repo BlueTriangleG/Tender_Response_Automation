@@ -8,6 +8,128 @@ const mockHealthResponse = {
   status: "ok",
 };
 
+const successfulIngestResponse = {
+  request_id: "req-123",
+  total_file_count: 2,
+  processed_file_count: 2,
+  failed_file_count: 0,
+  request_options: {
+    output_format: "json",
+    similarity_threshold: 0.72,
+  },
+  files: [
+    {
+      status: "processed",
+      payload: {
+        file_name: "history-a.json",
+        extension: ".json",
+        content_type: "application/json",
+        size_bytes: 12,
+        parsed_kind: "json",
+        raw_text: "{\"a\":1}",
+        structured_data: { a: 1 },
+        row_count: 1,
+        warnings: [],
+      },
+      error_code: null,
+      error_message: null,
+      detected_columns: {
+        question_col: "question",
+        answer_col: "answer",
+        domain_col: "domain",
+      },
+      ingested_row_count: 1,
+      failed_row_count: 0,
+      storage_target: "lancedb://qa_records",
+    },
+    {
+      status: "processed",
+      payload: {
+        file_name: "history-b.md",
+        extension: ".md",
+        content_type: "text/markdown",
+        size_bytes: 8,
+        parsed_kind: "markdown",
+        raw_text: "# Notes",
+        structured_data: null,
+        row_count: null,
+        warnings: [],
+      },
+      error_code: null,
+      error_message: null,
+      detected_columns: {
+        question_col: null,
+        answer_col: null,
+        domain_col: "domain",
+      },
+      ingested_row_count: 4,
+      failed_row_count: 0,
+      storage_target: "lancedb://document_records",
+    },
+  ],
+};
+
+const failedIngestResponse = {
+  request_id: "req-999",
+  total_file_count: 2,
+  processed_file_count: 1,
+  failed_file_count: 1,
+  request_options: {
+    output_format: "json",
+    similarity_threshold: 0.72,
+  },
+  files: [
+    {
+      status: "processed",
+      payload: {
+        file_name: "history-a.json",
+        extension: ".json",
+        content_type: "application/json",
+        size_bytes: 12,
+        parsed_kind: "json",
+        raw_text: "{\"a\":1}",
+        structured_data: { a: 1 },
+        row_count: 1,
+        warnings: [],
+      },
+      error_code: null,
+      error_message: null,
+      detected_columns: {
+        question_col: "question",
+        answer_col: "answer",
+        domain_col: "domain",
+      },
+      ingested_row_count: 1,
+      failed_row_count: 0,
+      storage_target: "lancedb://qa_records",
+    },
+    {
+      status: "failed",
+      payload: {
+        file_name: "pricing.csv",
+        extension: ".csv",
+        content_type: "text/csv",
+        size_bytes: 32,
+        parsed_kind: "csv",
+        raw_text: "question,answer\nPricing,\n",
+        structured_data: [],
+        row_count: 1,
+        warnings: ["Missing answer values"],
+      },
+      error_code: "missing_required_columns",
+      error_message: "Could not identify the answer column.",
+      detected_columns: {
+        question_col: "question",
+        answer_col: null,
+        domain_col: null,
+      },
+      ingested_row_count: 0,
+      failed_row_count: 1,
+      storage_target: "lancedb://qa_records",
+    },
+  ],
+};
+
 describe("App", () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -25,50 +147,7 @@ describe("App", () => {
         if (url.endsWith("/api/ingest/history") && init?.method === "POST") {
           return {
             ok: true,
-            json: async () => ({
-              request_id: "req-123",
-              total_file_count: 2,
-              processed_file_count: 2,
-              failed_file_count: 0,
-              request_options: {
-                output_format: "json",
-                similarity_threshold: 0.72,
-              },
-              files: [
-                {
-                  status: "processed",
-                  payload: {
-                    file_name: "history-a.json",
-                    extension: ".json",
-                    content_type: "application/json",
-                    size_bytes: 12,
-                    parsed_kind: "json",
-                    raw_text: "{\"a\":1}",
-                    structured_data: { a: 1 },
-                    row_count: 1,
-                    warnings: [],
-                  },
-                  error_code: null,
-                  error_message: null,
-                },
-                {
-                  status: "processed",
-                  payload: {
-                    file_name: "history-b.md",
-                    extension: ".md",
-                    content_type: "text/markdown",
-                    size_bytes: 8,
-                    parsed_kind: "markdown",
-                    raw_text: "# Notes",
-                    structured_data: null,
-                    row_count: null,
-                    warnings: [],
-                  },
-                  error_code: null,
-                  error_message: null,
-                },
-              ],
-            }),
+            json: async () => successfulIngestResponse,
           };
         }
 
@@ -278,6 +357,9 @@ describe("App", () => {
       ).toBeInTheDocument();
     });
 
+    expect(
+      screen.getByText(/Select multiple files to preview the batch before sending it\./i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/history-a\.json/i)).toBeInTheDocument();
     expect(screen.getByText(/history-b\.md/i)).toBeInTheDocument();
   });
@@ -307,9 +389,87 @@ describe("App", () => {
 
     expect(screen.getByText("security.json")).toBeInTheDocument();
     expect(screen.getByText("architecture.md")).toBeInTheDocument();
-    expect(screen.getByText("pricing.csv")).toBeInTheDocument();
+    expect(screen.getAllByText("pricing.csv").length).toBeGreaterThan(0);
     expect(
       screen.getByText(/3 files staged for knowledge base ingest\./i),
     ).toBeInTheDocument();
+  });
+
+  test("allows removing a queued knowledge file before ingest", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const input = screen.getByLabelText(/Upload knowledge base files/i);
+    const files = [
+      new File(['{"domain":"security"}'], "security.json", {
+        type: "application/json",
+      }),
+      new File(["# Architecture"], "architecture.md", {
+        type: "text/markdown",
+      }),
+    ];
+
+    await user.upload(input, files);
+    await user.click(
+      screen.getByRole("button", { name: /Remove security\.json from queue/i }),
+    );
+
+    expect(screen.queryByText("security.json")).not.toBeInTheDocument();
+    expect(screen.getByText("architecture.md")).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 files staged for knowledge base ingest\./i),
+    ).toBeInTheDocument();
+  });
+
+  test("shows file-level ingest failures and keeps the queue when the batch is not fully successful", async () => {
+    const user = userEvent.setup();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/health")) {
+          return { ok: true, json: async () => mockHealthResponse };
+        }
+
+        if (url.endsWith("/api/ingest/history") && init?.method === "POST") {
+          return { ok: true, json: async () => failedIngestResponse };
+        }
+
+        throw new Error(`Unhandled fetch for ${url}`);
+      }),
+    );
+
+    render(<App />);
+
+    const input = screen.getByLabelText(/Upload knowledge base files/i);
+    const files = [
+      new File(['{"domain":"security"}'], "security.json", {
+        type: "application/json",
+      }),
+      new File(["question,answer\nPricing,\n"], "pricing.csv", {
+        type: "text/csv",
+      }),
+    ];
+
+    await user.upload(input, files);
+    await user.click(screen.getByRole("button", { name: /Ingest Knowledge Files/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Knowledge base sync complete: 1 processed, 1 failed\./i),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText("pricing.csv").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Could not identify the answer column\./i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/1 failed rows/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/Target: lancedb:\/\/qa_records/i).length,
+    ).toBeGreaterThan(0);
   });
 });

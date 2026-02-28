@@ -373,6 +373,15 @@ button {
   background: rgba(255, 255, 255, 0.5);
 }
 
+.detail-list__item {
+  align-items: flex-start;
+}
+
+.detail-list__item--error {
+  border-color: rgba(161, 38, 38, 0.24);
+  background: rgba(161, 38, 38, 0.06);
+}
+
 .dropzone {
   padding: 1.2rem;
   border: 1.5px dashed rgba(177, 79, 47, 0.42);
@@ -675,6 +684,40 @@ button {
 
 .detail-list li span {
   color: rgba(255, 244, 224, 0.72);
+}
+
+.queue-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.queue-action {
+  padding: 0.45rem 0.8rem;
+  font-size: 0.84rem;
+}
+
+.ingest-result {
+  width: 100%;
+}
+
+.ingest-result__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.ingest-result__meta,
+.ingest-result__error {
+  margin: 0.45rem 0 0;
+  color: var(--ink-soft);
+}
+
+.ingest-result__error {
+  color: var(--danger);
+  font-weight: 700;
 }
 
 .results-sidebar {

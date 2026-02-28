@@ -1,12 +1,14 @@
 from pathlib import Path
 
 from app.db.lancedb_client import ensure_lancedb_ready
-from app.repositories.qa_repository import QaRepository
+from app.features.history_ingest.infrastructure.repositories.qa_lancedb_repository import (
+    QaLanceDbRepository,
+)
 
 
 def test_upsert_records_inserts_rows_into_qa_table(tmp_path: Path) -> None:
     connection = ensure_lancedb_ready(uri=tmp_path / "lancedb")
-    repository = QaRepository(connection=connection)
+    repository = QaLanceDbRepository(connection=connection)
 
     repository.upsert_records(
         [
@@ -37,7 +39,7 @@ def test_upsert_records_inserts_rows_into_qa_table(tmp_path: Path) -> None:
 
 def test_upsert_records_updates_existing_ids_without_duplication(tmp_path: Path) -> None:
     connection = ensure_lancedb_ready(uri=tmp_path / "lancedb")
-    repository = QaRepository(connection=connection)
+    repository = QaLanceDbRepository(connection=connection)
 
     repository.upsert_records(
         [

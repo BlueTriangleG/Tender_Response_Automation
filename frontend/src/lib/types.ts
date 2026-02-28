@@ -35,11 +35,21 @@ export type ParsedHistoryFilePayload = {
   warnings: string[];
 };
 
+export type DetectedColumns = {
+  questionCol: string | null;
+  answerCol: string | null;
+  domainCol: string | null;
+};
+
 export type ProcessedHistoryFileResult = {
   status: "processed" | "failed";
   payload: ParsedHistoryFilePayload | null;
   errorCode: string | null;
   errorMessage: string | null;
+  detectedColumns: DetectedColumns | null;
+  ingestedRowCount: number;
+  failedRowCount: number;
+  storageTarget: string | null;
 };
 
 export type HistoryIngestResponse = {

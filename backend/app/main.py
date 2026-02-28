@@ -7,9 +7,9 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import api_router
+from app.bootstrap.routers import api_router
 from app.core.config import settings
-from app.services.lancedb_bootstrap_service import bootstrap_lancedb
+from app.shared.db.lancedb_bootstrap import bootstrap_lancedb
 
 
 @asynccontextmanager

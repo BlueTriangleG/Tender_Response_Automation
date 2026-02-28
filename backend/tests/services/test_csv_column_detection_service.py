@@ -1,34 +1,26 @@
-from app.file_processing.csv_column_mapping import CsvColumnMappingResult
-from app.schemas.history_ingest import DetectedCsvColumns
-from app.services.csv_column_detection_service import CsvColumnDetectionService
+from app.features.history_ingest.domain.csv_column_mapping import CsvColumnMappingResult
+from app.features.history_ingest.infrastructure.services.csv_column_detection_service import (
+    CsvColumnDetectionService,
+)
+from app.features.history_ingest.schemas.responses import DetectedCsvColumns
 
 
-class FakeAgent:
+class FakeCompletionClient:
     def __init__(self, response: str, should_raise: bool = False) -> None:
         self.response = response
         self.should_raise = should_raise
-        self.messages: list[str] = []
+        self.calls: list[tuple[str, str]] = []
 
-    async def chat(self, message: str) -> str:
-        self.messages.append(message)
+    async def create_json_completion(self, *, system_prompt: str, user_prompt: str) -> str:
+        self.calls.append((system_prompt, user_prompt))
         if self.should_raise:
             raise RuntimeError("llm unavailable")
         return self.response
 
 
-class FakeAgentManager:
-    def __init__(self, agent: FakeAgent) -> None:
-        self.agent = agent
-        self.calls: list[tuple[str, str]] = []
-
-    def get_agent(self, session_id: str, workflow_name: str = "react_agent") -> FakeAgent:
-        self.calls.append((session_id, workflow_name))
-        return self.agent
-
-
 async def test_detect_columns_skips_llm_when_mapping_is_complete() -> None:
-    manager = FakeAgentManager(FakeAgent('{"question_col":"q","answer_col":"a","domain_col":"d"}'))
-    service = CsvColumnDetectionService(agent_manager_instance=manager)
+    completion_client = FakeCompletionClient('{"question_col":"q","answer_col":"a","domain_col":"d"}')
+    service = CsvColumnDetectionService(completion_client=completion_client)
 
     result = await service.detect_columns(
         headers=["question", "answer", "domain"],
@@ -48,13 +40,14 @@ async def test_detect_columns_skips_llm_when_mapping_is_complete() -> None:
         domain_col="domain",
     )
     assert result.used_llm is False
-    assert manager.calls == []
+    assert completion_client.calls == []
 
 
 async def test_detect_columns_calls_llm_with_headers_and_first_five_rows() -> None:
-    agent = FakeAgent('{"question_col":"prompt_text","answer_col":"response_text","domain_col":"category"}')
-    manager = FakeAgentManager(agent)
-    service = CsvColumnDetectionService(agent_manager_instance=manager)
+    completion_client = FakeCompletionClient(
+        '{"question_col":"prompt_text","answer_col":"response_text","domain_col":"category"}'
+    )
+    service = CsvColumnDetectionService(completion_client=completion_client)
 
     result = await service.detect_columns(
         headers=["prompt_text", "response_text", "category"],
@@ -77,15 +70,12 @@ async def test_detect_columns_calls_llm_with_headers_and_first_five_rows() -> No
         domain_col="category",
     )
     assert result.used_llm is True
-    assert manager.calls[0][1] == "csv_column_detection_agent"
-    assert "prompt_text" in agent.messages[0]
-    assert "Q1" in agent.messages[0]
+    assert "prompt_text" in completion_client.calls[0][1]
+    assert "Q1" in completion_client.calls[0][1]
 
 
 async def test_detect_columns_rejects_invalid_llm_json_output() -> None:
-    service = CsvColumnDetectionService(
-        agent_manager_instance=FakeAgentManager(FakeAgent("not-json"))
-    )
+    service = CsvColumnDetectionService(completion_client=FakeCompletionClient("not-json"))
 
     result = await service.detect_columns(
         headers=["a", "b", "c"],
@@ -105,8 +95,8 @@ async def test_detect_columns_rejects_invalid_llm_json_output() -> None:
 
 async def test_detect_columns_rejects_llm_columns_not_present_in_csv() -> None:
     service = CsvColumnDetectionService(
-        agent_manager_instance=FakeAgentManager(
-            FakeAgent('{"question_col":"foo","answer_col":"bar","domain_col":"baz"}')
+        completion_client=FakeCompletionClient(
+            '{"question_col":"foo","answer_col":"bar","domain_col":"baz"}'
         )
     )
 
@@ -128,7 +118,7 @@ async def test_detect_columns_rejects_llm_columns_not_present_in_csv() -> None:
 
 async def test_detect_columns_converts_llm_exception_to_file_level_failure() -> None:
     service = CsvColumnDetectionService(
-        agent_manager_instance=FakeAgentManager(FakeAgent("", should_raise=True))
+        completion_client=FakeCompletionClient("", should_raise=True)
     )
 
     result = await service.detect_columns(

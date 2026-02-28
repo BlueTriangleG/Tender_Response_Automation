@@ -67,6 +67,10 @@ function mergeKnowledgeBaseFiles(currentFiles: File[], incomingFiles: File[]) {
   return Array.from(fileMap.values());
 }
 
+function batchHasFailures(response: HistoryIngestResponse) {
+  return response.failedFileCount > 0 || response.files.some((file) => file.failedRowCount > 0);
+}
+
 function App() {
   // The dashboard keeps network state local because the interaction surface is
   // small and the take-home brief explicitly does not need a state library.
@@ -210,6 +214,22 @@ function App() {
     });
   }
 
+  function removeKnowledgeBaseFile(fileName: string) {
+    setKnowledgeBaseFiles((currentFiles) => {
+      const nextFiles = currentFiles.filter((file) => file.name !== fileName);
+
+      if (nextFiles.length === 0) {
+        setKnowledgeBaseMessage("Upload history files to build the knowledge base.");
+      } else {
+        setKnowledgeBaseMessage(
+          `${nextFiles.length} files staged for knowledge base ingest.`,
+        );
+      }
+
+      return nextFiles;
+    });
+  }
+
   function handleDragEnter(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setIsDragActive(true);
@@ -286,12 +306,16 @@ function App() {
 
     try {
       const response = await ingestHistoryFiles(knowledgeBaseFiles);
+      const hasFailures = batchHasFailures(response);
 
       setKnowledgeBaseRun(response);
       setKnowledgeBaseState("ready");
       setKnowledgeBaseMessage(
         `Knowledge base sync complete: ${response.processedFileCount} processed, ${response.failedFileCount} failed.`,
       );
+      if (!hasFailures) {
+        setKnowledgeBaseFiles([]);
+      }
       setHistoryStatus((current) => ({
         itemCount: (current?.itemCount ?? 0) + response.processedFileCount,
         lastUpdated: new Date().toISOString(),
@@ -430,7 +454,16 @@ function App() {
                         {knowledgeBaseFileNames.map((fileName) => (
                           <li key={fileName}>
                             <span>{fileName}</span>
-                            <strong>queued</strong>
+                            <div className="queue-actions">
+                              <strong>queued</strong>
+                              <button
+                                className="secondary-button queue-action"
+                                type="button"
+                                onClick={() => removeKnowledgeBaseFile(fileName)}
+                              >
+                                Remove {fileName} from queue
+                              </button>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -460,13 +493,43 @@ function App() {
                         {knowledgeBaseRun.files.map((fileResult, index) => (
                           <li
                             key={`${fileResult.payload?.fileName ?? fileResult.errorCode}-${index}`}
+                            className={
+                              fileResult.status === "failed" || fileResult.failedRowCount > 0
+                                ? "detail-list__item detail-list__item--error"
+                                : "detail-list__item"
+                            }
                           >
-                            <span>
-                              {fileResult.payload?.fileName ??
-                                fileResult.errorCode ??
-                                "unknown"}
-                            </span>
-                            <strong>{fileResult.status}</strong>
+                            <div className="ingest-result">
+                              <div className="ingest-result__header">
+                                <span>
+                                  {fileResult.payload?.fileName ??
+                                    fileResult.errorCode ??
+                                    "unknown"}
+                                </span>
+                                <strong>{fileResult.status}</strong>
+                              </div>
+                              <p className="ingest-result__meta">
+                                {fileResult.ingestedRowCount} ingested rows,{" "}
+                                {fileResult.failedRowCount} failed rows
+                              </p>
+                              {fileResult.storageTarget ? (
+                                <p className="ingest-result__meta">
+                                  Target: {fileResult.storageTarget}
+                                </p>
+                              ) : null}
+                              {fileResult.errorMessage ? (
+                                <p className="ingest-result__error">
+                                  {fileResult.errorMessage}
+                                </p>
+                              ) : null}
+                              {fileResult.detectedColumns ? (
+                                <p className="ingest-result__meta">
+                                  Columns: q={fileResult.detectedColumns.questionCol ?? "n/a"},
+                                  {" "}a={fileResult.detectedColumns.answerCol ?? "n/a"},
+                                  {" "}d={fileResult.detectedColumns.domainCol ?? "n/a"}
+                                </p>
+                              ) : null}
+                            </div>
                           </li>
                         ))}
                       </ul>

@@ -43,6 +43,10 @@ function normalizeHistoryIngestResponse(
             file.payload && typeof file.payload === "object"
               ? (file.payload as Record<string, unknown>)
               : null;
+          const detectedColumnsValue =
+            file.detected_columns && typeof file.detected_columns === "object"
+              ? (file.detected_columns as Record<string, unknown>)
+              : null;
 
           return {
             status: file.status === "failed" ? "failed" : "processed",
@@ -70,6 +74,26 @@ function normalizeHistoryIngestResponse(
             errorCode: file.error_code == null ? null : String(file.error_code),
             errorMessage:
               file.error_message == null ? null : String(file.error_message),
+            detectedColumns: detectedColumnsValue
+              ? {
+                  questionCol:
+                    detectedColumnsValue.question_col == null
+                      ? null
+                      : String(detectedColumnsValue.question_col),
+                  answerCol:
+                    detectedColumnsValue.answer_col == null
+                      ? null
+                      : String(detectedColumnsValue.answer_col),
+                  domainCol:
+                    detectedColumnsValue.domain_col == null
+                      ? null
+                      : String(detectedColumnsValue.domain_col),
+                }
+              : null,
+            ingestedRowCount: Number(file.ingested_row_count ?? 0),
+            failedRowCount: Number(file.failed_row_count ?? 0),
+            storageTarget:
+              file.storage_target == null ? null : String(file.storage_target),
           };
         })
       : [],

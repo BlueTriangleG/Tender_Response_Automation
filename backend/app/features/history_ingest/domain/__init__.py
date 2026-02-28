@@ -1,0 +1,1 @@
+"""History ingest domain layer."""

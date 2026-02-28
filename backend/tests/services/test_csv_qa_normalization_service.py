@@ -1,5 +1,5 @@
-from app.schemas.history_ingest import DetectedCsvColumns
-from app.services.csv_qa_normalization_service import CsvQaNormalizationService
+from app.features.history_ingest.domain.csv_qa_normalization import CsvQaNormalizationService
+from app.features.history_ingest.schemas.responses import DetectedCsvColumns
 
 
 def test_normalize_rows_maps_csv_rows_into_qa_records() -> None:

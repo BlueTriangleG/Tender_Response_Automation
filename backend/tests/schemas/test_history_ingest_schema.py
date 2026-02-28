@@ -1,6 +1,6 @@
-from app.schemas.history_ingest import (
+from app.features.history_ingest.schemas.requests import HistoryIngestRequestOptions
+from app.features.history_ingest.schemas.responses import (
     HistoryIngestResponse,
-    HistoryIngestRequestOptions,
     ParsedFilePayload,
     ProcessedHistoryFileResult,
 )

@@ -18,7 +18,7 @@ def test_csv_history_ingest_route_persists_rows_to_qa_table(
     db_uri = tmp_path / "lancedb"
     monkeypatch.setattr(settings, "lancedb_uri", str(db_uri))
     monkeypatch.setattr(
-        "app.services.qa_embedding_service.QaEmbeddingService.embed_texts",
+        "app.features.history_ingest.infrastructure.services.qa_embedding_service.QaEmbeddingService.embed_texts",
         fake_embed_texts,
     )
 

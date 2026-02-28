@@ -2,8 +2,10 @@ from io import BytesIO
 
 from starlette.datastructures import Headers, UploadFile
 
-from app.schemas.history_ingest import HistoryIngestRequestOptions
-from app.services.history_ingest_service import HistoryIngestService
+from app.features.history_ingest.application.ingest_history_use_case import (
+    IngestHistoryUseCase,
+)
+from app.features.history_ingest.schemas.requests import HistoryIngestRequestOptions
 
 
 def make_upload_file(
@@ -18,8 +20,8 @@ def make_upload_file(
     )
 
 
-async def test_process_files_handles_one_uploaded_file() -> None:
-    service = HistoryIngestService()
+async def test_process_files_marks_non_csv_upload_as_failed_ingest_type() -> None:
+    service = IngestHistoryUseCase()
 
     response = await service.process_files(
         [
@@ -36,36 +38,37 @@ async def test_process_files_handles_one_uploaded_file() -> None:
     )
 
     assert response.total_file_count == 1
-    assert response.processed_file_count == 1
-    assert response.failed_file_count == 0
+    assert response.processed_file_count == 0
+    assert response.failed_file_count == 1
     assert response.request_options.output_format == "excel"
     assert response.request_options.similarity_threshold == 0.84
-    assert response.files[0].status == "processed"
+    assert response.files[0].status == "failed"
+    assert response.files[0].error_code == "unsupported_ingest_type"
 
 
-async def test_process_files_handles_many_uploaded_files() -> None:
-    service = HistoryIngestService()
+async def test_process_files_marks_non_csv_uploads_as_failed_individually() -> None:
+    service = IngestHistoryUseCase()
 
     response = await service.process_files(
         [
             make_upload_file("one.md", b"# one", "text/markdown"),
-            make_upload_file("two.csv", b"name\nalice\n", "text/csv"),
             make_upload_file("three.json", b'{"ok":true}', "application/json"),
         ]
     )
 
-    assert response.total_file_count == 3
-    assert response.processed_file_count == 3
-    assert response.failed_file_count == 0
+    assert response.total_file_count == 2
+    assert response.processed_file_count == 0
+    assert response.failed_file_count == 2
     assert [result.status for result in response.files] == [
-        "processed",
-        "processed",
-        "processed",
+        "failed",
+        "failed",
     ]
+    assert response.files[0].error_code == "unsupported_ingest_type"
+    assert response.files[1].error_code == "unsupported_ingest_type"
 
 
 async def test_process_files_continues_when_one_file_fails() -> None:
-    service = HistoryIngestService()
+    service = IngestHistoryUseCase()
 
     response = await service.process_files(
         [
@@ -75,7 +78,9 @@ async def test_process_files_continues_when_one_file_fails() -> None:
     )
 
     assert response.total_file_count == 2
-    assert response.processed_file_count == 1
-    assert response.failed_file_count == 1
+    assert response.processed_file_count == 0
+    assert response.failed_file_count == 2
     assert response.files[0].status == "failed"
-    assert response.files[1].status == "processed"
+    assert response.files[0].error_code == "unsupported_extension"
+    assert response.files[1].status == "failed"
+    assert response.files[1].error_code == "unsupported_ingest_type"

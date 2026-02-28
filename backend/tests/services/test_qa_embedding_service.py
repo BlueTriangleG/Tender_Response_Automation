@@ -1,4 +1,6 @@
-from app.services.qa_embedding_service import QaEmbeddingService
+from app.features.history_ingest.infrastructure.services.qa_embedding_service import (
+    QaEmbeddingService,
+)
 
 
 class FakeEmbeddingItem:

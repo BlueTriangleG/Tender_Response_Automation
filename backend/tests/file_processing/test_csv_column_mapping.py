@@ -1,4 +1,4 @@
-from app.file_processing.csv_column_mapping import (
+from app.features.history_ingest.domain.csv_column_mapping import (
     CsvColumnMappingResult,
     infer_csv_columns_from_headers,
 )

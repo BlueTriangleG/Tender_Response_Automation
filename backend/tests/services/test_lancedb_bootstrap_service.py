@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.services.lancedb_bootstrap_service import bootstrap_lancedb
+from app.shared.db.lancedb_bootstrap import bootstrap_lancedb
 
 
 def test_bootstrap_lancedb_calls_readiness_function(monkeypatch) -> None:
@@ -17,7 +17,7 @@ def test_bootstrap_lancedb_calls_readiness_function(monkeypatch) -> None:
         return object()
 
     monkeypatch.setattr(
-        "app.services.lancedb_bootstrap_service.ensure_lancedb_ready",
+        "app.shared.db.lancedb_bootstrap.ensure_lancedb_ready",
         fake_ensure_lancedb_ready,
     )
 

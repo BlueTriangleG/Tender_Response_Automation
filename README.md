@@ -2,15 +2,17 @@
 
 ## Overview
 
-This repository contains a minimal full-stack take-home project.
+This repository contains a full-stack tender-processing prototype with a FastAPI backend and a React frontend.
 
-The current implementation scope is focused on the project foundation:
+The backend is now organized as a **feature-first modular monolith**. The current implemented scope includes:
 
-- FastAPI backend skeleton rebuilt from scratch
-- Health route vertical slice
+- FastAPI backend bootstrap and composition root
+- Health feature vertical slice
+- Agent chat feature slice
+- History ingest feature slice for batch file upload and CSV QA ingestion
+- Local LanceDB embedded storage under `./data/lancedb/`
 - uv-based Python project management
 - React + Vite frontend tender-processing dashboard
-- Mock-backed tender processing flow for interview demos while backend routes are pending
 
 ## Repository Structure
 
@@ -18,21 +20,26 @@ The current implementation scope is focused on the project foundation:
 .
 ├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   │   └── routes/
 │   │   ├── agents/
-│   │   ├── core/
+│   │   ├── bootstrap/
 │   │   ├── db/
+│   │   ├── features/
+│   │   │   ├── agent_chat/
+│   │   │   ├── health/
+│   │   │   └── history_ingest/
+│   │   ├── integrations/
+│   │   │   └── openai/
+│   │   ├── core/
 │   │   ├── graph/
-│   │   │   └── nodes/
 │   │   ├── memory/
-│   │   ├── repositories/
-│   │   ├── schemas/
-│   │   └── services/
+│   │   ├── shared/
+│   │   │   └── db/
 │   ├── tests/
 │   ├── .python-version
 │   ├── pyproject.toml
 │   └── uv.lock
+├── data/
+│   └── lancedb/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
@@ -62,17 +69,58 @@ npm run dev
 
 ## Backend
 
-The backend follows a lightweight AI workflow-oriented skeleton:
+The backend uses a **feature-first modular monolith**:
 
-- `api/`: FastAPI routes and HTTP layer
-- `core/`: application settings and shared configuration
-- `services/`: business logic used by routes and workflows
-- `repositories/`: future persistence access layer
-- `schemas/`: request and response schemas
-- `db/`: SQLite session and model modules
-- `graph/`: future LangGraph state and node orchestration
-- `agents/`: future agent-specific modules
-- `memory/`: future short-term and long-term memory modules
+- `bootstrap/`: app-level wiring, router registration, and composition root concerns
+- `features/`: business capabilities, organized by feature first
+- `integrations/`: third-party SDK adapters shared across features
+- `core/`: global settings and base configuration
+- `db/`: shared database bootstrap and LanceDB primitives
+- `agents/`, `graph/`, `memory/`: existing AI/runtime modules that are being migrated feature-by-feature
+
+### Backend Feature Layout
+
+Every new backend capability should start in `app/features/<feature_name>/` and follow this shape when applicable:
+
+```text
+app/features/<feature_name>/
+  api/
+  application/
+  domain/
+  infrastructure/
+  schemas/
+```
+
+Responsibility rules:
+
+- `api/`: FastAPI routes, request parsing, dependency injection
+- `application/`: use cases and orchestration
+- `domain/`: business rules, normalization logic, domain models
+- `infrastructure/`: persistence, file parsers, SDK-backed adapters
+- `schemas/`: feature-local Pydantic contracts
+
+### Backend Contributor Rules
+
+When adding backend code:
+
+- Put new business logic under `app/features/`
+- Keep routes thin; push orchestration into `application/`
+- Keep `domain/` free of FastAPI, LanceDB, and OpenAI SDK imports
+- Put reusable third-party adapters in `app/integrations/`
+- Put cross-feature infrastructure such as LanceDB bootstrap under `app/shared/`
+- Do not recreate global `app/services/`, `app/schemas/`, `app/repositories/`, or `app/file_processing/` buckets
+
+### Current Feature Ownership
+
+- `features/health/`: `/api/health`
+- `features/agent_chat/`: `/api/agent/chat`
+- `features/history_ingest/`: `/api/ingest/history`
+
+### LanceDB
+
+- Storage path: `./data/lancedb/`
+- Mode: embedded local database directory
+- This directory is ignored by git and must not be committed
 
 ## Backend Setup
 
@@ -117,9 +165,15 @@ Health endpoint:
 GET /api/health
 ```
 
+History ingest endpoint:
+
+```text
+POST /api/ingest/history
+```
+
 ## Backend Standards
 
-The backend now uses a modern Python project toolchain:
+The backend uses a modern Python project toolchain:
 
 - `uv`: dependency management, locking, and command execution
 - `pyproject.toml`: single source of truth for project metadata and tool config
@@ -127,12 +181,22 @@ The backend now uses a modern Python project toolchain:
 - `ruff`: linting and import ordering
 - `mypy`: static type checking
 
-The first implemented backend slice is:
+Current backend conventions:
 
-- `app.main`: FastAPI application bootstrap
-- `app.api.routes.health`: `/api/health` route
-- `app.services.health_service`: health business logic
-- `app.schemas.health`: typed response model
+- feature-first packaging over global class-type buckets
+- local embedded LanceDB for RAG data
+- OpenAI SDK access behind integration adapters
+- no global `app/services/` bucket
+- limited compatibility wrappers retained temporarily only where migration is still incomplete
+
+## Backend Verification
+
+Run the full backend test suite:
+
+```bash
+cd backend
+../backend/.venv/bin/pytest tests -v
+```
 
 ## Frontend
 

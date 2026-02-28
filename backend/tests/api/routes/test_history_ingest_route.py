@@ -1,19 +1,21 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app.schemas.history_ingest import (
+from app.features.history_ingest.api.dependencies import get_history_ingest_use_case
+from app.features.history_ingest.schemas.requests import HistoryIngestRequestOptions
+from app.features.history_ingest.schemas.responses import (
     DetectedCsvColumns,
-    HistoryIngestRequestOptions,
     HistoryIngestResponse,
     ParsedFilePayload,
     ProcessedHistoryFileResult,
 )
+from app.main import app
 
 
 def test_history_ingest_route_accepts_single_upload_tender_file() -> None:
     client = TestClient(app)
+    mock_use_case = MagicMock()
 
     mocked_response = HistoryIngestResponse(
         total_file_count=1,
@@ -49,10 +51,9 @@ def test_history_ingest_route_accepts_single_upload_tender_file() -> None:
         ],
     )
 
-    with patch(
-        "app.api.routes.history_ingest.HistoryIngestService.process_files",
-        new=AsyncMock(return_value=mocked_response),
-    ):
+    mock_use_case.process_files = AsyncMock(return_value=mocked_response)
+    app.dependency_overrides[get_history_ingest_use_case] = lambda: mock_use_case
+    try:
         response = client.post(
             "/api/ingest/history",
             files={
@@ -67,6 +68,8 @@ def test_history_ingest_route_accepts_single_upload_tender_file() -> None:
                 "similarityThreshold": "0.81",
             },
         )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 200
     payload = response.json()
@@ -89,6 +92,7 @@ def test_history_ingest_route_accepts_single_upload_tender_file() -> None:
 
 def test_history_ingest_route_accepts_batch_files_under_files_field() -> None:
     client = TestClient(app)
+    mock_use_case = MagicMock()
 
     mocked_response = HistoryIngestResponse(
         total_file_count=2,
@@ -136,10 +140,9 @@ def test_history_ingest_route_accepts_batch_files_under_files_field() -> None:
         ],
     )
 
-    with patch(
-        "app.api.routes.history_ingest.HistoryIngestService.process_files",
-        new=AsyncMock(return_value=mocked_response),
-    ):
+    mock_use_case.process_files = AsyncMock(return_value=mocked_response)
+    app.dependency_overrides[get_history_ingest_use_case] = lambda: mock_use_case
+    try:
         response = client.post(
             "/api/ingest/history",
             files=[
@@ -153,6 +156,8 @@ def test_history_ingest_route_accepts_batch_files_under_files_field() -> None:
                 ),
             ],
         )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 200
     payload = response.json()
