@@ -457,6 +457,10 @@ button {
   align-items: start;
 }
 
+.field-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .custom-field {
   padding: 1rem;
   border-radius: 22px;
@@ -658,6 +662,11 @@ button {
   background: rgba(255, 255, 255, 0.42);
 }
 
+.result-row__answer {
+  max-width: 32ch;
+  color: var(--ink-soft);
+}
+
 .result-row__details td {
   padding-top: 0;
 }
@@ -680,6 +689,19 @@ button {
 .detail-panel h4 {
   margin: 0 0 0.6rem;
   color: #fff8ed;
+}
+
+.detail-panel pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: rgba(255, 244, 224, 0.86);
+  font: inherit;
+}
+
+.detail-list--dark li {
+  border-color: rgba(255, 245, 224, 0.08);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .detail-list li span {

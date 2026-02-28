@@ -10,9 +10,9 @@ class OpenAIChatCompletionsClient:
         model: str | None = None,
     ) -> None:
         self._client = client or AsyncOpenAI()
-        self._model = model or settings.openai_csv_column_model
+        self._model = model or settings.openai_chat_model
 
-    async def create_json_completion(
+    async def create_completion(
         self,
         *,
         system_prompt: str,
@@ -26,3 +26,14 @@ class OpenAIChatCompletionsClient:
             ],
         )
         return response.choices[0].message.content or ""
+
+    async def create_json_completion(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        return await self.create_completion(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+        )

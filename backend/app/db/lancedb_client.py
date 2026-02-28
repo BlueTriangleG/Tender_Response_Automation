@@ -6,7 +6,6 @@ from lancedb.db import DBConnection
 
 from app.core.config import settings
 
-
 VECTOR_DIMENSION = 1536
 
 

@@ -14,3 +14,11 @@ def test_lancedb_table_names_have_expected_defaults() -> None:
 
     assert settings.lancedb_qa_table_name == "qa_records"
     assert settings.lancedb_document_table_name == "document_records"
+
+
+def test_openai_model_defaults_have_feature_specific_names() -> None:
+    settings = Settings()
+
+    assert settings.openai_chat_model == "gpt-4o-mini"
+    assert settings.openai_csv_column_model == "gpt-4o-mini"
+    assert settings.openai_tender_response_model == "gpt-4o-mini"

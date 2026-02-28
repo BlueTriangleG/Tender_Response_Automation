@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 
+from app.core.config import settings
 from app.features.history_ingest.domain.csv_column_mapping import CsvColumnMappingResult
 from app.features.history_ingest.schemas.responses import DetectedCsvColumns
 from app.integrations.openai.chat_completions_client import OpenAIChatCompletionsClient
@@ -19,7 +20,9 @@ class CsvColumnDetectionService:
         self,
         completion_client: OpenAIChatCompletionsClient | None = None,
     ) -> None:
-        self._completion_client = completion_client or OpenAIChatCompletionsClient()
+        self._completion_client = completion_client or OpenAIChatCompletionsClient(
+            model=settings.openai_csv_column_model
+        )
 
     async def detect_columns(
         self,

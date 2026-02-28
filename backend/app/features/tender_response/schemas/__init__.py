@@ -1,0 +1,1 @@
+"""Tender response API schemas."""

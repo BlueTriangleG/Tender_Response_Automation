@@ -46,7 +46,7 @@ def test_normalize_rows_builds_deterministic_text() -> None:
     assert result.records[0].text == "Question: Q\nAnswer: A\nDomain: Security"
 
 
-def test_normalize_rows_generates_stable_ids_for_file_and_row_index() -> None:
+def test_normalize_rows_generates_same_id_for_same_content_across_files() -> None:
     service = CsvQaNormalizationService()
 
     result_one = service.normalize_rows(
@@ -59,7 +59,7 @@ def test_normalize_rows_generates_stable_ids_for_file_and_row_index() -> None:
         rows=[{"question": "Q", "answer": "A", "domain": "Security"}],
     )
     result_two = service.normalize_rows(
-        file_name="history.csv",
+        file_name="another-source.csv",
         detected_columns=DetectedCsvColumns(
             question_col="question",
             answer_col="answer",

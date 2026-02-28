@@ -1,0 +1,1 @@
+"""Tender response domain layer."""

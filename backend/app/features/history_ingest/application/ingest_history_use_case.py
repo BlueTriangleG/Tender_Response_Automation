@@ -106,11 +106,26 @@ class IngestHistoryUseCase:
                 )
                 continue
 
+            new_records = self._filter_new_records(normalization_result.records)
+
+            if not new_records:
+                final_results.append(
+                    ProcessedHistoryFileResult(
+                        status="processed",
+                        payload=parsed_result.payload,
+                        detected_columns=detection_result.detected_columns,
+                        ingested_row_count=0,
+                        failed_row_count=normalization_result.failed_row_count,
+                        storage_target="qa_records",
+                    )
+                )
+                continue
+
             vectors = await self._get_qa_embedding_service().embed_texts(
-                [record.text for record in normalization_result.records]
+                [record.text for record in new_records]
             )
             repository_records = []
-            for record, vector in zip(normalization_result.records, vectors, strict=True):
+            for record, vector in zip(new_records, vectors, strict=True):
                 repository_records.append(
                     {
                         "id": record.id,
@@ -177,3 +192,14 @@ class IngestHistoryUseCase:
         if self._qa_repository is None:
             self._qa_repository = QaLanceDbRepository()
         return self._qa_repository
+
+    def _filter_new_records(self, records):
+        unique_records_by_id = {}
+        for record in records:
+            unique_records_by_id.setdefault(record.id, record)
+
+        unique_records = list(unique_records_by_id.values())
+        existing_ids = self._get_qa_repository().get_existing_record_ids(
+            [record.id for record in unique_records]
+        )
+        return [record for record in unique_records if record.id not in existing_ids]

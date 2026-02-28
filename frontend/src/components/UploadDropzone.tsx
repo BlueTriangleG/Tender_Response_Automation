@@ -2,27 +2,39 @@ import { useRef } from "react";
 import type { DragEvent } from "react";
 
 type UploadDropzoneProps = {
+  accept?: string;
+  browseLabel?: string;
+  dragActiveTitle?: string;
   fileName: string | null;
   inputId: string;
   isDragActive: boolean;
   label: string;
+  idleTitle?: string;
   onDragEnter: (event: DragEvent<HTMLDivElement>) => void;
   onDragLeave: (event: DragEvent<HTMLDivElement>) => void;
   onDragOver: (event: DragEvent<HTMLDivElement>) => void;
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onFileChange: (file: File | null) => void;
+  supportLabel?: string;
+  caption?: string;
 };
 
 export function UploadDropzone({
+  accept = ".csv",
+  browseLabel = "Browse csv",
+  caption = "Stage one tender questionnaire, then send it to the FastAPI workflow for autofill generation.",
+  dragActiveTitle = "Drop csv to queue this run",
   fileName,
   inputId,
   isDragActive,
+  idleTitle = "Drag your tender csv here or browse from disk",
   label,
   onDragEnter,
   onDragLeave,
   onDragOver,
   onDrop,
   onFileChange,
+  supportLabel = "Supports .csv only",
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -38,9 +50,7 @@ export function UploadDropzone({
         {label}
       </label>
       <p className="dropzone__title">
-        {isDragActive
-          ? "Drop workbook to queue this run"
-          : "Drag your workbook here or browse from disk"}
+        {isDragActive ? dragActiveTitle : idleTitle}
       </p>
 
       <div className="dropzone__actions">
@@ -49,9 +59,9 @@ export function UploadDropzone({
           type="button"
           onClick={() => inputRef.current?.click()}
         >
-          Browse workbook
+          {browseLabel}
         </button>
-        <span className="dropzone__meta">Supports .xlsx, .xls, and .csv</span>
+        <span className="dropzone__meta">{supportLabel}</span>
       </div>
 
       <input
@@ -60,14 +70,12 @@ export function UploadDropzone({
         name={inputId}
         className="sr-only"
         type="file"
-        accept=".xlsx,.xls,.csv"
+        accept={accept}
         onChange={(event) => onFileChange(event.target.files?.item(0) ?? null)}
       />
 
       <p className="dropzone__caption">
-        {isDragActive
-          ? "Release to stage the workbook for processing."
-          : "Built for interview demos, but wired like a real batch intake surface."}
+        {isDragActive ? "Release to stage the file for processing." : caption}
       </p>
 
       {fileName ? <p className="selected-file">Selected file: {fileName}</p> : null}

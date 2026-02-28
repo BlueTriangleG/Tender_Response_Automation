@@ -1,7 +1,10 @@
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+load_dotenv()
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -14,7 +17,9 @@ class Settings(BaseSettings):
     lancedb_uri: str = str(DEFAULT_LANCEDB_URI)
     lancedb_qa_table_name: str = "qa_records"
     lancedb_document_table_name: str = "document_records"
+    openai_chat_model: str = "gpt-4o-mini"
     openai_csv_column_model: str = "gpt-4o-mini"
+    openai_tender_response_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
     cors_allowed_origins: list[str] = Field(
         default_factory=lambda: [

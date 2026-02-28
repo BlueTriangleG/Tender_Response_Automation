@@ -10,6 +10,7 @@ The backend is now organized as a **feature-first modular monolith**. The curren
 - Health feature vertical slice
 - Agent chat feature slice
 - History ingest feature slice for batch file upload and CSV QA ingestion
+- Tender response feature slice for LangGraph-based CSV answer generation
 - Local LanceDB embedded storage under `./data/lancedb/`
 - uv-based Python project management
 - React + Vite frontend tender-processing dashboard
@@ -26,11 +27,11 @@ The backend is now organized as a **feature-first modular monolith**. The curren
 │   │   ├── features/
 │   │   │   ├── agent_chat/
 │   │   │   ├── health/
-│   │   │   └── history_ingest/
+│   │   │   ├── history_ingest/
+│   │   │   └── tender_response/
 │   │   ├── integrations/
 │   │   │   └── openai/
 │   │   ├── core/
-│   │   ├── graph/
 │   │   ├── memory/
 │   │   ├── shared/
 │   │   │   └── db/
@@ -76,7 +77,7 @@ The backend uses a **feature-first modular monolith**:
 - `integrations/`: third-party SDK adapters shared across features
 - `core/`: global settings and base configuration
 - `db/`: shared database bootstrap and LanceDB primitives
-- `agents/`, `graph/`, `memory/`: existing AI/runtime modules that are being migrated feature-by-feature
+- `agents/`, `memory/`: existing AI/runtime modules that are being migrated feature-by-feature
 
 ### Backend Feature Layout
 
@@ -115,6 +116,7 @@ When adding backend code:
 - `features/health/`: `/api/health`
 - `features/agent_chat/`: `/api/agent/chat`
 - `features/history_ingest/`: `/api/ingest/history`
+- `features/tender_response/`: `/api/tender/respond`
 
 ### LanceDB
 
@@ -170,6 +172,23 @@ History ingest endpoint:
 ```text
 POST /api/ingest/history
 ```
+
+Tender response endpoint:
+
+```text
+POST /api/tender/respond
+```
+
+Expected tender response JSON always includes:
+
+- `total_questions_processed`
+- `questions[].original_question`
+- `questions[].generated_answer`
+- `questions[].domain_tag`
+- `questions[].confidence_level`
+- `questions[].historical_alignment_indicator`
+- `summary.flagged_high_risk_or_inconsistent_responses`
+- `summary.overall_completion_status`
 
 ## Backend Standards
 

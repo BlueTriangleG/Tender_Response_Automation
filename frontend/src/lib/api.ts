@@ -1,10 +1,11 @@
-import { mockHistoryStatus, mockTenderSession } from "./mockData";
+import { mockHistoryStatus } from "./mockData";
 import type {
   BackendHealth,
   HistoryIngestResponse,
   HistoryStatus,
-  ProcessOptions,
-  TenderSession,
+  HistoryIngestOptions,
+  TenderAutofillOptions,
+  TenderAutofillResponse,
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -100,6 +101,111 @@ function normalizeHistoryIngestResponse(
   };
 }
 
+function normalizeTenderAutofillResponse(
+  payload: Record<string, unknown>,
+): TenderAutofillResponse {
+  const summaryValue =
+    payload.summary && typeof payload.summary === "object"
+      ? (payload.summary as Record<string, unknown>)
+      : null;
+
+  return {
+    requestId: String(payload.request_id ?? ""),
+    sessionId: String(payload.session_id ?? ""),
+    sourceFileName: String(payload.source_file_name ?? ""),
+    totalQuestionsProcessed: Number(payload.total_questions_processed ?? 0),
+    questions: Array.isArray(payload.questions)
+      ? payload.questions.map((item) => {
+          const question = (item ?? {}) as Record<string, unknown>;
+          const flags =
+            question.flags && typeof question.flags === "object"
+              ? (question.flags as Record<string, unknown>)
+              : {};
+          const metadata =
+            question.metadata && typeof question.metadata === "object"
+              ? (question.metadata as Record<string, unknown>)
+              : {};
+          const extensions =
+            question.extensions && typeof question.extensions === "object"
+              ? (question.extensions as Record<string, unknown>)
+              : {};
+
+          return {
+            questionId: String(question.question_id ?? ""),
+            originalQuestion: String(question.original_question ?? ""),
+            generatedAnswer: String(question.generated_answer ?? ""),
+            domainTag: String(question.domain_tag ?? ""),
+            confidenceLevel:
+              question.confidence_level === "low" ||
+              question.confidence_level === "medium" ||
+              question.confidence_level === "high"
+                ? question.confidence_level
+                : "low",
+            historicalAlignmentIndicator: Boolean(
+              question.historical_alignment_indicator,
+            ),
+            status: String(question.status ?? ""),
+            flags: {
+              highRisk: Boolean(flags.high_risk),
+              inconsistentResponse: Boolean(flags.inconsistent_response),
+            },
+            metadata: {
+              sourceRowIndex: Number(metadata.source_row_index ?? 0),
+              alignmentRecordId: String(metadata.alignment_record_id ?? ""),
+              alignmentScore: Number(metadata.alignment_score ?? 0),
+            },
+            errorMessage:
+              question.error_message == null ? null : String(question.error_message),
+            extensions,
+          };
+        })
+      : [],
+    summary: summaryValue
+      ? {
+          totalQuestionsProcessed: Number(
+            summaryValue.total_questions_processed ?? 0,
+          ),
+          flaggedHighRiskOrInconsistentResponses: Number(
+            summaryValue.flagged_high_risk_or_inconsistent_responses ?? 0,
+          ),
+          overallCompletionStatus: String(
+            summaryValue.overall_completion_status ?? "pending",
+          ),
+          completedQuestions: Number(summaryValue.completed_questions ?? 0),
+          failedQuestions: Number(summaryValue.failed_questions ?? 0),
+        }
+      : {
+          totalQuestionsProcessed: 0,
+          flaggedHighRiskOrInconsistentResponses: 0,
+          overallCompletionStatus: "pending",
+          completedQuestions: 0,
+          failedQuestions: 0,
+        },
+  };
+}
+
+async function extractErrorMessage(response: Response, fallbackMessage: string) {
+  try {
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    if (typeof payload.detail === "string") {
+      return payload.detail;
+    }
+
+    if (Array.isArray(payload.detail) && payload.detail.length > 0) {
+      const firstItem = payload.detail[0] as Record<string, unknown>;
+
+      if (typeof firstItem.msg === "string") {
+        return firstItem.msg;
+      }
+    }
+  } catch {
+    return fallbackMessage;
+  }
+
+  return fallbackMessage;
+}
+
 // Health is the only live backend contract available today, so the dashboard
 // fetches it directly to prove that the frontend is wired to the real API.
 export async function fetchBackendHealth(): Promise<BackendHealth> {
@@ -133,7 +239,7 @@ export async function fetchHistoryStatus(): Promise<HistoryStatus> {
 
 export async function ingestHistoryFiles(
   files: File[],
-  options: Partial<ProcessOptions> = {},
+  options: Partial<HistoryIngestOptions> = {},
 ): Promise<HistoryIngestResponse> {
   const formData = new FormData();
 
@@ -161,17 +267,35 @@ export async function ingestHistoryFiles(
   return normalizeHistoryIngestResponse(payload);
 }
 
-// The process flow is intentionally mocked for now. It mirrors the shape the
-// backend is expected to return so the UI can be swapped to a real API later.
 export async function processTenderWorkbook(
   file: File,
-  _options: ProcessOptions,
-): Promise<TenderSession> {
-  await wait(240);
+  options: TenderAutofillOptions,
+): Promise<TenderAutofillResponse> {
+  if (!file.name.toLowerCase().endsWith(".csv")) {
+    throw new Error("Autofill only accepts .csv files.");
+  }
 
-  return {
-    ...mockTenderSession,
-    fileName: file.name,
-    sessionId: `${mockTenderSession.sessionId}-${file.name.replaceAll(/\W+/g, "-")}`,
-  };
+  const formData = new FormData();
+
+  formData.append("file", file);
+  formData.append("alignmentThreshold", String(options.alignmentThreshold));
+
+  if (options.sessionId) {
+    formData.append("sessionId", options.sessionId);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/tender/respond`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Tender autofill request failed."),
+    );
+  }
+
+  const payload = (await response.json()) as Record<string, unknown>;
+
+  return normalizeTenderAutofillResponse(payload);
 }

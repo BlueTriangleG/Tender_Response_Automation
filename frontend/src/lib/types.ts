@@ -61,6 +61,48 @@ export type HistoryIngestResponse = {
   files: ProcessedHistoryFileResult[];
 };
 
+export type TenderAutofillQuestionFlags = {
+  highRisk: boolean;
+  inconsistentResponse: boolean;
+};
+
+export type TenderAutofillQuestionMetadata = {
+  sourceRowIndex: number;
+  alignmentRecordId: string;
+  alignmentScore: number;
+};
+
+export type TenderAutofillQuestion = {
+  questionId: string;
+  originalQuestion: string;
+  generatedAnswer: string;
+  domainTag: string;
+  confidenceLevel: "high" | "medium" | "low";
+  historicalAlignmentIndicator: boolean;
+  status: string;
+  flags: TenderAutofillQuestionFlags;
+  metadata: TenderAutofillQuestionMetadata;
+  errorMessage: string | null;
+  extensions: Record<string, unknown>;
+};
+
+export type TenderAutofillSummary = {
+  totalQuestionsProcessed: number;
+  flaggedHighRiskOrInconsistentResponses: number;
+  overallCompletionStatus: string;
+  completedQuestions: number;
+  failedQuestions: number;
+};
+
+export type TenderAutofillResponse = {
+  requestId: string;
+  sessionId: string;
+  sourceFileName: string;
+  totalQuestionsProcessed: number;
+  questions: TenderAutofillQuestion[];
+  summary: TenderAutofillSummary;
+};
+
 export type HistoricalMatch = {
   title: string;
   source: string;
@@ -103,7 +145,14 @@ export type TenderSession = {
   results: TenderQuestionResult[];
 };
 
-export type ProcessOptions = {
+export type HistoryIngestOptions = {
   outputFormat: OutputFormat;
   similarityThreshold: number;
 };
+
+export type TenderAutofillOptions = {
+  alignmentThreshold: number;
+  sessionId?: string | null;
+};
+
+export type ProcessOptions = HistoryIngestOptions;

@@ -1,7 +1,6 @@
 import re
 from dataclasses import dataclass
 
-
 QUESTION_SYNONYMS = [
     "question",
     "questiontext",
@@ -78,7 +77,11 @@ def _match_target(headers: list[str], synonyms: list[str]) -> tuple[str | None, 
     candidates: list[str] = []
 
     for synonym in synonyms:
-        matches = [original for normalized, original in normalized_to_original if normalized == synonym]
+        matches = [
+            original
+            for normalized, original in normalized_to_original
+            if normalized == synonym
+        ]
         for match in matches:
             if match not in candidates:
                 candidates.append(match)

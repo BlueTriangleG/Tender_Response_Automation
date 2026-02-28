@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { ingestHistoryFiles } from "./api";
+import { ingestHistoryFiles, processTenderWorkbook } from "./api";
 
 describe("ingestHistoryFiles", () => {
   afterEach(() => {
@@ -67,5 +67,75 @@ describe("ingestHistoryFiles", () => {
     expect(uploadedFiles[1]).toBe(files[1]);
     expect(formData.get("outputFormat")).toBe("json");
     expect(formData.get("similarityThreshold")).toBe("0.72");
+  });
+});
+
+describe("processTenderWorkbook", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  test("sends the tender csv to the tender response api as multipart form data", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        request_id: "req-tender-42",
+        session_id: "session-42",
+        source_file_name: "tender.csv",
+        total_questions_processed: 1,
+        questions: [
+          {
+            question_id: "q-001",
+            original_question: "Do you support TLS 1.2+?",
+            generated_answer: "Yes.",
+            domain_tag: "security",
+            confidence_level: "high",
+            historical_alignment_indicator: true,
+            status: "completed",
+            flags: {
+              high_risk: false,
+              inconsistent_response: false,
+            },
+            metadata: {
+              source_row_index: 0,
+              alignment_record_id: "qa-001",
+              alignment_score: 0.93,
+            },
+            error_message: null,
+            extensions: {},
+          },
+        ],
+        summary: {
+          total_questions_processed: 1,
+          flagged_high_risk_or_inconsistent_responses: 0,
+          overall_completion_status: "completed",
+          completed_questions: 1,
+          failed_questions: 0,
+        },
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const file = new File(["question\nTLS"], "tender.csv", { type: "text/csv" });
+
+    const response = await processTenderWorkbook(file, {
+      alignmentThreshold: 0.84,
+    });
+
+    expect(response.sessionId).toBe("session-42");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+
+    expect(url).toBe("http://127.0.0.1:8000/api/tender/respond");
+    expect(init.method).toBe("POST");
+    expect(init.body).toBeInstanceOf(FormData);
+
+    const formData = init.body as FormData;
+
+    expect(formData.get("file")).toBe(file);
+    expect(formData.get("alignmentThreshold")).toBe("0.84");
   });
 });

@@ -1,18 +1,18 @@
 from app.features.history_ingest.application.ingest_history_use_case import (
     IngestHistoryUseCase,
 )
-from app.features.history_ingest.schemas.requests import HistoryIngestRequestOptions
-from app.features.history_ingest.schemas.responses import (
-    DetectedCsvColumns,
-    ParsedFilePayload,
-    ProcessedHistoryFileResult,
-)
 from app.features.history_ingest.infrastructure.services.csv_column_detection_service import (
     CsvColumnDetectionResult,
 )
 from app.features.history_ingest.infrastructure.services.csv_qa_normalization_service import (
     CsvQaNormalizationResult,
     NormalizedQaRecord,
+)
+from app.features.history_ingest.schemas.requests import HistoryIngestRequestOptions
+from app.features.history_ingest.schemas.responses import (
+    DetectedCsvColumns,
+    ParsedFilePayload,
+    ProcessedHistoryFileResult,
 )
 
 
@@ -63,11 +63,15 @@ class FakeEmbeddingService:
 
 
 class FakeQaRepository:
-    def __init__(self) -> None:
+    def __init__(self, existing_ids: set[str] | None = None) -> None:
         self.records: list[dict] = []
+        self.existing_ids = existing_ids or set()
 
     def upsert_records(self, records: list[dict]) -> None:
         self.records.extend(records)
+
+    def get_existing_record_ids(self, record_ids: list[str]) -> set[str]:
+        return self.existing_ids.intersection(record_ids)
 
 
 async def test_process_files_runs_csv_parse_detect_normalize_embed_and_upsert() -> None:
@@ -274,3 +278,97 @@ async def test_process_files_continues_when_csv_column_detection_fails() -> None
     assert response.files[0].error_code == "column_mapping_failed"
     assert response.files[1].ingested_row_count == 1
     assert len(repository.records) == 1
+
+
+async def test_process_files_skips_duplicate_rows_before_embedding_and_upsert() -> None:
+    file_processing_service = FakeFileProcessingService(
+        [
+            ProcessedHistoryFileResult(
+                status="processed",
+                payload=ParsedFilePayload(
+                    file_name="history.csv",
+                    extension=".csv",
+                    content_type="text/csv",
+                    size_bytes=64,
+                    parsed_kind="csv",
+                    raw_text="question,answer,domain\nQ,A,Security\n",
+                    structured_data=[{"question": "Q", "answer": "A", "domain": "Security"}],
+                    row_count=1,
+                    warnings=[],
+                ),
+            )
+        ]
+    )
+    detection_service = FakeCsvColumnDetectionService(
+        CsvColumnDetectionResult(
+            detected_columns=DetectedCsvColumns(
+                question_col="question",
+                answer_col="answer",
+                domain_col="domain",
+            ),
+            used_llm=False,
+        )
+    )
+    duplicate_id = "dup-1"
+    normalization_service = FakeNormalizationService(
+        CsvQaNormalizationResult(
+            records=[
+                NormalizedQaRecord(
+                    id=duplicate_id,
+                    domain="Security",
+                    question="Q",
+                    answer="A",
+                    text="Question: Q\nAnswer: A\nDomain: Security",
+                    client=None,
+                    source_doc="history.csv",
+                    tags=[],
+                    risk_topics=[],
+                    created_at="2026-02-28T00:00:00+00:00",
+                    updated_at="2026-02-28T00:00:00+00:00",
+                ),
+                NormalizedQaRecord(
+                    id=duplicate_id,
+                    domain="Security",
+                    question="Q",
+                    answer="A",
+                    text="Question: Q\nAnswer: A\nDomain: Security",
+                    client=None,
+                    source_doc="other.csv",
+                    tags=[],
+                    risk_topics=[],
+                    created_at="2026-02-28T00:00:00+00:00",
+                    updated_at="2026-02-28T00:00:00+00:00",
+                ),
+                NormalizedQaRecord(
+                    id="new-1",
+                    domain="AI",
+                    question="Q2",
+                    answer="A2",
+                    text="Question: Q2\nAnswer: A2\nDomain: AI",
+                    client=None,
+                    source_doc="history.csv",
+                    tags=[],
+                    risk_topics=[],
+                    created_at="2026-02-28T00:00:00+00:00",
+                    updated_at="2026-02-28T00:00:00+00:00",
+                ),
+            ],
+            failed_row_count=0,
+        )
+    )
+    embedding_service = FakeEmbeddingService([[0.1, 0.2, 0.3]])
+    repository = FakeQaRepository(existing_ids={duplicate_id})
+
+    service = IngestHistoryUseCase(
+        file_processing_service=file_processing_service,
+        csv_column_detection_service=detection_service,
+        csv_qa_normalization_service=normalization_service,
+        qa_embedding_service=embedding_service,
+        qa_repository=repository,
+    )
+
+    response = await service.process_files([DummyUploadFile("history.csv")])
+
+    assert response.files[0].ingested_row_count == 1
+    assert embedding_service.calls == [["Question: Q2\nAnswer: A2\nDomain: AI"]]
+    assert [record["id"] for record in repository.records] == ["new-1"]

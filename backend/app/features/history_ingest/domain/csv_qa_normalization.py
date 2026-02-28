@@ -37,7 +37,7 @@ class CsvQaNormalizationService:
         records: list[NormalizedQaRecord] = []
         failed_row_count = 0
 
-        for row_index, row in enumerate(rows):
+        for row in rows:
             question = (row.get(detected_columns.question_col) or "").strip()
             answer = (row.get(detected_columns.answer_col) or "").strip()
             domain = (row.get(detected_columns.domain_col) or "").strip()
@@ -47,7 +47,7 @@ class CsvQaNormalizationService:
                 continue
 
             text = f"Question: {question}\nAnswer: {answer}\nDomain: {domain}"
-            stable_key = f"{file_name}:{row_index}:{question}:{answer}:{domain}"
+            stable_key = f"{question}\n{answer}\n{domain}"
             record_id = hashlib.sha256(stable_key.encode("utf-8")).hexdigest()
 
             records.append(

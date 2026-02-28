@@ -46,3 +46,19 @@ async def test_chat_completions_client_calls_openai_sdk() -> None:
             ],
         }
     ]
+
+
+async def test_chat_completions_client_uses_generic_chat_model_by_default(monkeypatch) -> None:
+    client = FakeAsyncOpenAI()
+    monkeypatch.setattr(
+        "app.integrations.openai.chat_completions_client.settings.openai_chat_model",
+        "gpt-test-chat",
+    )
+    adapter = OpenAIChatCompletionsClient(client=client)
+
+    await adapter.create_completion(
+        system_prompt="You are a helpful assistant.",
+        user_prompt="Hello",
+    )
+
+    assert client.calls[0]["model"] == "gpt-test-chat"

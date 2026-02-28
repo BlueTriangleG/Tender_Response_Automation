@@ -1,4 +1,3 @@
-from app.features.history_ingest.schemas.requests import HistoryIngestRequestOptions
 from app.features.history_ingest.schemas.responses import (
     DetectedCsvColumns,
     HistoryIngestResponse,

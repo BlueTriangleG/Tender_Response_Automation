@@ -16,6 +16,10 @@ def test_modular_backend_packages_are_importable() -> None:
         "app.features.history_ingest.application.ingest_history_use_case",
         "app.features.history_ingest.domain.csv_column_mapping",
         "app.features.history_ingest.infrastructure.services.csv_column_detection_service",
+        "app.features.tender_response.api.routes",
+        "app.features.tender_response.application.process_tender_csv_use_case",
+        "app.features.tender_response.infrastructure.workflows.tender_response_graph",
+        "app.features.tender_response.schemas.responses",
         "app.integrations.openai.chat_completions_client",
         "app.integrations.openai.embeddings_client",
     ]

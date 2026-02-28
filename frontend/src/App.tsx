@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { Fragment, useEffect, useMemo, useState, type DragEvent } from "react";
 
 import { BatchUploadDropzone } from "./components/BatchUploadDropzone";
 import { MetricCard } from "./components/MetricCard";
-import { ResultRow } from "./components/ResultRow";
-import { SegmentedControl } from "./components/SegmentedControl";
 import { StatusBadge } from "./components/StatusBadge";
 import { ThresholdControl } from "./components/ThresholdControl";
 import { UploadDropzone } from "./components/UploadDropzone";
@@ -16,25 +14,18 @@ import {
 import type {
   HistoryIngestResponse,
   HistoryStatus,
-  ProcessOptions,
-  TenderSession,
+  HistoryIngestOptions,
+  TenderAutofillQuestion,
+  TenderAutofillResponse,
 } from "./lib/types";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
-const defaultProcessOptions: ProcessOptions = {
+const defaultKnowledgeBaseOptions: HistoryIngestOptions = {
   outputFormat: "json",
   similarityThreshold: 0.72,
 };
-
-const outputFormatOptions: Array<{
-  description: string;
-  label: string;
-  value: ProcessOptions["outputFormat"];
-}> = [
-  { label: "JSON", value: "json", description: "Structured export" },
-  { label: "Excel", value: "excel", description: "Spreadsheet handoff" },
-];
+const defaultAlignmentThreshold = 0.82;
 
 const formatTimestamp = (value: string) =>
   new Intl.DateTimeFormat("en", {
@@ -71,11 +62,39 @@ function batchHasFailures(response: HistoryIngestResponse) {
   return response.failedFileCount > 0 || response.files.some((file) => file.failedRowCount > 0);
 }
 
+function confidenceTone(level: TenderAutofillQuestion["confidenceLevel"]) {
+  if (level === "high") {
+    return "success" as const;
+  }
+
+  if (level === "medium") {
+    return "warning" as const;
+  }
+
+  return "danger" as const;
+}
+
+function questionStatusTone(question: TenderAutofillQuestion) {
+  if (question.status === "completed") {
+    return "success" as const;
+  }
+
+  if (question.errorMessage) {
+    return "danger" as const;
+  }
+
+  return "warning" as const;
+}
+
+function isCsvFile(file: File) {
+  return file.name.toLowerCase().endsWith(".csv");
+}
+
 function App() {
   // The dashboard keeps network state local because the interaction surface is
   // small and the take-home brief explicitly does not need a state library.
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [session, setSession] = useState<TenderSession | null>(null);
+  const [session, setSession] = useState<TenderAutofillResponse | null>(null);
   const [expandedResultId, setExpandedResultId] = useState<string | null>(null);
   const [healthStatus, setHealthStatus] = useState("checking");
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus | null>(null);
@@ -84,7 +103,7 @@ function App() {
   const [knowledgeBaseState, setKnowledgeBaseState] = useState<LoadState>("idle");
   const [isDragActive, setIsDragActive] = useState(false);
   const [screenMessage, setScreenMessage] = useState(
-    "Waiting for a tender workbook.",
+    "Waiting for a tender csv.",
   );
   const [knowledgeBaseFiles, setKnowledgeBaseFiles] = useState<File[]>([]);
   const [knowledgeBaseMessage, setKnowledgeBaseMessage] = useState(
@@ -92,7 +111,9 @@ function App() {
   );
   const [knowledgeBaseRun, setKnowledgeBaseRun] =
     useState<HistoryIngestResponse | null>(null);
-  const [options, setOptions] = useState<ProcessOptions>(defaultProcessOptions);
+  const [alignmentThreshold, setAlignmentThreshold] = useState(
+    defaultAlignmentThreshold,
+  );
 
   useEffect(() => {
     let active = true;
@@ -143,22 +164,19 @@ function App() {
       };
     }
 
-    const failed = session.results.filter((item) => item.status === "failed").length;
-    const completed = session.results.filter((item) => item.status !== "failed").length;
-
     return {
-      total: session.summary.totalQuestions,
-      completed,
-      failed,
-      label: session.summary.overallStatus,
+      total: session.summary.totalQuestionsProcessed,
+      completed: session.summary.completedQuestions,
+      failed: session.summary.failedQuestions,
+      label: session.summary.overallCompletionStatus,
     };
   }, [processState, session]);
 
   const summarySnapshot = useMemo(
     () => ({
-      highRiskCount: session?.summary.highRiskCount ?? 0,
-      inconsistentCount: session?.summary.inconsistentCount ?? 0,
-      overallStatus: session?.summary.overallStatus ?? "awaiting run",
+      flaggedCount:
+        session?.summary.flaggedHighRiskOrInconsistentResponses ?? 0,
+      overallStatus: session?.summary.overallCompletionStatus ?? "awaiting run",
     }),
     [session],
   );
@@ -169,8 +187,15 @@ function App() {
   const hasKnowledgeBaseFiles = knowledgeBaseFileNames.length > 0;
 
   function applySelectedFile(file: File | null) {
-    setSelectedFile(file);
     setIsDragActive(false);
+
+    if (file && !isCsvFile(file)) {
+      setSelectedFile(null);
+      setScreenMessage("Autofill only accepts .csv files.");
+      return;
+    }
+
+    setSelectedFile(file);
 
     // Routing every file-selection path through one helper keeps drag-and-drop
     // and manual browse interactions perfectly aligned.
@@ -179,23 +204,12 @@ function App() {
       return;
     }
 
-    setScreenMessage("Waiting for a tender workbook.");
+    setScreenMessage("Waiting for a tender csv.");
   }
 
-  function updateOutputFormat(value: ProcessOptions["outputFormat"]) {
-    setOptions((current) => ({
-      ...current,
-      outputFormat: value,
-    }));
-  }
-
-  function updateSimilarityThreshold(value: number) {
+  function updateAlignmentThreshold(value: number) {
     const normalizedValue = Math.min(0.99, Math.max(0.1, Number(value.toFixed(2))));
-
-    setOptions((current) => ({
-      ...current,
-      similarityThreshold: normalizedValue,
-    }));
+    setAlignmentThreshold(normalizedValue);
   }
 
   function applyKnowledgeBaseFiles(files: File[]) {
@@ -269,21 +283,23 @@ function App() {
 
   async function handleProcessClick() {
     if (!selectedFile) {
-      setScreenMessage("Select a tender workbook before starting the run.");
+      setScreenMessage("Select a tender csv before starting the run.");
       return;
     }
 
     setProcessState("loading");
-    setScreenMessage(`Processing ${selectedFile.name}...`);
+    setScreenMessage(`Autofilling ${selectedFile.name}...`);
 
     try {
-      const nextSession = await processTenderWorkbook(selectedFile, options);
+      const nextSession = await processTenderWorkbook(selectedFile, {
+        alignmentThreshold,
+      });
 
       setSession(nextSession);
       setExpandedResultId(null);
       setProcessState("ready");
       setScreenMessage(
-        `${nextSession.summary.totalQuestions} questions analyzed for ${selectedFile.name}.`,
+        `${nextSession.summary.totalQuestionsProcessed} questions analyzed for ${selectedFile.name}.`,
       );
     } catch (error) {
       setProcessState("error");
@@ -305,7 +321,10 @@ function App() {
     );
 
     try {
-      const response = await ingestHistoryFiles(knowledgeBaseFiles);
+      const response = await ingestHistoryFiles(
+        knowledgeBaseFiles,
+        defaultKnowledgeBaseOptions,
+      );
       const hasFailures = batchHasFailures(response);
 
       setKnowledgeBaseRun(response);
@@ -341,14 +360,14 @@ function App() {
       kind === "json"
         ? JSON.stringify(session, null, 2)
         : [
-            "Question,Domain,Alignment,Confidence,Risk,Status",
-            ...session.results.map((result) =>
+            "Question,Answer,Domain,Confidence,Aligned,Status",
+            ...session.questions.map((result) =>
               [
-                result.question,
-                result.domain,
-                result.alignment,
-                result.confidence,
-                result.risk,
+                JSON.stringify(result.originalQuestion),
+                JSON.stringify(result.generatedAnswer),
+                result.domainTag,
+                result.confidenceLevel,
+                String(result.historicalAlignmentIndicator),
                 result.status,
               ].join(","),
             ),
@@ -369,7 +388,9 @@ function App() {
     anchor.click();
     window.URL.revokeObjectURL(url);
 
-    setScreenMessage(`Prepared ${kind.toUpperCase()} download for ${session.fileName}.`);
+    setScreenMessage(
+      `Prepared ${kind.toUpperCase()} download for ${session.sourceFileName}.`,
+    );
   }
 
   return (
@@ -546,7 +567,7 @@ function App() {
             <div className="panel__header">
               <div>
                 <p className="panel__eyebrow">Autofill</p>
-                <h2>Upload tender workbook</h2>
+                <h2>Upload tender csv</h2>
               </div>
               <StatusBadge
                 label={selectedFile ? "file ready" : "awaiting file"}
@@ -558,28 +579,23 @@ function App() {
               fileName={selectedFile?.name ?? null}
               inputId="tender-upload"
               isDragActive={isDragActive}
-              label="Upload tender workbook"
+              label="Upload tender csv"
               onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
               onFileChange={applySelectedFile}
+              supportLabel="Supports .csv only"
             />
 
-            <div className="field-grid field-grid--custom">
-              <SegmentedControl
-                label="Output format"
-                options={outputFormatOptions}
-                value={options.outputFormat}
-                onChange={updateOutputFormat}
-              />
+            <div className="field-grid field-grid--custom field-grid--single">
               <ThresholdControl
-                label="Similarity threshold"
+                label="Alignment threshold"
                 max={0.99}
                 min={0.1}
                 step={0.01}
-                value={options.similarityThreshold}
-                onChange={updateSimilarityThreshold}
+                value={alignmentThreshold}
+                onChange={updateAlignmentThreshold}
               />
             </div>
 
@@ -589,7 +605,7 @@ function App() {
               type="button"
               onClick={() => void handleProcessClick()}
             >
-              {processState === "loading" ? "Processing..." : "Process Tender"}
+              {processState === "loading" ? "Autofilling..." : "Autofill Tender"}
             </button>
           </article>
         </section>
@@ -641,8 +657,8 @@ function App() {
             <MetricCard
               className="metric-card--spotlight"
               eyebrow="High-risk items"
-              value={String(summarySnapshot.highRiskCount)}
-              detail="Rows that require careful human sign-off."
+              value={String(summarySnapshot.flaggedCount)}
+              detail="Rows flagged as high risk or historically inconsistent."
             />
             <MetricCard
               className="metric-card--spotlight"
@@ -662,7 +678,7 @@ function App() {
               </div>
               {session ? (
                 <StatusBadge
-                  label={`${session.summary.totalQuestions} questions analyzed`}
+                  label={`${session.summary.totalQuestionsProcessed} questions analyzed`}
                   tone="success"
                 />
               ) : null}
@@ -674,34 +690,155 @@ function App() {
                   <thead>
                     <tr>
                       <th>Question</th>
+                      <th>Answer</th>
                       <th>Domain</th>
-                      <th>Alignment</th>
                       <th>Confidence</th>
-                      <th>Risk</th>
+                      <th>Aligned</th>
                       <th>Status</th>
                       <th>Inspect</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {session.results.map((result) => (
-                      <ResultRow
-                        key={result.id}
-                        isExpanded={expandedResultId === result.id}
-                        result={result}
-                        onToggle={(id) =>
-                          setExpandedResultId((current) =>
-                            current === id ? null : id,
-                          )
-                        }
-                      />
+                    {session.questions.map((question) => (
+                      <Fragment key={question.questionId}>
+                        <tr className="result-row">
+                          <td>{question.originalQuestion}</td>
+                          <td className="result-row__answer">
+                            {question.generatedAnswer || "No answer generated"}
+                          </td>
+                          <td>{question.domainTag || "unassigned"}</td>
+                          <td>
+                            <StatusBadge
+                              label={question.confidenceLevel}
+                              tone={confidenceTone(question.confidenceLevel)}
+                            />
+                          </td>
+                          <td>
+                            <StatusBadge
+                              label={
+                                question.historicalAlignmentIndicator
+                                  ? "aligned"
+                                  : "unaligned"
+                              }
+                              tone={
+                                question.historicalAlignmentIndicator
+                                  ? "success"
+                                  : "warning"
+                              }
+                            />
+                          </td>
+                          <td>
+                            <StatusBadge
+                              label={question.status}
+                              tone={questionStatusTone(question)}
+                            />
+                          </td>
+                          <td>
+                            <button
+                              aria-expanded={expandedResultId === question.questionId}
+                              aria-label={`Expand result for ${question.originalQuestion}`}
+                              className="row-action"
+                              type="button"
+                              onClick={() =>
+                                setExpandedResultId((current) =>
+                                  current === question.questionId
+                                    ? null
+                                    : question.questionId,
+                                )
+                              }
+                            >
+                              {expandedResultId === question.questionId
+                                ? "Hide details"
+                                : "View details"}
+                            </button>
+                          </td>
+                        </tr>
+
+                        {expandedResultId === question.questionId ? (
+                          <tr className="result-row__details">
+                            <td colSpan={7}>
+                              <div className="detail-grid">
+                                <section className="detail-panel">
+                                  <h4>Generated answer</h4>
+                                  <p>
+                                    {question.generatedAnswer ||
+                                      "No answer generated for this question."}
+                                  </p>
+                                  {question.errorMessage ? (
+                                    <>
+                                      <h4>Error message</h4>
+                                      <p>{question.errorMessage}</p>
+                                    </>
+                                  ) : null}
+                                </section>
+
+                                <section className="detail-panel">
+                                  <h4>Flags</h4>
+                                  <ul className="detail-list detail-list--dark">
+                                    <li>
+                                      <strong>high risk</strong>
+                                      <span>
+                                        {question.flags.highRisk ? "true" : "false"}
+                                      </span>
+                                    </li>
+                                    <li>
+                                      <strong>inconsistent response</strong>
+                                      <span>
+                                        {question.flags.inconsistentResponse
+                                          ? "true"
+                                          : "false"}
+                                      </span>
+                                    </li>
+                                  </ul>
+                                </section>
+
+                                <section className="detail-panel">
+                                  <h4>Metadata</h4>
+                                  <ul className="detail-list detail-list--dark">
+                                    <li>
+                                      <strong>source row</strong>
+                                      <span>{question.metadata.sourceRowIndex}</span>
+                                    </li>
+                                    <li>
+                                      <strong>alignment record</strong>
+                                      <span>
+                                        {question.metadata.alignmentRecordId || "n/a"}
+                                      </span>
+                                    </li>
+                                    <li>
+                                      <strong>alignment score</strong>
+                                      <span>
+                                        {question.metadata.alignmentScore.toFixed(2)}
+                                      </span>
+                                    </li>
+                                  </ul>
+                                </section>
+
+                                <section className="detail-panel">
+                                  <h4>Extensions</h4>
+                                  {Object.keys(question.extensions).length > 0 ? (
+                                    <pre>
+                                      {JSON.stringify(question.extensions, null, 2)}
+                                    </pre>
+                                  ) : (
+                                    <p>
+                                      No additional extensions for this question.
+                                    </p>
+                                  )}
+                                </section>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
               <p className="empty-state">
-                Process a workbook to populate the results table and retrieval
-                evidence panels.
+                Upload a csv and run autofill to populate the answer table and
+                inspection panels.
               </p>
             )}
           </article>
@@ -715,7 +852,7 @@ function App() {
                 </div>
                 {session ? (
                   <StatusBadge
-                    label={session.summary.overallStatus}
+                    label={session.summary.overallCompletionStatus}
                     tone="warning"
                   />
                 ) : null}
@@ -726,25 +863,26 @@ function App() {
                   <div className="metric-cluster metric-cluster--summary">
                     <MetricCard
                       eyebrow="Questions analyzed"
-                      value={`${session.summary.totalQuestions} questions analyzed`}
+                      value={`${session.summary.totalQuestionsProcessed} questions analyzed`}
                       detail="Total workload included in the current run."
                     />
                     <MetricCard
-                      eyebrow="High-risk items"
-                      value={String(session.summary.highRiskCount)}
-                      detail="Rows that need close human review before submission."
-                    />
-                    <MetricCard
-                      eyebrow="Inconsistent items"
-                      value={String(session.summary.inconsistentCount)}
-                      detail="Rows where historical evidence conflicts."
+                      eyebrow="Flagged items"
+                      value={String(
+                        session.summary.flaggedHighRiskOrInconsistentResponses,
+                      )}
+                      detail="Rows that need human review before submission."
                     />
                   </div>
 
                   <div className="summary-list">
-                    <p>Success count: {session.summary.successCount}</p>
-                    <p>Failed count: {session.summary.failedCount}</p>
-                    <p>Overall status: {session.summary.overallStatus}</p>
+                    <p>Completed questions: {session.summary.completedQuestions}</p>
+                    <p>Failed questions: {session.summary.failedQuestions}</p>
+                    <p>
+                      Overall status: {session.summary.overallCompletionStatus}
+                    </p>
+                    <p>Request id: {session.requestId}</p>
+                    <p>Session id: {session.sessionId}</p>
                   </div>
                 </>
               ) : (

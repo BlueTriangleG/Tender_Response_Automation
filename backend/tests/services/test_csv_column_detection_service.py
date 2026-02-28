@@ -18,8 +18,37 @@ class FakeCompletionClient:
         return self.response
 
 
+class FakeCompletionClientFactory:
+    def __init__(self) -> None:
+        self.model: str | None = None
+
+    def __call__(self, *, model: str):
+        self.model = model
+        return FakeCompletionClient('{"question_col":"q","answer_col":"a","domain_col":"d"}')
+
+
+def test_csv_column_detection_service_uses_dedicated_model_configuration(monkeypatch) -> None:
+    factory = FakeCompletionClientFactory()
+    monkeypatch.setattr(
+        "app.features.history_ingest.infrastructure.services.csv_column_detection_service."
+        "OpenAIChatCompletionsClient",
+        factory,
+    )
+    monkeypatch.setattr(
+        "app.features.history_ingest.infrastructure.services.csv_column_detection_service."
+        "settings.openai_csv_column_model",
+        "gpt-test-csv-columns",
+    )
+
+    CsvColumnDetectionService()
+
+    assert factory.model == "gpt-test-csv-columns"
+
+
 async def test_detect_columns_skips_llm_when_mapping_is_complete() -> None:
-    completion_client = FakeCompletionClient('{"question_col":"q","answer_col":"a","domain_col":"d"}')
+    completion_client = FakeCompletionClient(
+        '{"question_col":"q","answer_col":"a","domain_col":"d"}'
+    )
     service = CsvColumnDetectionService(completion_client=completion_client)
 
     result = await service.detect_columns(

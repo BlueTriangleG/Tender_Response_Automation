@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -67,6 +67,65 @@ const successfulIngestResponse = {
       storage_target: "lancedb://document_records",
     },
   ],
+};
+
+const successfulTenderResponse = {
+  request_id: "req-tender-123",
+  session_id: "session-123",
+  source_file_name: "tender.csv",
+  total_questions_processed: 2,
+  questions: [
+    {
+      question_id: "q-001",
+      original_question: "Do you support TLS 1.2 or above?",
+      generated_answer:
+        "Yes. The platform enforces TLS 1.2+ for all client-facing traffic.",
+      domain_tag: "security",
+      confidence_level: "high",
+      historical_alignment_indicator: true,
+      status: "completed",
+      flags: {
+        high_risk: false,
+        inconsistent_response: false,
+      },
+      metadata: {
+        source_row_index: 0,
+        alignment_record_id: "qa-001",
+        alignment_score: 0.94,
+      },
+      error_message: null,
+      extensions: {},
+    },
+    {
+      question_id: "q-002",
+      original_question: "Describe your data residency controls.",
+      generated_answer: "",
+      domain_tag: "compliance",
+      confidence_level: "medium",
+      historical_alignment_indicator: false,
+      status: "failed",
+      flags: {
+        high_risk: true,
+        inconsistent_response: true,
+      },
+      metadata: {
+        source_row_index: 1,
+        alignment_record_id: "qa-002",
+        alignment_score: 0.41,
+      },
+      error_message: "No aligned historical answer was found for this wording.",
+      extensions: {
+        retrieval_strategy: "semantic",
+      },
+    },
+  ],
+  summary: {
+    total_questions_processed: 2,
+    flagged_high_risk_or_inconsistent_responses: 1,
+    overall_completion_status: "completed_with_warnings",
+    completed_questions: 1,
+    failed_questions: 1,
+  },
 };
 
 const failedIngestResponse = {
@@ -151,6 +210,13 @@ describe("App", () => {
           };
         }
 
+        if (url.endsWith("/api/tender/respond") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => successfulTenderResponse,
+          };
+        }
+
         throw new Error(`Unhandled fetch for ${url}`);
       }),
     );
@@ -173,9 +239,9 @@ describe("App", () => {
     expect(
       screen.getByRole("heading", { name: /Processing spotlight/i }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Upload tender workbook/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Upload tender csv/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Process Tender/i }),
+      screen.getByRole("button", { name: /Autofill Tender/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /Build knowledge base/i }),
@@ -187,11 +253,11 @@ describe("App", () => {
       screen.getByRole("region", { name: /Build knowledge base/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /Upload tender workbook/i }),
+      screen.getByRole("heading", { name: /Upload tender csv/i }),
     ).toBeInTheDocument();
   });
 
-  test("renders health status and mock processing results after a file upload", async () => {
+  test("renders autofill results from the tender response api after a csv upload", async () => {
     const user = userEvent.setup();
 
     render(<App />);
@@ -200,31 +266,35 @@ describe("App", () => {
       expect(screen.getAllByText(/Backend health: ok/i)).toHaveLength(2);
     });
 
-    const input = screen.getByLabelText(/Upload tender workbook/i);
-    const file = new File(["sheet"], "transport-tender.xlsx", {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    const input = screen.getByLabelText(/Upload tender csv/i);
+    const file = new File(["question\nTLS"], "transport-tender.csv", {
+      type: "text/csv",
     });
 
     await user.upload(input, file);
-    await user.click(screen.getByRole("button", { name: /Process Tender/i }));
+    await user.click(screen.getByRole("button", { name: /Autofill Tender/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByText(/3 questions analyzed for transport-tender.xlsx\./i),
+        screen.getByText(/2 questions analyzed for transport-tender\.csv\./i),
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Submission readiness/i)).toBeInTheDocument();
+    expect(screen.getByText(/Do you support TLS 1\.2 or above\?/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/The platform enforces TLS 1\.2\+/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/completed_with_warnings/i).length).toBeGreaterThan(0);
 
     await user.click(
       screen.getByRole("button", {
-        name: /Expand result for Submission readiness/i,
+        name: /Expand result for Describe your data residency controls\./i,
       }),
     );
 
-    expect(screen.getByText(/Generated answer/i)).toBeInTheDocument();
-    expect(screen.getByText(/Historical matches/i)).toBeInTheDocument();
-    expect(screen.getByText(/72%/i)).toBeInTheDocument();
+    expect(screen.getByText(/No aligned historical answer was found/i)).toBeInTheDocument();
+    expect(screen.getByText(/alignment score/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/high risk/i).length).toBeGreaterThan(0);
   });
 
   test("keeps the health badge neutral while the backend check is still pending", () => {
@@ -269,16 +339,16 @@ describe("App", () => {
   test("supports drag and drop uploads with a visible drop state", async () => {
     render(<App />);
 
-    const dropzone = screen.getByLabelText(/Upload tender workbook/i).closest("div");
+    const dropzone = screen.getByLabelText(/Upload tender csv/i).closest("div");
 
     expect(dropzone).not.toBeNull();
 
     fireEvent.dragEnter(dropzone!);
 
-    expect(screen.getByText(/Drop workbook to queue this run/i)).toBeInTheDocument();
+    expect(screen.getByText(/Drop csv to queue this run/i)).toBeInTheDocument();
 
-    const file = new File(["sheet"], "dragged-tender.xlsx", {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    const file = new File(["question\nTLS"], "dragged-tender.csv", {
+      type: "text/csv",
     });
 
     fireEvent.drop(dropzone!, {
@@ -287,7 +357,7 @@ describe("App", () => {
       },
     });
 
-    expect(screen.getByText(/Selected file: dragged-tender.xlsx/i)).toBeInTheDocument();
+    expect(screen.getByText(/Selected file: dragged-tender\.csv/i)).toBeInTheDocument();
   });
 
   test("uses custom upload controls instead of default form widgets", async () => {
@@ -299,33 +369,16 @@ describe("App", () => {
     expect(screen.queryByRole("spinbutton", { name: /Similarity threshold/i })).not.toBeInTheDocument();
 
     expect(
-      screen.getByRole("button", { name: /Browse workbook/i }),
+      screen.getByRole("button", { name: /Browse csv/i }),
     ).toBeInTheDocument();
-    const outputFormatGroup = screen.getByRole("group", { name: /Output format/i });
 
-    expect(within(outputFormatGroup).getByRole("button", { name: /^JSON/i })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(screen.getByText(/0.82/i)).toBeInTheDocument();
 
     await user.click(
-      within(outputFormatGroup).getByRole("button", { name: /^Excel/i }),
+      screen.getByRole("button", { name: /Increase alignment threshold/i }),
     );
 
-    expect(
-      within(outputFormatGroup).getByRole("button", { name: /^Excel/i }),
-    ).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-
-    expect(screen.getByText(/0.72/i)).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", { name: /Increase similarity threshold/i }),
-    );
-
-    expect(screen.getByText(/0.73/i)).toBeInTheDocument();
+    expect(screen.getByText(/0.83/i)).toBeInTheDocument();
   });
 
   test("uploads multiple knowledge files through the standalone ingest module", async () => {
