@@ -125,6 +125,10 @@ function normalizeTenderAutofillResponse(
             question.metadata && typeof question.metadata === "object"
               ? (question.metadata as Record<string, unknown>)
               : {};
+          const reference =
+            question.reference && typeof question.reference === "object"
+              ? (question.reference as Record<string, unknown>)
+              : null;
           const extensions =
             question.extensions && typeof question.extensions === "object"
               ? (question.extensions as Record<string, unknown>)
@@ -154,6 +158,15 @@ function normalizeTenderAutofillResponse(
               alignmentRecordId: String(metadata.alignment_record_id ?? ""),
               alignmentScore: Number(metadata.alignment_score ?? 0),
             },
+            reference: reference
+              ? {
+                  alignmentRecordId: String(reference.alignment_record_id ?? ""),
+                  alignmentScore: Number(reference.alignment_score ?? 0),
+                  sourceDoc: String(reference.source_doc ?? ""),
+                  matchedQuestion: String(reference.matched_question ?? ""),
+                  matchedAnswer: String(reference.matched_answer ?? ""),
+                }
+              : null,
             errorMessage:
               question.error_message == null ? null : String(question.error_message),
             extensions,

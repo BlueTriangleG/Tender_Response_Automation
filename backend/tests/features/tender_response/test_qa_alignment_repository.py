@@ -63,6 +63,7 @@ async def test_find_best_match_returns_alignment_when_score_is_above_threshold(
     assert result.matched is True
     assert result.record_id == "qa-1"
     assert result.answer.startswith("Yes.")
+    assert result.source_doc == "history.csv"
     assert result.alignment_score == 1.0
 
 

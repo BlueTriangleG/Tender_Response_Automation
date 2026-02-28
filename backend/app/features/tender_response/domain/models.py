@@ -24,4 +24,5 @@ class HistoricalAlignmentResult:
     question: str | None
     answer: str | None
     domain: str | None
+    source_doc: str | None
     alignment_score: float | None

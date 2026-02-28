@@ -102,6 +102,13 @@ describe("processTenderWorkbook", () => {
               alignment_record_id: "qa-001",
               alignment_score: 0.93,
             },
+            reference: {
+              alignment_record_id: "qa-001",
+              alignment_score: 0.93,
+              source_doc: "security-history.csv",
+              matched_question: "Do you support TLS 1.2+?",
+              matched_answer: "Yes.",
+            },
             error_message: null,
             extensions: {},
           },
@@ -125,6 +132,7 @@ describe("processTenderWorkbook", () => {
     });
 
     expect(response.sessionId).toBe("session-42");
+    expect(response.questions[0].reference?.sourceDoc).toBe("security-history.csv");
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];

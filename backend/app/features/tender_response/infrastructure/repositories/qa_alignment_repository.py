@@ -34,6 +34,7 @@ class QaAlignmentRepository:
                 question=None,
                 answer=None,
                 domain=None,
+                source_doc=None,
                 alignment_score=None,
             )
 
@@ -46,6 +47,7 @@ class QaAlignmentRepository:
                 question=None,
                 answer=None,
                 domain=None,
+                source_doc=None,
                 alignment_score=None,
             )
 
@@ -59,6 +61,7 @@ class QaAlignmentRepository:
                 question=None,
                 answer=None,
                 domain=None,
+                source_doc=None,
                 alignment_score=alignment_score,
             )
 
@@ -68,5 +71,6 @@ class QaAlignmentRepository:
             question=best_match.get("question"),
             answer=best_match.get("answer"),
             domain=best_match.get("domain"),
+            source_doc=best_match.get("source_doc"),
             alignment_score=alignment_score,
         )

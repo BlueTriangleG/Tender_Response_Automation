@@ -31,6 +31,7 @@ class FakeAlignmentRepository:
                 question="Historical TLS question",
                 answer="Yes. Production traffic is restricted to TLS 1.2 or higher.",
                 domain="Security",
+                source_doc="historical_repository_qa.csv",
                 alignment_score=0.95,
             )
         return HistoricalAlignmentResult(
@@ -39,6 +40,7 @@ class FakeAlignmentRepository:
             question=None,
             answer=None,
             domain=None,
+            source_doc=None,
             alignment_score=0.35,
         )
 
@@ -90,4 +92,7 @@ def test_tender_response_route_processes_csv_end_to_end_with_fake_workflow_servi
     payload = response.json()
     assert payload["total_questions_processed"] == 2
     assert len(payload["questions"]) == 2
+    assert payload["questions"][0]["reference"]["matched_question"] == "Historical TLS question"
+    assert payload["questions"][0]["reference"]["source_doc"] == "historical_repository_qa.csv"
+    assert payload["questions"][1]["reference"] is None
     assert payload["summary"]["total_questions_processed"] == 2

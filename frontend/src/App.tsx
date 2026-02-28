@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState, type DragEvent } from "react";
 
 import { BatchUploadDropzone } from "./components/BatchUploadDropzone";
 import { MetricCard } from "./components/MetricCard";
@@ -7,45 +7,24 @@ import { ThresholdControl } from "./components/ThresholdControl";
 import { UploadDropzone } from "./components/UploadDropzone";
 import {
   fetchBackendHealth,
-  fetchHistoryStatus,
   ingestHistoryFiles,
   processTenderWorkbook,
 } from "./lib/api";
 import type {
   HistoryIngestResponse,
-  HistoryStatus,
   HistoryIngestOptions,
   TenderAutofillQuestion,
   TenderAutofillResponse,
 } from "./lib/types";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
+type WorkspaceTab = "repository" | "response";
 
 const defaultKnowledgeBaseOptions: HistoryIngestOptions = {
   outputFormat: "json",
   similarityThreshold: 0.72,
 };
 const defaultAlignmentThreshold = 0.82;
-
-const formatTimestamp = (value: string) =>
-  new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-
-function healthTone(status: string) {
-  // "checking" is an in-flight state, not a failure. Keeping that distinct
-  // avoids flashing a red badge before the real backend result arrives.
-  if (status === "checking") {
-    return "neutral" as const;
-  }
-
-  if (status === "ok") {
-    return "success" as const;
-  }
-
-  return "danger" as const;
-}
 
 function mergeKnowledgeBaseFiles(currentFiles: File[], incomingFiles: File[]) {
   const fileMap = new Map<string, File>();
@@ -90,17 +69,42 @@ function isCsvFile(file: File) {
   return file.name.toLowerCase().endsWith(".csv");
 }
 
+function formatStatusLabel(value: string) {
+  if (!value) {
+    return "Pending";
+  }
+
+  return value
+    .replaceAll(/[_-]+/g, " ")
+    .replaceAll(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function summarizeAnswer(answer: string) {
+  const trimmed = answer.trim();
+
+  if (!trimmed) {
+    return "No answer generated";
+  }
+
+  if (trimmed.length <= 180) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, 177)}...`;
+}
+
 function App() {
   // The dashboard keeps network state local because the interaction surface is
   // small and the take-home brief explicitly does not need a state library.
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [session, setSession] = useState<TenderAutofillResponse | null>(null);
-  const [expandedResultId, setExpandedResultId] = useState<string | null>(null);
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [healthStatus, setHealthStatus] = useState("checking");
-  const [historyStatus, setHistoryStatus] = useState<HistoryStatus | null>(null);
-  const [pageState, setPageState] = useState<LoadState>("loading");
   const [processState, setProcessState] = useState<LoadState>("idle");
   const [knowledgeBaseState, setKnowledgeBaseState] = useState<LoadState>("idle");
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceTab>("repository");
   const [isDragActive, setIsDragActive] = useState(false);
   const [screenMessage, setScreenMessage] = useState(
     "Waiting for a tender csv.",
@@ -120,25 +124,19 @@ function App() {
 
     async function loadDashboardChrome() {
       try {
-        const [health, history] = await Promise.all([
-          fetchBackendHealth(),
-          fetchHistoryStatus(),
-        ]);
+        const health = await fetchBackendHealth();
 
         if (!active) {
           return;
         }
 
         setHealthStatus(health.status);
-        setHistoryStatus(history);
-        setPageState("ready");
       } catch (error) {
         if (!active) {
           return;
         }
 
         setHealthStatus("offline");
-        setPageState("error");
         setScreenMessage(
           error instanceof Error
             ? error.message
@@ -296,7 +294,7 @@ function App() {
       });
 
       setSession(nextSession);
-      setExpandedResultId(null);
+      setActiveQuestionId(null);
       setProcessState("ready");
       setScreenMessage(
         `${nextSession.summary.totalQuestionsProcessed} questions analyzed for ${selectedFile.name}.`,
@@ -335,11 +333,6 @@ function App() {
       if (!hasFailures) {
         setKnowledgeBaseFiles([]);
       }
-      setHistoryStatus((current) => ({
-        itemCount: (current?.itemCount ?? 0) + response.processedFileCount,
-        lastUpdated: new Date().toISOString(),
-        domainDistribution: current?.domainDistribution ?? [],
-      }));
     } catch (error) {
       setKnowledgeBaseState("error");
       setKnowledgeBaseMessage(
@@ -393,6 +386,15 @@ function App() {
     );
   }
 
+  const activeQuestion = useMemo(
+    () =>
+      activeQuestionId == null
+        ? null
+        : session?.questions.find((question) => question.questionId === activeQuestionId) ??
+          null,
+    [activeQuestionId, session],
+  );
+
   return (
     <div className="app-shell">
       <div className="app-shell__mesh" aria-hidden="true" />
@@ -400,566 +402,595 @@ function App() {
       <main className="dashboard">
         <header className="app-header">
           <div className="app-header__brand">
-            <p className="app-header__eyebrow">Tender audit console</p>
+            <p className="app-header__eyebrow">Tender workbench</p>
             <h1>Tender Response Automation</h1>
-          </div>
-
-          <div className="app-header__status">
-            <StatusBadge
-              label={`Backend health: ${healthStatus}`}
-              tone={healthTone(healthStatus)}
-            />
-            <StatusBadge
-              label={summarySnapshot.overallStatus}
-              tone={processState === "error" ? "danger" : "warning"}
-            />
+            <p className="app-header__subcopy">
+              Separate the knowledge repository workflow from the live response workflow.
+            </p>
           </div>
         </header>
 
-        <section
-          aria-labelledby="knowledge-base-builder-title"
-          className="knowledge-base-strip"
-        >
-          <article className="panel panel--knowledge-base">
-            <div className="panel__header">
-              <div>
-                <p className="panel__eyebrow">Knowledge base</p>
-                <h2 id="knowledge-base-builder-title">Build knowledge base</h2>
-              </div>
-              <StatusBadge
-                label={
-                  knowledgeBaseState === "loading"
-                    ? "syncing"
-                    : hasKnowledgeBaseFiles
-                      ? "files queued"
-                      : "awaiting files"
-                }
-                tone={
-                  knowledgeBaseState === "error"
-                    ? "danger"
-                    : hasKnowledgeBaseFiles
-                      ? "success"
-                      : "neutral"
-                }
-              />
-            </div>
+        {healthStatus !== "ok" && healthStatus !== "checking" ? (
+          <section className="health-banner" aria-label="Backend health warning">
+            <StatusBadge label={`Backend health: ${healthStatus}`} tone="danger" />
+            <p>The backend is not healthy. Uploads or response generation may fail.</p>
+          </section>
+        ) : null}
 
-            <div className="knowledge-base-layout">
-              <div className="knowledge-base-layout__primary">
-                <BatchUploadDropzone
-                  inputId="knowledge-base-upload"
-                  label="Upload knowledge base files"
-                  onFilesChange={applyKnowledgeBaseFiles}
-                />
-
-                <button
-                  className="primary-button"
-                  disabled={knowledgeBaseState === "loading"}
-                  type="button"
-                  onClick={() => void handleKnowledgeBaseIngest()}
-                >
-                  {knowledgeBaseState === "loading"
-                    ? "Syncing..."
-                    : "Ingest Knowledge Files"}
-                </button>
-              </div>
-
-              <div className="knowledge-base-layout__secondary">
-                <div className="sync-summary">
-                  <p className="sync-summary__message">{knowledgeBaseMessage}</p>
-
-                  <div className="knowledge-queue">
-                    <h3>Files queued for sync</h3>
-                    {hasKnowledgeBaseFiles ? (
-                      <ul className="detail-list detail-list--stacked">
-                        {knowledgeBaseFileNames.map((fileName) => (
-                          <li key={fileName}>
-                            <span>{fileName}</span>
-                            <div className="queue-actions">
-                              <strong>queued</strong>
-                              <button
-                                className="secondary-button queue-action"
-                                type="button"
-                                onClick={() => removeKnowledgeBaseFile(fileName)}
-                              >
-                                Remove {fileName} from queue
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="empty-state">
-                        Select multiple files to preview the batch before sending it.
-                      </p>
-                    )}
-                  </div>
-
-                  {knowledgeBaseRun ? (
-                    <div className="knowledge-results">
-                      <h3>Latest ingest result</h3>
-                      <ul className="detail-list detail-list--stacked">
-                        <li>
-                          <span>Batch request</span>
-                          <strong>{knowledgeBaseRun.requestId}</strong>
-                        </li>
-                        <li>
-                          <span>Processed</span>
-                          <strong>{knowledgeBaseRun.processedFileCount}</strong>
-                        </li>
-                        <li>
-                          <span>Failed</span>
-                          <strong>{knowledgeBaseRun.failedFileCount}</strong>
-                        </li>
-                        {knowledgeBaseRun.files.map((fileResult, index) => (
-                          <li
-                            key={`${fileResult.payload?.fileName ?? fileResult.errorCode}-${index}`}
-                            className={
-                              fileResult.status === "failed" || fileResult.failedRowCount > 0
-                                ? "detail-list__item detail-list__item--error"
-                                : "detail-list__item"
-                            }
-                          >
-                            <div className="ingest-result">
-                              <div className="ingest-result__header">
-                                <span>
-                                  {fileResult.payload?.fileName ??
-                                    fileResult.errorCode ??
-                                    "unknown"}
-                                </span>
-                                <strong>{fileResult.status}</strong>
-                              </div>
-                              <p className="ingest-result__meta">
-                                {fileResult.ingestedRowCount} ingested rows,{" "}
-                                {fileResult.failedRowCount} failed rows
-                              </p>
-                              {fileResult.storageTarget ? (
-                                <p className="ingest-result__meta">
-                                  Target: {fileResult.storageTarget}
-                                </p>
-                              ) : null}
-                              {fileResult.errorMessage ? (
-                                <p className="ingest-result__error">
-                                  {fileResult.errorMessage}
-                                </p>
-                              ) : null}
-                              {fileResult.detectedColumns ? (
-                                <p className="ingest-result__meta">
-                                  Columns: q={fileResult.detectedColumns.questionCol ?? "n/a"},
-                                  {" "}a={fileResult.detectedColumns.answerCol ?? "n/a"},
-                                  {" "}d={fileResult.detectedColumns.domainCol ?? "n/a"}
-                                </p>
-                              ) : null}
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <section className="tender-strip">
-          <article className="panel panel--upload">
-            <div className="panel__header">
-              <div>
-                <p className="panel__eyebrow">Autofill</p>
-                <h2>Upload tender csv</h2>
-              </div>
-              <StatusBadge
-                label={selectedFile ? "file ready" : "awaiting file"}
-                tone={selectedFile ? "success" : "neutral"}
-              />
-            </div>
-
-            <UploadDropzone
-              fileName={selectedFile?.name ?? null}
-              inputId="tender-upload"
-              isDragActive={isDragActive}
-              label="Upload tender csv"
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onFileChange={applySelectedFile}
-              supportLabel="Supports .csv only"
-            />
-
-            <div className="field-grid field-grid--custom field-grid--single">
-              <ThresholdControl
-                label="Alignment threshold"
-                max={0.99}
-                min={0.1}
-                step={0.01}
-                value={alignmentThreshold}
-                onChange={updateAlignmentThreshold}
-              />
-            </div>
-
+        <section className="workspace-tabs">
+          <div aria-label="Workspace modules" className="tablist" role="tablist">
             <button
-              className="primary-button"
-              disabled={processState === "loading"}
+              aria-controls="repository-panel"
+              aria-selected={activeWorkspace === "repository"}
+              className={
+                activeWorkspace === "repository"
+                  ? "tab-button tab-button--active"
+                  : "tab-button"
+              }
+              id="repository-tab"
+              role="tab"
               type="button"
-              onClick={() => void handleProcessClick()}
+              onClick={() => setActiveWorkspace("repository")}
             >
-              {processState === "loading" ? "Autofilling..." : "Autofill Tender"}
+              Tender Repository
             </button>
-          </article>
-        </section>
-
-        <section className="spotlight" aria-labelledby="processing-spotlight-title">
-          <div className="spotlight__header">
-            <div>
-              <p className="panel__eyebrow">Priority review</p>
-              <h2 id="processing-spotlight-title">Processing spotlight</h2>
-            </div>
-            <StatusBadge
-              label={summarySnapshot.overallStatus}
-              tone={processState === "error" ? "danger" : "warning"}
-            />
-          </div>
-
-          <div className="spotlight-grid">
-            <article className="spotlight-card spotlight-card--primary">
-              <p className="spotlight-card__kicker">Current batch state</p>
-              <p className="spotlight-card__value">{progressSnapshot.label}</p>
-              <p className="spotlight-card__detail">{screenMessage}</p>
-
-              <div className="spotlight-card__chips">
-                <StatusBadge
-                  label={`Backend health: ${healthStatus}`}
-                  tone={healthTone(healthStatus)}
-                />
-                <StatusBadge
-                  label={
-                    selectedFile ? `Queued: ${selectedFile.name}` : "No file staged"
-                  }
-                  tone={selectedFile ? "success" : "neutral"}
-                />
-              </div>
-            </article>
-
-            <MetricCard
-              className="metric-card--spotlight"
-              eyebrow="Total questions"
-              value={String(progressSnapshot.total)}
-              detail="Workbook rows evaluated in the current session."
-            />
-            <MetricCard
-              className="metric-card--spotlight"
-              eyebrow="Completed"
-              value={String(progressSnapshot.completed)}
-              detail="Rows with a usable answer or warning."
-            />
-            <MetricCard
-              className="metric-card--spotlight"
-              eyebrow="High-risk items"
-              value={String(summarySnapshot.flaggedCount)}
-              detail="Rows flagged as high risk or historically inconsistent."
-            />
-            <MetricCard
-              className="metric-card--spotlight"
-              eyebrow="Failed"
-              value={String(progressSnapshot.failed)}
-              detail="Rows isolated without blocking the rest of the run."
-            />
+            <button
+              aria-controls="response-panel"
+              aria-selected={activeWorkspace === "response"}
+              className={
+                activeWorkspace === "response"
+                  ? "tab-button tab-button--active"
+                  : "tab-button"
+              }
+              id="response-tab"
+              role="tab"
+              type="button"
+              onClick={() => setActiveWorkspace("response")}
+            >
+              Tender Response
+            </button>
           </div>
         </section>
 
-        <section className="results-layout">
-          <article className="panel panel--results">
-            <div className="panel__header">
-              <div>
-                <p className="panel__eyebrow">Audit trail</p>
-                <h2>Question Results</h2>
-              </div>
-              {session ? (
-                <StatusBadge
-                  label={`${session.summary.totalQuestionsProcessed} questions analyzed`}
-                  tone="success"
-                />
-              ) : null}
-            </div>
-
-            {session ? (
-              <div className="results-table-wrap">
-                <table className="results-table">
-                  <thead>
-                    <tr>
-                      <th>Question</th>
-                      <th>Answer</th>
-                      <th>Domain</th>
-                      <th>Confidence</th>
-                      <th>Aligned</th>
-                      <th>Status</th>
-                      <th>Inspect</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {session.questions.map((question) => (
-                      <Fragment key={question.questionId}>
-                        <tr className="result-row">
-                          <td>{question.originalQuestion}</td>
-                          <td className="result-row__answer">
-                            {question.generatedAnswer || "No answer generated"}
-                          </td>
-                          <td>{question.domainTag || "unassigned"}</td>
-                          <td>
-                            <StatusBadge
-                              label={question.confidenceLevel}
-                              tone={confidenceTone(question.confidenceLevel)}
-                            />
-                          </td>
-                          <td>
-                            <StatusBadge
-                              label={
-                                question.historicalAlignmentIndicator
-                                  ? "aligned"
-                                  : "unaligned"
-                              }
-                              tone={
-                                question.historicalAlignmentIndicator
-                                  ? "success"
-                                  : "warning"
-                              }
-                            />
-                          </td>
-                          <td>
-                            <StatusBadge
-                              label={question.status}
-                              tone={questionStatusTone(question)}
-                            />
-                          </td>
-                          <td>
-                            <button
-                              aria-expanded={expandedResultId === question.questionId}
-                              aria-label={`Expand result for ${question.originalQuestion}`}
-                              className="row-action"
-                              type="button"
-                              onClick={() =>
-                                setExpandedResultId((current) =>
-                                  current === question.questionId
-                                    ? null
-                                    : question.questionId,
-                                )
-                              }
-                            >
-                              {expandedResultId === question.questionId
-                                ? "Hide details"
-                                : "View details"}
-                            </button>
-                          </td>
-                        </tr>
-
-                        {expandedResultId === question.questionId ? (
-                          <tr className="result-row__details">
-                            <td colSpan={7}>
-                              <div className="detail-grid">
-                                <section className="detail-panel">
-                                  <h4>Generated answer</h4>
-                                  <p>
-                                    {question.generatedAnswer ||
-                                      "No answer generated for this question."}
-                                  </p>
-                                  {question.errorMessage ? (
-                                    <>
-                                      <h4>Error message</h4>
-                                      <p>{question.errorMessage}</p>
-                                    </>
-                                  ) : null}
-                                </section>
-
-                                <section className="detail-panel">
-                                  <h4>Flags</h4>
-                                  <ul className="detail-list detail-list--dark">
-                                    <li>
-                                      <strong>high risk</strong>
-                                      <span>
-                                        {question.flags.highRisk ? "true" : "false"}
-                                      </span>
-                                    </li>
-                                    <li>
-                                      <strong>inconsistent response</strong>
-                                      <span>
-                                        {question.flags.inconsistentResponse
-                                          ? "true"
-                                          : "false"}
-                                      </span>
-                                    </li>
-                                  </ul>
-                                </section>
-
-                                <section className="detail-panel">
-                                  <h4>Metadata</h4>
-                                  <ul className="detail-list detail-list--dark">
-                                    <li>
-                                      <strong>source row</strong>
-                                      <span>{question.metadata.sourceRowIndex}</span>
-                                    </li>
-                                    <li>
-                                      <strong>alignment record</strong>
-                                      <span>
-                                        {question.metadata.alignmentRecordId || "n/a"}
-                                      </span>
-                                    </li>
-                                    <li>
-                                      <strong>alignment score</strong>
-                                      <span>
-                                        {question.metadata.alignmentScore.toFixed(2)}
-                                      </span>
-                                    </li>
-                                  </ul>
-                                </section>
-
-                                <section className="detail-panel">
-                                  <h4>Extensions</h4>
-                                  {Object.keys(question.extensions).length > 0 ? (
-                                    <pre>
-                                      {JSON.stringify(question.extensions, null, 2)}
-                                    </pre>
-                                  ) : (
-                                    <p>
-                                      No additional extensions for this question.
-                                    </p>
-                                  )}
-                                </section>
-                              </div>
-                            </td>
-                          </tr>
-                        ) : null}
-                      </Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="empty-state">
-                Upload a csv and run autofill to populate the answer table and
-                inspection panels.
-              </p>
-            )}
-          </article>
-
-          <aside className="results-sidebar">
-            <article className="panel panel--summary">
-              <div className="panel__header">
-                <div>
-                  <p className="panel__eyebrow">Executive view</p>
-                  <h2>Summary</h2>
-                </div>
-                {session ? (
-                  <StatusBadge
-                    label={session.summary.overallCompletionStatus}
-                    tone="warning"
-                  />
-                ) : null}
-              </div>
-
-              {session ? (
-                <>
-                  <div className="metric-cluster metric-cluster--summary">
-                    <MetricCard
-                      eyebrow="Questions analyzed"
-                      value={`${session.summary.totalQuestionsProcessed} questions analyzed`}
-                      detail="Total workload included in the current run."
-                    />
-                    <MetricCard
-                      eyebrow="Flagged items"
-                      value={String(
-                        session.summary.flaggedHighRiskOrInconsistentResponses,
-                      )}
-                      detail="Rows that need human review before submission."
-                    />
-                  </div>
-
-                  <div className="summary-list">
-                    <p>Completed questions: {session.summary.completedQuestions}</p>
-                    <p>Failed questions: {session.summary.failedQuestions}</p>
-                    <p>
-                      Overall status: {session.summary.overallCompletionStatus}
-                    </p>
-                    <p>Request id: {session.requestId}</p>
-                    <p>Session id: {session.sessionId}</p>
-                  </div>
-                </>
-              ) : (
-                <p className="empty-state">
-                  Summary metrics will appear after the first processing run.
-                </p>
-              )}
-            </article>
-
-            <article className="panel panel--history">
+        {activeWorkspace === "repository" ? (
+          <section
+            aria-labelledby="knowledge-base-builder-title"
+            className="workspace-panel"
+            id="repository-panel"
+            role="tabpanel"
+          >
+            <article className="panel panel--knowledge-base">
               <div className="panel__header">
                 <div>
                   <p className="panel__eyebrow">Knowledge base</p>
-                  <h2>History status</h2>
+                  <h2 id="knowledge-base-builder-title">Build knowledge base</h2>
                 </div>
                 <StatusBadge
-                  label={pageState === "error" ? "attention" : "available"}
-                  tone={pageState === "error" ? "danger" : "success"}
+                  label={
+                    knowledgeBaseState === "loading"
+                      ? "syncing"
+                      : hasKnowledgeBaseFiles
+                        ? "files queued"
+                        : "awaiting files"
+                  }
+                  tone={
+                    knowledgeBaseState === "error"
+                      ? "danger"
+                      : hasKnowledgeBaseFiles
+                        ? "success"
+                        : "neutral"
+                  }
                 />
               </div>
 
-              {historyStatus ? (
-                <>
-                  <div className="history-metrics">
-                    <MetricCard
-                      eyebrow="Indexed entries"
-                      value={String(historyStatus.itemCount)}
-                      detail="Historical tender answers ready for retrieval."
-                    />
-                    <MetricCard
-                      eyebrow="Last sync"
-                      value={formatTimestamp(historyStatus.lastUpdated)}
-                      detail="Most recent memory refresh currently visible."
+              <div className="workspace-intro">
+                <p className="workspace-intro__title">Tender Repository</p>
+                <p className="workspace-intro__copy">
+                  Upload historical tender files, review the queued batch, and send the
+                  repository update to the ingest API in one step.
+                </p>
+              </div>
+
+              <div className="knowledge-base-layout">
+                <div className="knowledge-base-layout__primary">
+                  <BatchUploadDropzone
+                    inputId="knowledge-base-upload"
+                    label="Upload knowledge base files"
+                    onFilesChange={applyKnowledgeBaseFiles}
+                  />
+
+                  <button
+                    className="primary-button"
+                    disabled={knowledgeBaseState === "loading"}
+                    type="button"
+                    onClick={() => void handleKnowledgeBaseIngest()}
+                  >
+                    {knowledgeBaseState === "loading"
+                      ? "Syncing..."
+                      : "Ingest Knowledge Files"}
+                  </button>
+                </div>
+
+                <div className="knowledge-base-layout__secondary">
+                  <div className="sync-summary">
+                    <p className="sync-summary__message">{knowledgeBaseMessage}</p>
+
+                    <div className="knowledge-queue">
+                      <h3>Files queued for sync</h3>
+                      {hasKnowledgeBaseFiles ? (
+                        <ul className="detail-list detail-list--stacked">
+                          {knowledgeBaseFileNames.map((fileName) => (
+                            <li key={fileName}>
+                              <span>{fileName}</span>
+                              <div className="queue-actions">
+                                <strong>queued</strong>
+                                <button
+                                  className="secondary-button queue-action"
+                                  type="button"
+                                  onClick={() => removeKnowledgeBaseFile(fileName)}
+                                >
+                                  Remove {fileName} from queue
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="empty-state">
+                          Select multiple files to preview the batch before sending it.
+                        </p>
+                      )}
+                    </div>
+
+                    {knowledgeBaseRun ? (
+                      <div className="knowledge-results">
+                        <h3>Latest ingest result</h3>
+                        <ul className="detail-list detail-list--stacked">
+                          <li>
+                            <span>Batch request</span>
+                            <strong>{knowledgeBaseRun.requestId}</strong>
+                          </li>
+                          <li>
+                            <span>Processed</span>
+                            <strong>{knowledgeBaseRun.processedFileCount}</strong>
+                          </li>
+                          <li>
+                            <span>Failed</span>
+                            <strong>{knowledgeBaseRun.failedFileCount}</strong>
+                          </li>
+                          {knowledgeBaseRun.files.map((fileResult, index) => (
+                            <li
+                              key={`${fileResult.payload?.fileName ?? fileResult.errorCode}-${index}`}
+                              className={
+                                fileResult.status === "failed" ||
+                                fileResult.failedRowCount > 0
+                                  ? "detail-list__item detail-list__item--error"
+                                  : "detail-list__item"
+                              }
+                            >
+                              <div className="ingest-result">
+                                <div className="ingest-result__header">
+                                  <span>
+                                    {fileResult.payload?.fileName ??
+                                      fileResult.errorCode ??
+                                      "unknown"}
+                                  </span>
+                                  <strong>{fileResult.status}</strong>
+                                </div>
+                                <p className="ingest-result__meta">
+                                  {fileResult.ingestedRowCount} ingested rows,{" "}
+                                  {fileResult.failedRowCount} failed rows
+                                </p>
+                                {fileResult.storageTarget ? (
+                                  <p className="ingest-result__meta">
+                                    Target: {fileResult.storageTarget}
+                                  </p>
+                                ) : null}
+                                {fileResult.errorMessage ? (
+                                  <p className="ingest-result__error">
+                                    {fileResult.errorMessage}
+                                  </p>
+                                ) : null}
+                                {fileResult.detectedColumns ? (
+                                  <p className="ingest-result__meta">
+                                    Columns: q=
+                                    {fileResult.detectedColumns.questionCol ?? "n/a"}, a=
+                                    {fileResult.detectedColumns.answerCol ?? "n/a"}, d=
+                                    {fileResult.detectedColumns.domainCol ?? "n/a"}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+        ) : (
+          <section
+            aria-labelledby="tender-response-title"
+            className="workspace-panel workspace-panel--response"
+            id="response-panel"
+            role="tabpanel"
+          >
+            <div className="response-shell">
+              <article className="panel panel--upload">
+                <div className="panel__header">
+                  <div>
+                    <p className="panel__eyebrow">Autofill</p>
+                    <h2 id="tender-response-title">Tender response</h2>
+                  </div>
+                  <StatusBadge
+                    label={selectedFile ? "file ready" : "awaiting file"}
+                    tone={selectedFile ? "success" : "neutral"}
+                  />
+                </div>
+
+                <div className="workspace-intro">
+                  <p className="workspace-intro__title">Tender Response</p>
+                  <p className="workspace-intro__copy">
+                    Upload a tender questionnaire in CSV format, send it to the response
+                    workflow, and review generated answers in a clean table.
+                  </p>
+                </div>
+
+                <UploadDropzone
+                  fileName={selectedFile?.name ?? null}
+                  inputId="tender-upload"
+                  isDragActive={isDragActive}
+                  label="Upload tender csv"
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onFileChange={applySelectedFile}
+                  supportLabel="Supports .csv only"
+                />
+
+                <div className="field-grid field-grid--custom field-grid--single">
+                  <ThresholdControl
+                    label="Alignment threshold"
+                    max={0.99}
+                    min={0.1}
+                    step={0.01}
+                    value={alignmentThreshold}
+                    onChange={updateAlignmentThreshold}
+                  />
+                </div>
+
+                <button
+                  className="primary-button"
+                  disabled={processState === "loading"}
+                  type="button"
+                  onClick={() => void handleProcessClick()}
+                >
+                  {processState === "loading" ? "Autofilling..." : "Autofill Tender"}
+                </button>
+              </article>
+
+              <section className="response-dashboard">
+                <article className="panel panel--summary-strip">
+                  <div className="panel__header">
+                    <div>
+                      <p className="panel__eyebrow">Run snapshot</p>
+                      <h2>Response dashboard</h2>
+                    </div>
+                    <StatusBadge
+                      label={formatStatusLabel(summarySnapshot.overallStatus)}
+                      tone={processState === "error" ? "danger" : "warning"}
                     />
                   </div>
 
-                  <ul className="distribution-list">
-                    {historyStatus.domainDistribution.map((entry) => (
-                      <li key={entry.domain}>
-                        <span>{entry.domain}</span>
-                        <strong>{entry.count}</strong>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p className="empty-state">Loading history telemetry...</p>
-              )}
-            </article>
+                  <div className="summary-cards">
+                    <MetricCard
+                      eyebrow="Batch state"
+                      value={formatStatusLabel(progressSnapshot.label)}
+                      detail={screenMessage}
+                    />
+                    <MetricCard
+                      eyebrow="Questions analyzed"
+                      value={String(progressSnapshot.total)}
+                      detail="Rows processed in the current tender response run."
+                    />
+                    <MetricCard
+                      eyebrow="Completed"
+                      value={String(progressSnapshot.completed)}
+                      detail="Generated answers ready for review."
+                    />
+                    <MetricCard
+                      eyebrow="Flagged"
+                      value={String(summarySnapshot.flaggedCount)}
+                      detail="Questions that need extra human review."
+                    />
+                    <MetricCard
+                      eyebrow="Failed"
+                      value={String(progressSnapshot.failed)}
+                      detail="Questions that did not produce a usable answer."
+                    />
+                  </div>
+                </article>
 
-            <article className="panel">
-              <div className="panel__header">
+                <article className="panel panel--results">
+                  <div className="panel__header">
+                    <div>
+                      <p className="panel__eyebrow">Generated answers</p>
+                      <h2>Question Results</h2>
+                    </div>
+                    {session ? (
+                      <StatusBadge
+                        label={`${session.summary.totalQuestionsProcessed} Questions Analyzed`}
+                        tone="success"
+                      />
+                    ) : null}
+                  </div>
+
+                  {session ? (
+                    <div className="results-table-wrap">
+                      <table className="results-table">
+                        <thead>
+                          <tr>
+                            <th>Question</th>
+                            <th>Generated answer</th>
+                            <th>Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {session.questions.map((question) => (
+                            <tr className="result-row" key={question.questionId}>
+                              <td className="result-row__question">
+                                <p className="result-row__primary">
+                                  {question.originalQuestion}
+                                </p>
+                                <div className="result-row__meta">
+                                  <StatusBadge
+                                    label={formatStatusLabel(question.status)}
+                                    tone={questionStatusTone(question)}
+                                  />
+                                  <StatusBadge
+                                    label={formatStatusLabel(question.confidenceLevel)}
+                                    tone={confidenceTone(question.confidenceLevel)}
+                                  />
+                                </div>
+                              </td>
+                              <td className="result-row__answer">
+                                {summarizeAnswer(question.generatedAnswer)}
+                              </td>
+                              <td className="result-row__actions">
+                                <button
+                                  aria-haspopup="dialog"
+                                  aria-label={`Open details for ${question.originalQuestion}`}
+                                  className="row-action"
+                                  type="button"
+                                  onClick={() => setActiveQuestionId(question.questionId)}
+                                >
+                                  View details
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="empty-state">
+                      Upload a csv and run autofill to populate the answer table.
+                    </p>
+                  )}
+                </article>
+
+                {session ? (
+                  <article className="panel panel--summary">
+                    <div className="panel__header">
+                      <div>
+                        <p className="panel__eyebrow">Run metadata</p>
+                        <h2>Summary</h2>
+                      </div>
+                      <StatusBadge
+                        label={formatStatusLabel(session.summary.overallCompletionStatus)}
+                        tone="warning"
+                      />
+                    </div>
+
+                    <div className="summary-list">
+                      <p>Completed questions: {session.summary.completedQuestions}</p>
+                      <p>Failed questions: {session.summary.failedQuestions}</p>
+                      <p>
+                        Overall status:{" "}
+                        {formatStatusLabel(session.summary.overallCompletionStatus)}
+                      </p>
+                      <p>Request id: {session.requestId}</p>
+                      <p>Session id: {session.sessionId}</p>
+                    </div>
+
+                    <div className="download-actions">
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => handleDownload("json")}
+                      >
+                        Download JSON
+                      </button>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => handleDownload("excel")}
+                      >
+                        Download Excel
+                      </button>
+                    </div>
+                  </article>
+                ) : null}
+              </section>
+            </div>
+          </section>
+        )}
+
+        {activeQuestion ? (
+          <div
+            className="modal-backdrop"
+            onClick={() => setActiveQuestionId(null)}
+          >
+            <section
+              aria-labelledby="autofill-details-title"
+              aria-modal="true"
+              className="details-modal"
+              role="dialog"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="details-modal__header">
                 <div>
-                  <p className="panel__eyebrow">Exports</p>
-                  <h2>Download package</h2>
+                  <p className="panel__eyebrow">Autofill review</p>
+                  <h2 id="autofill-details-title">Autofill details</h2>
                 </div>
+                <button
+                  aria-label="Close details"
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => setActiveQuestionId(null)}
+                >
+                  Close
+                </button>
               </div>
 
-              <div className="download-actions">
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => handleDownload("json")}
-                >
-                  Download JSON
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => handleDownload("excel")}
-                >
-                  Download Excel
-                </button>
+              <div className="details-modal__summary">
+                <StatusBadge
+                  label={formatStatusLabel(activeQuestion.status)}
+                  tone={questionStatusTone(activeQuestion)}
+                />
+                <StatusBadge
+                  label={formatStatusLabel(activeQuestion.confidenceLevel)}
+                  tone={confidenceTone(activeQuestion.confidenceLevel)}
+                />
+                <StatusBadge
+                  label={
+                    activeQuestion.historicalAlignmentIndicator
+                      ? "Historically Aligned"
+                      : "Needs Review"
+                  }
+                  tone={
+                    activeQuestion.historicalAlignmentIndicator
+                      ? "success"
+                      : "warning"
+                  }
+                />
               </div>
-            </article>
-          </aside>
-        </section>
+
+              <div className="details-modal__grid">
+                <section className="details-card details-card--wide">
+                  <h3>Original question</h3>
+                  <p>{activeQuestion.originalQuestion}</p>
+                </section>
+
+                <section className="details-card details-card--wide">
+                  <h3>Generated answer</h3>
+                  <p>
+                    {activeQuestion.generatedAnswer || "No answer generated for this question."}
+                  </p>
+                </section>
+
+                {activeQuestion.errorMessage ? (
+                  <section className="details-card details-card--wide details-card--alert">
+                    <h3>Error message</h3>
+                    <p>{activeQuestion.errorMessage}</p>
+                  </section>
+                ) : null}
+
+                <section className="details-card">
+                  <h3>Question flags</h3>
+                  <dl className="details-list">
+                    <div>
+                      <dt>high risk</dt>
+                      <dd>{activeQuestion.flags.highRisk ? "true" : "false"}</dd>
+                    </div>
+                    <div>
+                      <dt>inconsistent response</dt>
+                      <dd>
+                        {activeQuestion.flags.inconsistentResponse ? "true" : "false"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>domain</dt>
+                      <dd>{activeQuestion.domainTag || "unassigned"}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section className="details-card">
+                  <h3>Metadata</h3>
+                  <dl className="details-list">
+                    <div>
+                      <dt>source row</dt>
+                      <dd>{activeQuestion.metadata.sourceRowIndex}</dd>
+                    </div>
+                    <div>
+                      <dt>alignment record</dt>
+                      <dd>{activeQuestion.metadata.alignmentRecordId || "n/a"}</dd>
+                    </div>
+                    <div>
+                      <dt>alignment score</dt>
+                      <dd>{activeQuestion.metadata.alignmentScore.toFixed(2)}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                {activeQuestion.reference ? (
+                  <section className="details-card details-card--wide">
+                    <h3>Reference match</h3>
+                    <dl className="details-list">
+                      <div>
+                        <dt>source document</dt>
+                        <dd>{activeQuestion.reference.sourceDoc || "n/a"}</dd>
+                      </div>
+                      <div>
+                        <dt>alignment record</dt>
+                        <dd>
+                          {activeQuestion.reference.alignmentRecordId || "n/a"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>alignment score</dt>
+                        <dd>{activeQuestion.reference.alignmentScore.toFixed(2)}</dd>
+                      </div>
+                    </dl>
+                  </section>
+                ) : null}
+
+                {activeQuestion.reference ? (
+                  <>
+                    <section className="details-card">
+                      <h3>Matched question</h3>
+                      <p>
+                        {activeQuestion.reference.matchedQuestion ||
+                          "No matched question available."}
+                      </p>
+                    </section>
+
+                    <section className="details-card">
+                      <h3>Matched answer</h3>
+                      <p>
+                        {activeQuestion.reference.matchedAnswer ||
+                          "No matched answer available."}
+                      </p>
+                    </section>
+                  </>
+                ) : null}
+
+                <section className="details-card details-card--wide">
+                  <h3>Extensions</h3>
+                  {Object.keys(activeQuestion.extensions).length > 0 ? (
+                    <pre>{JSON.stringify(activeQuestion.extensions, null, 2)}</pre>
+                  ) : (
+                    <p>No additional extensions for this question.</p>
+                  )}
+                </section>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </main>
     </div>
   );

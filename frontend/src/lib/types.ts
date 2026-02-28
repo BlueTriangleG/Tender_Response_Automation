@@ -72,6 +72,14 @@ export type TenderAutofillQuestionMetadata = {
   alignmentScore: number;
 };
 
+export type TenderAutofillQuestionReference = {
+  alignmentRecordId: string;
+  alignmentScore: number;
+  sourceDoc: string;
+  matchedQuestion: string;
+  matchedAnswer: string;
+};
+
 export type TenderAutofillQuestion = {
   questionId: string;
   originalQuestion: string;
@@ -82,6 +90,7 @@ export type TenderAutofillQuestion = {
   status: string;
   flags: TenderAutofillQuestionFlags;
   metadata: TenderAutofillQuestionMetadata;
+  reference: TenderAutofillQuestionReference | null;
   errorMessage: string | null;
   extensions: Record<string, unknown>;
 };

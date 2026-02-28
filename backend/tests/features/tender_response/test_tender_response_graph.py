@@ -57,6 +57,7 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
                     question="Historical TLS question",
                     answer="Historical TLS answer",
                     domain="Security",
+                    source_doc="history.csv",
                     alignment_score=0.95,
                 ),
                 "q-002": HistoricalAlignmentResult(
@@ -65,6 +66,7 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
                     question=None,
                     answer=None,
                     domain=None,
+                    source_doc=None,
                     alignment_score=0.41,
                 ),
             }
@@ -109,6 +111,9 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
     assert len(result["question_results"]) == 2
     assert answer_service.with_alignment_calls == ["q-001"]
     assert answer_service.without_alignment_calls == ["q-002"]
+    assert result["question_results"][0].reference is not None
+    assert result["question_results"][0].reference.source_doc == "history.csv"
+    assert result["question_results"][1].reference is None
     assert result["summary"].total_questions_processed == 2
 
 
@@ -122,6 +127,7 @@ async def test_tender_response_graph_keeps_processing_when_one_question_fails() 
                     question="Historical TLS question",
                     answer="Historical TLS answer",
                     domain="Security",
+                    source_doc="history.csv",
                     alignment_score=0.95,
                 ),
                 "q-003": HistoricalAlignmentResult(
@@ -130,6 +136,7 @@ async def test_tender_response_graph_keeps_processing_when_one_question_fails() 
                     question="Historical SSO question",
                     answer="Historical SSO answer",
                     domain="Architecture",
+                    source_doc="history.csv",
                     alignment_score=0.94,
                 ),
             }
@@ -187,6 +194,7 @@ async def test_tender_response_graph_marks_flagged_responses_in_summary() -> Non
                     question=None,
                     answer=None,
                     domain=None,
+                    source_doc=None,
                     alignment_score=0.35,
                 ),
             }

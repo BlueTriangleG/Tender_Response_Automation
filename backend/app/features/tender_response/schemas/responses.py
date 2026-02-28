@@ -15,6 +15,14 @@ class QuestionMetadata(BaseModel):
     alignment_score: float | None = None
 
 
+class QuestionReference(BaseModel):
+    alignment_record_id: str
+    alignment_score: float | None = None
+    source_doc: str | None = None
+    matched_question: str
+    matched_answer: str
+
+
 class TenderQuestionResponse(BaseModel):
     question_id: str
     original_question: str
@@ -25,6 +33,7 @@ class TenderQuestionResponse(BaseModel):
     status: Literal["completed", "failed"]
     flags: QuestionFlags = Field(default_factory=QuestionFlags)
     metadata: QuestionMetadata
+    reference: QuestionReference | None = None
     error_message: str | None = None
     extensions: dict[str, Any] = Field(default_factory=dict)
 

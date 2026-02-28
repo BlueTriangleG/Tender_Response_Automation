@@ -30,6 +30,7 @@ from app.features.tender_response.infrastructure.services.domain_tagging_service
 from app.features.tender_response.schemas.responses import (
     QuestionFlags,
     QuestionMetadata,
+    QuestionReference,
     TenderQuestionResponse,
     TenderResponseSummary,
 )
@@ -76,6 +77,7 @@ def _failed_question_result(question: TenderQuestion, error_message: str) -> Ten
             alignment_record_id=None,
             alignment_score=None,
         ),
+        reference=None,
         error_message=error_message,
         extensions={},
     )
@@ -163,6 +165,20 @@ def _create_question_processing_graph(
                 source_row_index=question.source_row_index,
                 alignment_record_id=alignment.record_id,
                 alignment_score=alignment.alignment_score,
+            ),
+            reference=(
+                QuestionReference(
+                    alignment_record_id=alignment.record_id,
+                    alignment_score=alignment.alignment_score,
+                    source_doc=alignment.source_doc,
+                    matched_question=alignment.question,
+                    matched_answer=alignment.answer,
+                )
+                if alignment.matched
+                and alignment.record_id
+                and alignment.question
+                and alignment.answer
+                else None
             ),
             error_message=None,
             extensions={},

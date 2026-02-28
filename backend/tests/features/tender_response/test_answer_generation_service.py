@@ -61,6 +61,7 @@ async def test_generate_answer_with_alignment_uses_historical_context() -> None:
             question="Do you support TLS 1.2 or higher?",
             answer="Yes. Production traffic is restricted to TLS 1.2 or higher.",
             domain="Security",
+            source_doc="history.csv",
             alignment_score=0.93,
         ),
     )

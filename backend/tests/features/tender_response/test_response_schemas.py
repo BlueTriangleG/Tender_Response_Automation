@@ -1,6 +1,7 @@
 from app.features.tender_response.schemas.responses import (
     QuestionFlags,
     QuestionMetadata,
+    QuestionReference,
     TenderQuestionResponse,
     TenderResponseSummary,
     TenderResponseWorkflowResponse,
@@ -22,6 +23,13 @@ def test_tender_question_response_contains_required_business_fields() -> None:
             alignment_record_id="qa_123",
             alignment_score=0.92,
         ),
+        reference=QuestionReference(
+            alignment_record_id="qa_123",
+            alignment_score=0.92,
+            source_doc="historical_repository_qa.csv",
+            matched_question="Do you support TLS 1.2 or above?",
+            matched_answer="Yes. Production traffic is restricted to TLS 1.2 or higher.",
+        ),
         error_message=None,
         extensions={},
     )
@@ -31,6 +39,8 @@ def test_tender_question_response_contains_required_business_fields() -> None:
     assert response.domain_tag == "security"
     assert response.confidence_level == "high"
     assert response.historical_alignment_indicator is True
+    assert response.reference is not None
+    assert response.reference.source_doc == "historical_repository_qa.csv"
 
 
 def test_tender_response_summary_contains_required_batch_fields() -> None:
@@ -68,6 +78,13 @@ def test_workflow_response_supports_stable_and_extensible_json_contract() -> Non
                     alignment_record_id="qa_123",
                     alignment_score=0.92,
                 ),
+                reference=QuestionReference(
+                    alignment_record_id="qa_123",
+                    alignment_score=0.92,
+                    source_doc="historical_repository_qa.csv",
+                    matched_question="Do you support TLS 1.2 or above?",
+                    matched_answer="Yes.",
+                ),
                 error_message=None,
                 extensions={"future_field": "supported"},
             )
@@ -83,4 +100,6 @@ def test_workflow_response_supports_stable_and_extensible_json_contract() -> Non
 
     assert response.total_questions_processed == 1
     assert response.questions[0].extensions == {"future_field": "supported"}
+    assert response.questions[0].reference is not None
+    assert response.questions[0].reference.matched_answer == "Yes."
     assert response.summary.overall_completion_status == "completed"

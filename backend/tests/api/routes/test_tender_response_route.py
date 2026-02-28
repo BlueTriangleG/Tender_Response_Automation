@@ -6,6 +6,7 @@ from app.features.tender_response.api.dependencies import get_process_tender_csv
 from app.features.tender_response.schemas.responses import (
     QuestionFlags,
     QuestionMetadata,
+    QuestionReference,
     TenderQuestionResponse,
     TenderResponseSummary,
     TenderResponseWorkflowResponse,
@@ -36,6 +37,13 @@ def test_tender_response_route_accepts_csv_upload_and_returns_json() -> None:
                         source_row_index=0,
                         alignment_record_id="qa-1",
                         alignment_score=0.92,
+                    ),
+                    reference=QuestionReference(
+                        alignment_record_id="qa-1",
+                        alignment_score=0.92,
+                        source_doc="historical_repository_qa.csv",
+                        matched_question="Do you support TLS 1.2 or above?",
+                        matched_answer="Yes.",
                     ),
                     error_message=None,
                     extensions={},
@@ -71,6 +79,7 @@ def test_tender_response_route_accepts_csv_upload_and_returns_json() -> None:
     payload = response.json()
     assert payload["total_questions_processed"] == 1
     assert payload["questions"][0]["generated_answer"] == "Yes."
+    assert payload["questions"][0]["reference"]["source_doc"] == "historical_repository_qa.csv"
     assert payload["summary"]["overall_completion_status"] == "completed"
 
 
