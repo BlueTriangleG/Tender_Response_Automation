@@ -1,10 +1,19 @@
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_LANCEDB_URI = REPO_ROOT / "data" / "lancedb"
 
 
 class Settings(BaseSettings):
     app_name: str = "Pans Software Backend"
     api_prefix: str = "/api"
+    lancedb_uri: str = str(DEFAULT_LANCEDB_URI)
+    lancedb_qa_table_name: str = "qa_records"
+    lancedb_document_table_name: str = "document_records"
     cors_allowed_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:5173",

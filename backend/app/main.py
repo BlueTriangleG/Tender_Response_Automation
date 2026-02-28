@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -7,8 +9,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import api_router
 from app.core.config import settings
+from app.services.lancedb_bootstrap_service import bootstrap_lancedb
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.lancedb = bootstrap_lancedb()
+    app.state.lancedb_ready = True
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 # The frontend runs on a separate Vite dev server during local development.
 # Without explicit CORS headers the browser can show a 200 response in the
