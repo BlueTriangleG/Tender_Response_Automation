@@ -1,25 +1,72 @@
+from unittest.mock import AsyncMock, patch
+
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas.history_ingest import (
+    DetectedCsvColumns,
+    HistoryIngestRequestOptions,
+    HistoryIngestResponse,
+    ParsedFilePayload,
+    ProcessedHistoryFileResult,
+)
 
 
 def test_history_ingest_route_accepts_single_upload_tender_file() -> None:
     client = TestClient(app)
 
-    response = client.post(
-        "/api/ingest/history",
-        files={
-            "file": (
-                "tender.csv",
-                b"question,domain\nSubmission readiness,Transport\n",
-                "text/csv",
+    mocked_response = HistoryIngestResponse(
+        total_file_count=1,
+        processed_file_count=1,
+        failed_file_count=0,
+        request_options=HistoryIngestRequestOptions(
+            output_format="excel",
+            similarity_threshold=0.81,
+        ),
+        files=[
+            ProcessedHistoryFileResult(
+                status="processed",
+                payload=ParsedFilePayload(
+                    file_name="tender.csv",
+                    extension=".csv",
+                    content_type="text/csv",
+                    size_bytes=64,
+                    parsed_kind="csv",
+                    raw_text="question,answer,domain\nQ,A,Security\n",
+                    structured_data=[{"question": "Q", "answer": "A", "domain": "Security"}],
+                    row_count=1,
+                    warnings=[],
+                ),
+                detected_columns=DetectedCsvColumns(
+                    question_col="question",
+                    answer_col="answer",
+                    domain_col="domain",
+                ),
+                ingested_row_count=1,
+                failed_row_count=0,
+                storage_target="qa_records",
             )
-        },
-        data={
-            "outputFormat": "excel",
-            "similarityThreshold": "0.81",
-        },
+        ],
     )
+
+    with patch(
+        "app.api.routes.history_ingest.HistoryIngestService.process_files",
+        new=AsyncMock(return_value=mocked_response),
+    ):
+        response = client.post(
+            "/api/ingest/history",
+            files={
+                "file": (
+                    "tender.csv",
+                    b"question,answer,domain\nQ,A,Security\n",
+                    "text/csv",
+                )
+            },
+            data={
+                "outputFormat": "excel",
+                "similarityThreshold": "0.81",
+            },
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -31,34 +78,89 @@ def test_history_ingest_route_accepts_single_upload_tender_file() -> None:
         "similarity_threshold": 0.81,
     }
     assert payload["files"][0]["payload"]["file_name"] == "tender.csv"
+    assert payload["files"][0]["detected_columns"] == {
+        "question_col": "question",
+        "answer_col": "answer",
+        "domain_col": "domain",
+    }
+    assert payload["files"][0]["ingested_row_count"] == 1
+    assert payload["files"][0]["storage_target"] == "qa_records"
 
 
 def test_history_ingest_route_accepts_batch_files_under_files_field() -> None:
     client = TestClient(app)
 
-    response = client.post(
-        "/api/ingest/history",
+    mocked_response = HistoryIngestResponse(
+        total_file_count=2,
+        processed_file_count=1,
+        failed_file_count=1,
         files=[
-            (
-                "files",
-                ("history.json", b'{"hello":"world"}', "application/json"),
+            ProcessedHistoryFileResult(
+                status="processed",
+                payload=ParsedFilePayload(
+                    file_name="history.csv",
+                    extension=".csv",
+                    content_type="text/csv",
+                    size_bytes=64,
+                    parsed_kind="csv",
+                    raw_text="question,answer,domain\nQ,A,Security\n",
+                    structured_data=[{"question": "Q", "answer": "A", "domain": "Security"}],
+                    row_count=1,
+                    warnings=[],
+                ),
+                detected_columns=DetectedCsvColumns(
+                    question_col="question",
+                    answer_col="answer",
+                    domain_col="domain",
+                ),
+                ingested_row_count=1,
+                failed_row_count=0,
+                storage_target="qa_records",
             ),
-            (
-                "files",
-                ("notes.md", b"# Notes", "text/markdown"),
+            ProcessedHistoryFileResult(
+                status="failed",
+                payload=ParsedFilePayload(
+                    file_name="notes.md",
+                    extension=".md",
+                    content_type="text/markdown",
+                    size_bytes=8,
+                    parsed_kind="markdown",
+                    raw_text="# Notes",
+                    structured_data=None,
+                    row_count=None,
+                    warnings=[],
+                ),
+                error_code="unsupported_ingest_type",
+                error_message="Only CSV files are persisted in this phase.",
             ),
         ],
     )
 
+    with patch(
+        "app.api.routes.history_ingest.HistoryIngestService.process_files",
+        new=AsyncMock(return_value=mocked_response),
+    ):
+        response = client.post(
+            "/api/ingest/history",
+            files=[
+                (
+                    "files",
+                    ("history.csv", b"question,answer,domain\nQ,A,Security\n", "text/csv"),
+                ),
+                (
+                    "files",
+                    ("notes.md", b"# Notes", "text/markdown"),
+                ),
+            ],
+        )
+
     assert response.status_code == 200
     payload = response.json()
     assert payload["total_file_count"] == 2
-    assert payload["processed_file_count"] == 2
-    assert payload["failed_file_count"] == 0
-    assert [item["status"] for item in payload["files"]] == [
-        "processed",
-        "processed",
-    ]
+    assert payload["processed_file_count"] == 1
+    assert payload["failed_file_count"] == 1
+    assert [item["status"] for item in payload["files"]] == ["processed", "failed"]
+    assert payload["files"][1]["error_code"] == "unsupported_ingest_type"
 
 
 def test_history_ingest_route_returns_422_without_any_files() -> None:

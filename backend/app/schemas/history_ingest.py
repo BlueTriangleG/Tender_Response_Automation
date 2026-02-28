@@ -16,11 +16,21 @@ class ParsedFilePayload(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class DetectedCsvColumns(BaseModel):
+    question_col: str
+    answer_col: str
+    domain_col: str
+
+
 class ProcessedHistoryFileResult(BaseModel):
     status: Literal["processed", "failed"]
     payload: ParsedFilePayload | None = None
     error_code: str | None = None
     error_message: str | None = None
+    detected_columns: DetectedCsvColumns | None = None
+    ingested_row_count: int = 0
+    failed_row_count: int = 0
+    storage_target: str | None = None
 
 
 class HistoryIngestRequestOptions(BaseModel):

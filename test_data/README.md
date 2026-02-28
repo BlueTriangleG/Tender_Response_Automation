@@ -12,6 +12,7 @@ It gives you a realistic local demo pack with:
 - `historical_repository/`
   - Mixed Markdown, TXT, and JSON prior tender responses
   - Includes overlapping answers, tone variations, and one deliberate commercial conflict
+  - Also includes `historical_repository_qa.csv`, a flat question-answer-domain repository for simple ingestion flows
 - `input/tender_questionnaire_sample.csv`
   - Human-readable source version of the sample questionnaire
 - `input/tender_questionnaire_sample.xlsx`

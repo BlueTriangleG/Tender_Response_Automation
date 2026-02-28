@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     lancedb_uri: str = str(DEFAULT_LANCEDB_URI)
     lancedb_qa_table_name: str = "qa_records"
     lancedb_document_table_name: str = "document_records"
+    openai_csv_column_model: str = "gpt-4o-mini"
+    openai_embedding_model: str = "text-embedding-3-small"
     cors_allowed_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:5173",

@@ -1,0 +1,83 @@
+from pathlib import Path
+
+from app.db.lancedb_client import ensure_lancedb_ready
+from app.repositories.qa_repository import QaRepository
+
+
+def test_upsert_records_inserts_rows_into_qa_table(tmp_path: Path) -> None:
+    connection = ensure_lancedb_ready(uri=tmp_path / "lancedb")
+    repository = QaRepository(connection=connection)
+
+    repository.upsert_records(
+        [
+            {
+                "id": "row-1",
+                "domain": "Security",
+                "question": "What is TLS?",
+                "answer": "TLS 1.2+",
+                "text": "Question: What is TLS?\nAnswer: TLS 1.2+\nDomain: Security",
+                "vector": [0.1] * 1536,
+                "client": None,
+                "source_doc": "history.csv",
+                "tags": [],
+                "risk_topics": [],
+                "created_at": "2026-02-28T00:00:00+00:00",
+                "updated_at": "2026-02-28T00:00:00+00:00",
+            }
+        ]
+    )
+
+    table = connection.open_table("qa_records")
+    rows = table.to_arrow().to_pylist()
+
+    assert len(rows) == 1
+    assert rows[0]["id"] == "row-1"
+    assert rows[0]["answer"] == "TLS 1.2+"
+
+
+def test_upsert_records_updates_existing_ids_without_duplication(tmp_path: Path) -> None:
+    connection = ensure_lancedb_ready(uri=tmp_path / "lancedb")
+    repository = QaRepository(connection=connection)
+
+    repository.upsert_records(
+        [
+            {
+                "id": "row-1",
+                "domain": "Security",
+                "question": "What is TLS?",
+                "answer": "TLS 1.2+",
+                "text": "Question: What is TLS?\nAnswer: TLS 1.2+\nDomain: Security",
+                "vector": [0.1] * 1536,
+                "client": None,
+                "source_doc": "history.csv",
+                "tags": [],
+                "risk_topics": [],
+                "created_at": "2026-02-28T00:00:00+00:00",
+                "updated_at": "2026-02-28T00:00:00+00:00",
+            }
+        ]
+    )
+    repository.upsert_records(
+        [
+            {
+                "id": "row-1",
+                "domain": "Security",
+                "question": "What is TLS?",
+                "answer": "TLS 1.3 available where supported",
+                "text": "Question: What is TLS?\nAnswer: TLS 1.3 available where supported\nDomain: Security",
+                "vector": [0.2] * 1536,
+                "client": None,
+                "source_doc": "history.csv",
+                "tags": [],
+                "risk_topics": [],
+                "created_at": "2026-02-28T00:00:00+00:00",
+                "updated_at": "2026-02-28T01:00:00+00:00",
+            }
+        ]
+    )
+
+    table = connection.open_table("qa_records")
+    rows = table.to_arrow().to_pylist()
+
+    assert len(rows) == 1
+    assert rows[0]["answer"] == "TLS 1.3 available where supported"
