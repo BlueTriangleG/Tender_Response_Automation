@@ -41,6 +41,7 @@ def create(model: BaseChatModel | None = None) -> CompiledStateGraph:
     """
     _tools = [add_numbers_tool]
     _model = (model or ChatOpenAI(model="gpt-4o-mini")).bind_tools(_tools)
+    # Pre-index tools by name so tool dispatch in the loop stays O(1) per call.
     _tools_by_name = {t.name: t for t in _tools}
     # Each Agent gets its own MemorySaver. Session isolation is correct because
     # AgentManager reuses Agent instances per session_id. Upgrade to PostgresSaver
@@ -49,6 +50,8 @@ def create(model: BaseChatModel | None = None) -> CompiledStateGraph:
 
     async def agent_node(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
         """Call the LLM with the full message history and all bound tools."""
+        # The node appends exactly one AI message. LangGraph reducers merge it into
+        # the running conversation state for the next routing decision.
         response = await _model.ainvoke(state["messages"], config)
         return {"messages": [response]}
 
@@ -63,11 +66,14 @@ def create(model: BaseChatModel | None = None) -> CompiledStateGraph:
         results: list[ToolMessage] = []
 
         for tc in last_msg.tool_calls:
+            # Resolve the tool dynamically from the model-emitted tool call name.
             tool = _tools_by_name.get(tc["name"])
             if tool is None:
                 content = f"Error: unknown tool '{tc['name']}'"
             else:
                 try:
+                    # Tool results are wrapped back into ToolMessage so the next
+                    # agent step can consume them as part of the conversation.
                     content = str(await tool.ainvoke(tc["args"]))
                 except Exception as exc:
                     content = f"Error: {exc}"
@@ -77,6 +83,8 @@ def create(model: BaseChatModel | None = None) -> CompiledStateGraph:
         return {"messages": results}
 
     graph = StateGraph(AgentState)
+    # The graph is a simple ReAct loop: think, maybe call tools, then think again
+    # until the model stops emitting tool calls.
     graph.add_node("agent", agent_node)
     graph.add_node("tools", tool_node)
     graph.set_entry_point("agent")

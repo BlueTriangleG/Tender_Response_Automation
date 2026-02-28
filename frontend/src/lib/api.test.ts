@@ -91,8 +91,10 @@ describe("processTenderWorkbook", () => {
             generated_answer: "Yes.",
             domain_tag: "security",
             confidence_level: "high",
+            confidence_reason: "The answer is directly supported by prior submissions.",
             historical_alignment_indicator: true,
             status: "completed",
+            grounding_status: "grounded",
             flags: {
               high_risk: false,
               inconsistent_response: false,
@@ -102,13 +104,20 @@ describe("processTenderWorkbook", () => {
               alignment_record_id: "qa-001",
               alignment_score: 0.93,
             },
-            reference: {
-              alignment_record_id: "qa-001",
-              alignment_score: 0.93,
-              source_doc: "security-history.csv",
-              matched_question: "Do you support TLS 1.2+?",
-              matched_answer: "Yes.",
+            risk: {
+              level: "low",
+              reason: "This is a standard capability with low delivery risk.",
             },
+            references: [
+              {
+                alignment_record_id: "qa-001",
+                alignment_score: 0.93,
+                source_doc: "security-history.csv",
+                matched_question: "Do you support TLS 1.2+?",
+                matched_answer: "Yes.",
+                used_for_answer: true,
+              },
+            ],
             error_message: null,
             extensions: {},
           },
@@ -118,6 +127,7 @@ describe("processTenderWorkbook", () => {
           flagged_high_risk_or_inconsistent_responses: 0,
           overall_completion_status: "completed",
           completed_questions: 1,
+          unanswered_questions: 0,
           failed_questions: 0,
         },
       }),
@@ -132,7 +142,18 @@ describe("processTenderWorkbook", () => {
     });
 
     expect(response.sessionId).toBe("session-42");
-    expect(response.questions[0].reference?.sourceDoc).toBe("security-history.csv");
+    expect(response.questions[0].groundingStatus).toBe("grounded");
+    expect(response.questions[0].confidenceReason).toBe(
+      "The answer is directly supported by prior submissions.",
+    );
+    expect(response.questions[0].alignmentScore).toBe(0.93);
+    expect(response.questions[0].risk).toEqual({
+      level: "low",
+      reason: "This is a standard capability with low delivery risk.",
+    });
+    expect(response.questions[0].references[0].sourceDoc).toBe("security-history.csv");
+    expect(response.questions[0].references[0].usedForAnswer).toBe(true);
+    expect(response.summary.unansweredQuestions).toBe(0);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];

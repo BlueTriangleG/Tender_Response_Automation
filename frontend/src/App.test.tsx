@@ -82,24 +82,34 @@ const successfulTenderResponse = {
         "Yes. The platform enforces TLS 1.2+ for all client-facing traffic.",
       domain_tag: "security",
       confidence_level: "high",
+      confidence_reason:
+        "The answer is directly supported by multiple prior security submissions.",
       historical_alignment_indicator: true,
       status: "completed",
+      grounding_status: "grounded",
       flags: {
         high_risk: false,
         inconsistent_response: false,
+      },
+      risk: {
+        level: "low",
+        reason: "This is a standard platform capability with no unusual commitments.",
       },
       metadata: {
         source_row_index: 0,
         alignment_record_id: "qa-001",
         alignment_score: 0.94,
       },
-      reference: {
-        alignment_record_id: "qa-001",
-        alignment_score: 0.94,
-        source_doc: "security-history.csv",
-        matched_question: "Do you support TLS 1.2+?",
-        matched_answer: "Yes. TLS 1.2+ is enforced for all external traffic.",
-      },
+      references: [
+        {
+          alignment_record_id: "qa-001",
+          alignment_score: 0.94,
+          source_doc: "security-history.csv",
+          matched_question: "Do you support TLS 1.2+?",
+          matched_answer: "Yes. TLS 1.2+ is enforced for all external traffic.",
+          used_for_answer: true,
+        },
+      ],
       error_message: null,
       extensions: {},
     },
@@ -109,24 +119,42 @@ const successfulTenderResponse = {
       generated_answer: "",
       domain_tag: "compliance",
       confidence_level: "medium",
+      confidence_reason:
+        "There is some related historical material, but the wording is broader than the closest matches.",
       historical_alignment_indicator: false,
       status: "failed",
+      grounding_status: "partially_grounded",
       flags: {
         high_risk: true,
         inconsistent_response: true,
+      },
+      risk: {
+        level: "high",
+        reason: "The answer could overstate contractual hosting guarantees without human review.",
       },
       metadata: {
         source_row_index: 1,
         alignment_record_id: "qa-002",
         alignment_score: 0.41,
       },
-      reference: {
-        alignment_record_id: "qa-002",
-        alignment_score: 0.41,
-        source_doc: "compliance-history.csv",
-        matched_question: "Describe data residency controls.",
-        matched_answer: "Regional hosting is available with contract-specific controls.",
-      },
+      references: [
+        {
+          alignment_record_id: "qa-002",
+          alignment_score: 0.41,
+          source_doc: "compliance-history.csv",
+          matched_question: "Describe data residency controls.",
+          matched_answer: "Regional hosting is available with contract-specific controls.",
+          used_for_answer: false,
+        },
+        {
+          alignment_record_id: "qa-003",
+          alignment_score: 0.38,
+          source_doc: "regional-controls.csv",
+          matched_question: "What hosting residency options do you provide?",
+          matched_answer: "Regional controls are available by deployment profile.",
+          used_for_answer: true,
+        },
+      ],
       error_message: "No aligned historical answer was found for this wording.",
       extensions: {
         retrieval_strategy: "semantic",
@@ -138,6 +166,7 @@ const successfulTenderResponse = {
     flagged_high_risk_or_inconsistent_responses: 1,
     overall_completion_status: "completed_with_warnings",
     completed_questions: 1,
+    unanswered_questions: 1,
     failed_questions: 1,
   },
 };
@@ -290,6 +319,7 @@ describe("App", () => {
       screen.getByText(/The platform enforces TLS 1\.2\+/i),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/Completed With Warnings/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Questions without a generated answer yet\./i)).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /Question/i })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /Generated answer/i })).toBeInTheDocument();
     expect(
@@ -302,23 +332,47 @@ describe("App", () => {
       }),
     );
 
-    expect(screen.getByRole("dialog", { name: /Autofill details/i })).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: /Autofill details/i });
+
+    expect(dialog).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
     expect(screen.getByText(/No aligned historical answer was found/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/alignment score/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/high risk/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Reference match/i)).toBeInTheDocument();
+    expect(screen.getByText(/Confidence/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /There is some related historical material, but the wording is broader/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Risk review/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/could overstate contractual hosting guarantees/i),
+    ).toBeInTheDocument();
+    expect(within(dialog).getAllByText(/^High$/i)[0].className).toContain(
+      "status-badge--danger",
+    );
+    expect(screen.getByText(/Reference matches/i)).toBeInTheDocument();
+    expect(screen.getByText(/Partially Grounded/i)).toBeInTheDocument();
+    expect(screen.getByText(/Alignment score:/i)).toBeInTheDocument();
+    expect(screen.getByText("0.41")).toBeInTheDocument();
     expect(screen.getByText(/compliance-history\.csv/i)).toBeInTheDocument();
+    expect(screen.getByText(/regional-controls\.csv/i)).toBeInTheDocument();
     expect(screen.getByText(/Describe data residency controls\./i)).toBeInTheDocument();
     expect(
       screen.getByText(/Regional hosting is available with contract-specific controls\./i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Regional controls are available by deployment profile\./i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Used For Answer/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/alignment record/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/source row/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Close details/i }));
 
     expect(
       screen.queryByRole("dialog", { name: /Autofill details/i }),
     ).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
     expect(screen.queryByText(/Backend health: ok/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Unanswered questions: 1/i)).toBeInTheDocument();
   });
 
   test("hides backend health while the service is healthy", async () => {

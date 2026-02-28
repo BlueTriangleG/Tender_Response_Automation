@@ -1,3 +1,5 @@
+"""Response models emitted by the history-ingest feature."""
+
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -7,6 +9,8 @@ from app.features.history_ingest.schemas.requests import HistoryIngestRequestOpt
 
 
 class ParsedFilePayload(BaseModel):
+    """Structured representation of one uploaded file after parsing."""
+
     file_name: str
     extension: str
     content_type: str | None = None
@@ -19,12 +23,16 @@ class ParsedFilePayload(BaseModel):
 
 
 class DetectedCsvColumns(BaseModel):
+    """Resolved CSV header names required for QA normalization."""
+
     question_col: str
     answer_col: str
     domain_col: str
 
 
 class ProcessedHistoryFileResult(BaseModel):
+    """Outcome for one uploaded file within a batch ingest request."""
+
     status: Literal["processed", "failed"]
     payload: ParsedFilePayload | None = None
     error_code: str | None = None
@@ -36,6 +44,8 @@ class ProcessedHistoryFileResult(BaseModel):
 
 
 class HistoryIngestResponse(BaseModel):
+    """Aggregate response for a batch of uploaded history files."""
+
     request_id: str = Field(default_factory=lambda: str(uuid4()))
     total_file_count: int
     processed_file_count: int

@@ -1,3 +1,5 @@
+"""HTTP routes for the LangGraph-powered chat agent."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -16,4 +18,6 @@ async def chat(
     req: ChatRequest,
     use_case: Annotated[AgentChatUseCase, Depends(get_agent_chat_use_case)] = None,
 ) -> ChatResponse:
+    """Forward a chat request to the configured agent workflow."""
+
     return await use_case.chat(req)

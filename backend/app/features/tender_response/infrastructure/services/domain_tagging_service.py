@@ -1,3 +1,5 @@
+"""Simple heuristic domain tagging for tender questions and answers."""
+
 from app.features.tender_response.domain.models import (
     HistoricalAlignmentResult,
     TenderQuestion,
@@ -14,6 +16,8 @@ DOMAIN_KEYWORDS = {
 
 
 class DomainTaggingService:
+    """Prefer explicit domain data, then fall back to keyword-based inference."""
+
     def tag(
         self,
         *,
@@ -21,6 +25,8 @@ class DomainTaggingService:
         generated_answer: str,
         alignment: HistoricalAlignmentResult,
     ) -> str:
+        """Return a normalized domain tag for the response payload."""
+
         if question.declared_domain:
             return question.declared_domain.strip().lower()
         if alignment.domain:

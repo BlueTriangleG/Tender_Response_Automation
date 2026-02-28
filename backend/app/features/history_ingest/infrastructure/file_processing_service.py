@@ -1,3 +1,5 @@
+"""File parsing orchestration for the history-ingest feature."""
+
 from pathlib import Path
 
 from starlette.datastructures import UploadFile
@@ -11,6 +13,8 @@ from app.features.history_ingest.schemas.responses import ProcessedHistoryFileRe
 
 
 class FileProcessingService:
+    """Select the parser for an uploaded file and normalize failure handling."""
+
     def __init__(self, processors: list[FileProcessor] | None = None) -> None:
         resolved_processors = processors or [
             JsonParser(),
@@ -20,6 +24,8 @@ class FileProcessingService:
         self._processors = {processor.extension: processor for processor in resolved_processors}
 
     async def process_upload(self, upload_file: UploadFile) -> ProcessedHistoryFileResult:
+        """Parse an uploaded file into a structured payload or a typed failure result."""
+
         filename = upload_file.filename or "unknown"
         extension = Path(filename).suffix.lower()
         processor = self._processors.get(extension)

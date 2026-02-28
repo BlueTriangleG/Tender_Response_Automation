@@ -22,8 +22,8 @@ class FakeAsyncOpenAI:
         self.chat = self
         self.completions = self
 
-    async def create(self, *, model: str, messages: list[dict[str, str]]) -> FakeChatResponse:
-        self.calls.append({"model": model, "messages": messages})
+    async def create(self, **kwargs) -> FakeChatResponse:
+        self.calls.append(kwargs)
         return FakeChatResponse('{"ok":true}')
 
 
@@ -44,6 +44,7 @@ async def test_chat_completions_client_calls_openai_sdk() -> None:
                 {"role": "system", "content": "Return JSON only"},
                 {"role": "user", "content": "Detect columns"},
             ],
+            "response_format": {"type": "json_object"},
         }
     ]
 

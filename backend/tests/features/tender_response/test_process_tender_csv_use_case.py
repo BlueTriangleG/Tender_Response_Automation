@@ -9,6 +9,8 @@ from app.features.tender_response.schemas.requests import TenderResponseRequestO
 from app.features.tender_response.schemas.responses import (
     QuestionFlags,
     QuestionMetadata,
+    QuestionReference,
+    QuestionRisk,
     TenderQuestionResponse,
     TenderResponseSummary,
 )
@@ -42,14 +44,30 @@ class FakeWorkflow:
                     generated_answer="Yes.",
                     domain_tag="security",
                     confidence_level="high",
+                    confidence_reason="Direct historical evidence supports the answer.",
                     historical_alignment_indicator=True,
                     status="completed",
+                    grounding_status="grounded",
                     flags=QuestionFlags(high_risk=False, inconsistent_response=False),
+                    risk=QuestionRisk(
+                        level="medium",
+                        reason="Security posture responses should still be reviewed.",
+                    ),
                     metadata=QuestionMetadata(
                         source_row_index=0,
                         alignment_record_id="qa-1",
                         alignment_score=0.92,
                     ),
+                    references=[
+                        QuestionReference(
+                            alignment_record_id="qa-1",
+                            alignment_score=0.92,
+                            source_doc="history.csv",
+                            matched_question="Historical TLS question",
+                            matched_answer="Yes.",
+                            used_for_answer=True,
+                        )
+                    ],
                     error_message=None,
                     extensions={},
                 )
@@ -59,6 +77,7 @@ class FakeWorkflow:
                 flagged_high_risk_or_inconsistent_responses=0,
                 overall_completion_status="completed",
                 completed_questions=1,
+                unanswered_questions=0,
                 failed_questions=0,
             ),
         }
@@ -81,7 +100,8 @@ async def test_process_upload_parses_csv_and_invokes_workflow() -> None:
     assert result.total_questions_processed == 1
     assert result.questions[0].generated_answer == "Yes."
     assert workflow.calls[0]["questions"][0].question_id == "q-001"
-    assert workflow.configs[0] == {"configurable": {"thread_id": "session-123"}}
+    assert workflow.calls[0]["request_id"] == result.request_id
+    assert workflow.configs[0] == {"configurable": {"thread_id": result.request_id}}
 
 
 async def test_process_upload_rejects_non_csv_files() -> None:

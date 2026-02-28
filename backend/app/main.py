@@ -1,3 +1,5 @@
+"""FastAPI application entrypoint for the backend service."""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,6 +12,8 @@ from app.shared.db.lancedb_bootstrap import bootstrap_lancedb
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Initialize shared resources once for the lifetime of the app process."""
+
     app.state.lancedb = bootstrap_lancedb()
     app.state.lancedb_ready = True
     yield

@@ -1,3 +1,5 @@
+"""Domain rules for converting raw CSV rows into canonical QA records."""
+
 import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -7,6 +9,8 @@ from app.features.history_ingest.schemas.responses import DetectedCsvColumns
 
 @dataclass(slots=True)
 class NormalizedQaRecord:
+    """Canonical QA record ready for embedding and LanceDB persistence."""
+
     id: str
     domain: str
     question: str
@@ -22,17 +26,23 @@ class NormalizedQaRecord:
 
 @dataclass(slots=True)
 class CsvQaNormalizationResult:
+    """Normalization output plus the number of rows rejected as invalid."""
+
     records: list[NormalizedQaRecord]
     failed_row_count: int
 
 
 class CsvQaNormalizationService:
+    """Transform parsed CSV rows into stable, deduplicated QA payloads."""
+
     def normalize_rows(
         self,
         file_name: str,
         detected_columns: DetectedCsvColumns,
         rows: list[dict[str, str]],
     ) -> CsvQaNormalizationResult:
+        """Drop incomplete rows and build deterministic record identifiers."""
+
         timestamp = datetime.now(UTC).isoformat()
         records: list[NormalizedQaRecord] = []
         failed_row_count = 0

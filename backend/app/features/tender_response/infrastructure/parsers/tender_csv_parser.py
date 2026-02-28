@@ -1,3 +1,5 @@
+"""CSV parser for tender-response question imports."""
+
 import csv
 from io import StringIO
 
@@ -11,7 +13,11 @@ from app.features.tender_response.domain.question_extraction import (
 
 
 class TenderCsvParser:
+    """Extract question rows and normalize them into TenderQuestion objects."""
+
     def parse_text(self, raw_text: str, *, source_file_name: str) -> TenderCsvParseResult:
+        """Read the tender CSV and keep only rows that contain a usable question."""
+
         reader = csv.DictReader(StringIO(raw_text))
         headers = reader.fieldnames or []
 

@@ -186,10 +186,14 @@ Expected tender response JSON always includes:
 - `questions[].generated_answer`
 - `questions[].domain_tag`
 - `questions[].confidence_level`
+- `questions[].confidence_reason`
 - `questions[].historical_alignment_indicator`
-- `questions[].reference.source_doc`
-- `questions[].reference.matched_question`
-- `questions[].reference.matched_answer`
+- `questions[].risk.level`
+- `questions[].risk.reason`
+- `questions[].grounding_status`
+- `questions[].references[].source_doc`
+- `questions[].references[].matched_question`
+- `questions[].references[].matched_answer`
 - `summary.flagged_high_risk_or_inconsistent_responses`
 - `summary.overall_completion_status`
 
@@ -197,7 +201,8 @@ Current tender reference behavior:
 
 - The backend does not persist uploaded source files as local blobs for tender response viewing.
 - Historical alignment references are returned inline in the JSON response for the current demo scale.
-- Each aligned question can include `source_doc`, `matched_question`, and `matched_answer` directly in `questions[].reference`.
+- Each question can include up to the top 3 qualified historical references in `questions[].references`.
+- If the workflow does not find enough grounded reference support, it returns `generated_answer = null` and marks the question with `grounding_status = "no_reference"` or `grounding_status = "insufficient_reference"`.
 - This is an intentional temporary design for low-volume demo usage.
 - If the system grows, the recommended evolution is object storage for source files plus URL-style references stored in the database.
 

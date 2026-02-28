@@ -1,9 +1,14 @@
-from app.features.tender_response.domain.models import HistoricalAlignmentResult, TenderQuestion
-from app.features.tender_response.infrastructure.services.confidence_service import (
-    ConfidenceService,
+from app.features.tender_response.domain.models import (
+    HistoricalAlignmentResult,
+    HistoricalReference,
+    ResponseReviewResult,
+    TenderQuestion,
 )
 from app.features.tender_response.infrastructure.services.domain_tagging_service import (
     DomainTaggingService,
+)
+from app.features.tender_response.infrastructure.services.reference_assessment_service import (
+    ReferenceAssessmentResult,
 )
 from app.features.tender_response.infrastructure.workflows.tender_response_graph import (
     create_tender_response_graph,
@@ -25,25 +30,41 @@ class FakeAlignmentRepository:
 
 class FakeAnswerGenerationService:
     def __init__(self) -> None:
-        self.with_alignment_calls: list[str] = []
-        self.without_alignment_calls: list[str] = []
+        self.answer_calls: list[str] = []
 
-    async def generate_with_alignment(
+    async def generate_answer(
         self,
         *,
         question: TenderQuestion,
-        alignment: HistoricalAlignmentResult,
+        usable_references,
     ) -> str:
-        self.with_alignment_calls.append(question.question_id)
+        self.answer_calls.append(question.question_id)
         if question.question_id == "q-003":
             raise RuntimeError("generation failed")
         return f"Aligned answer for {question.question_id}"
 
-    async def generate_without_alignment(self, question: TenderQuestion) -> str:
-        self.without_alignment_calls.append(question.question_id)
-        if question.question_id == "q-004":
-            return "Yes, we are FedRAMP authorised."
-        return f"Conservative answer for {question.question_id}"
+
+class FakeReferenceAssessmentService:
+    def __init__(self, results: dict[str, ReferenceAssessmentResult]) -> None:
+        self.results = results
+
+    async def assess(self, *, question: TenderQuestion, references):
+        return self.results[question.question_id]
+
+
+class FakeResponseReviewService:
+    def __init__(self, results: dict[str, ResponseReviewResult]) -> None:
+        self.results = results
+
+    async def review_response(
+        self,
+        *,
+        question: TenderQuestion,
+        generated_answer: str | None,
+        grounding_status: str,
+        references,
+    ):
+        return self.results[question.question_id]
 
 
 async def test_tender_response_graph_processes_any_number_of_questions() -> None:
@@ -59,6 +80,16 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
                     domain="Security",
                     source_doc="history.csv",
                     alignment_score=0.95,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-1",
+                            question="Historical TLS question",
+                            answer="Historical TLS answer",
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.95,
+                        )
+                    ],
                 ),
                 "q-002": HistoricalAlignmentResult(
                     matched=False,
@@ -68,12 +99,46 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
                     domain=None,
                     source_doc=None,
                     alignment_score=0.41,
+                    references=[],
                 ),
             }
         ),
         answer_generation_service=answer_service,
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-001": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="grounded",
+                    usable_reference_ids=["qa-1"],
+                    reason="Historical answer is sufficient.",
+                ),
+                "q-002": ReferenceAssessmentResult(
+                    can_answer=False,
+                    grounding_status="no_reference",
+                    usable_reference_ids=[],
+                    reason="No qualified historical references.",
+                ),
+            }
+        ),
         domain_tagging_service=DomainTaggingService(),
-        confidence_service=ConfidenceService(),
+        response_review_service=FakeResponseReviewService(
+            {
+                "q-001": ResponseReviewResult(
+                    confidence_level="high",
+                    confidence_reason="Direct historical evidence supports the answer.",
+                    risk_level="medium",
+                    risk_reason="Security response should still be reviewed.",
+                    inconsistent_response=False,
+                ),
+                "q-002": ResponseReviewResult(
+                    confidence_level="low",
+                    confidence_reason="No grounded answer was produced.",
+                    risk_level="low",
+                    risk_reason="No grounded answer was produced.",
+                    inconsistent_response=False,
+                ),
+            }
+        ),
     )
 
     result = await workflow.ainvoke(
@@ -109,12 +174,19 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
     )
 
     assert len(result["question_results"]) == 2
-    assert answer_service.with_alignment_calls == ["q-001"]
-    assert answer_service.without_alignment_calls == ["q-002"]
-    assert result["question_results"][0].reference is not None
-    assert result["question_results"][0].reference.source_doc == "history.csv"
-    assert result["question_results"][1].reference is None
+    assert answer_service.answer_calls == ["q-001"]
+    assert result["question_results"][0].references[0].source_doc == "history.csv"
+    assert result["question_results"][0].references[0].used_for_answer is True
+    assert result["question_results"][0].grounding_status == "grounded"
+    assert result["question_results"][0].confidence_level == "high"
+    assert result["question_results"][0].risk.level == "medium"
+    assert result["question_results"][1].generated_answer is None
+    assert result["question_results"][1].status == "unanswered"
+    assert result["question_results"][1].grounding_status == "no_reference"
+    assert result["question_results"][1].references == []
     assert result["summary"].total_questions_processed == 2
+    assert result["summary"].completed_questions == 1
+    assert result["summary"].unanswered_questions == 1
 
 
 async def test_tender_response_graph_keeps_processing_when_one_question_fails() -> None:
@@ -129,6 +201,16 @@ async def test_tender_response_graph_keeps_processing_when_one_question_fails() 
                     domain="Security",
                     source_doc="history.csv",
                     alignment_score=0.95,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-1",
+                            question="Historical TLS question",
+                            answer="Historical TLS answer",
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.95,
+                        )
+                    ],
                 ),
                 "q-003": HistoricalAlignmentResult(
                     matched=True,
@@ -138,12 +220,55 @@ async def test_tender_response_graph_keeps_processing_when_one_question_fails() 
                     domain="Architecture",
                     source_doc="history.csv",
                     alignment_score=0.94,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-2",
+                            question="Historical SSO question",
+                            answer="Historical SSO answer",
+                            domain="Architecture",
+                            source_doc="history.csv",
+                            alignment_score=0.94,
+                        )
+                    ],
                 ),
             }
         ),
         answer_generation_service=FakeAnswerGenerationService(),
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-001": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="grounded",
+                    usable_reference_ids=["qa-1"],
+                    reason="Historical answer is sufficient.",
+                ),
+                "q-003": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="grounded",
+                    usable_reference_ids=["qa-2"],
+                    reason="Historical answer is sufficient.",
+                ),
+            }
+        ),
         domain_tagging_service=DomainTaggingService(),
-        confidence_service=ConfidenceService(),
+        response_review_service=FakeResponseReviewService(
+            {
+                "q-001": ResponseReviewResult(
+                    confidence_level="medium",
+                    confidence_reason="Grounded with relevant history.",
+                    risk_level="medium",
+                    risk_reason="Architecture response should be reviewed.",
+                    inconsistent_response=False,
+                ),
+                "q-003": ResponseReviewResult(
+                    confidence_level="medium",
+                    confidence_reason="Grounded with relevant history.",
+                    risk_level="medium",
+                    risk_reason="Architecture response should be reviewed.",
+                    inconsistent_response=False,
+                ),
+            }
+        ),
     )
 
     result = await workflow.ainvoke(
@@ -196,12 +321,42 @@ async def test_tender_response_graph_marks_flagged_responses_in_summary() -> Non
                     domain=None,
                     source_doc=None,
                     alignment_score=0.35,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-4",
+                            question="Historical FedRAMP question",
+                            answer="We do not hold FedRAMP authorisation.",
+                            domain="Compliance",
+                            source_doc="history.csv",
+                            alignment_score=0.35,
+                        )
+                    ],
                 ),
             }
         ),
         answer_generation_service=FakeAnswerGenerationService(),
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-004": ReferenceAssessmentResult(
+                    can_answer=False,
+                    grounding_status="insufficient_reference",
+                    usable_reference_ids=[],
+                    reason="Candidate references are not sufficient.",
+                ),
+            }
+        ),
         domain_tagging_service=DomainTaggingService(),
-        confidence_service=ConfidenceService(),
+        response_review_service=FakeResponseReviewService(
+            {
+                "q-004": ResponseReviewResult(
+                    confidence_level="low",
+                    confidence_reason="No grounded answer was produced.",
+                    risk_level="high",
+                    risk_reason="Compliance language remains sensitive.",
+                    inconsistent_response=False,
+                ),
+            }
+        ),
     )
 
     result = await workflow.ainvoke(
@@ -229,6 +384,86 @@ async def test_tender_response_graph_marks_flagged_responses_in_summary() -> Non
         config={"configurable": {"thread_id": "session-3"}},
     )
 
-    assert result["question_results"][0].flags.high_risk is True
+    assert result["question_results"][0].generated_answer is None
+    assert result["question_results"][0].grounding_status == "insufficient_reference"
+    assert (
+        result["question_results"][0].references[0].matched_question
+        == "Historical FedRAMP question"
+    )
+    assert result["question_results"][0].references[0].used_for_answer is False
+    assert result["question_results"][0].status == "unanswered"
+    assert result["question_results"][0].risk.level == "high"
     assert result["summary"].flagged_high_risk_or_inconsistent_responses == 1
-    assert result["summary"].overall_completion_status == "completed_with_flags"
+    assert result["summary"].overall_completion_status == "unanswered"
+
+
+async def test_tender_response_graph_marks_batch_unanswered_when_no_answers_are_generated() -> None:
+    workflow = create_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(
+            {
+                "q-010": HistoricalAlignmentResult(
+                    matched=False,
+                    record_id=None,
+                    question=None,
+                    answer=None,
+                    domain=None,
+                    source_doc=None,
+                    alignment_score=0.33,
+                    references=[],
+                )
+            }
+        ),
+        answer_generation_service=FakeAnswerGenerationService(),
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-010": ReferenceAssessmentResult(
+                    can_answer=False,
+                    grounding_status="no_reference",
+                    usable_reference_ids=[],
+                    reason="No usable historical references.",
+                )
+            }
+        ),
+        domain_tagging_service=DomainTaggingService(),
+        response_review_service=FakeResponseReviewService(
+            {
+                "q-010": ResponseReviewResult(
+                    confidence_level="low",
+                    confidence_reason="No references support an answer.",
+                    risk_level="low",
+                    risk_reason="No answer was produced.",
+                    inconsistent_response=False,
+                )
+            }
+        ),
+    )
+
+    result = await workflow.ainvoke(
+        {
+            "session_id": "session-3",
+            "source_file_name": "tender.csv",
+            "alignment_threshold": 0.82,
+            "questions": [
+                TenderQuestion(
+                    question_id="q-010",
+                    original_question="Are you FedRAMP High authorized?",
+                    declared_domain="Compliance",
+                    source_file_name="tender.csv",
+                    source_row_index=0,
+                )
+            ],
+            "question_results": [],
+            "run_errors": [],
+            "summary": None,
+            "current_question": None,
+            "current_alignment": None,
+            "current_answer": None,
+            "current_result": None,
+        },
+        config={"configurable": {"thread_id": "session-3"}},
+    )
+
+    assert result["question_results"][0].status == "unanswered"
+    assert result["summary"].overall_completion_status == "unanswered"
+    assert result["summary"].completed_questions == 0
+    assert result["summary"].unanswered_questions == 1

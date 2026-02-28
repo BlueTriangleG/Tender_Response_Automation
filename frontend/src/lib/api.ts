@@ -1,17 +1,12 @@
-import { mockHistoryStatus } from "./mockData";
 import type {
   BackendHealth,
   HistoryIngestResponse,
-  HistoryStatus,
   HistoryIngestOptions,
   TenderAutofillOptions,
   TenderAutofillResponse,
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-
-const wait = (duration: number) =>
-  new Promise((resolve) => window.setTimeout(resolve, duration));
 
 function normalizeHistoryIngestResponse(
   payload: Record<string, unknown>,
@@ -125,14 +120,13 @@ function normalizeTenderAutofillResponse(
             question.metadata && typeof question.metadata === "object"
               ? (question.metadata as Record<string, unknown>)
               : {};
-          const reference =
-            question.reference && typeof question.reference === "object"
-              ? (question.reference as Record<string, unknown>)
+          const references = Array.isArray(question.references)
+            ? question.references
+            : [];
+          const risk =
+            question.risk && typeof question.risk === "object"
+              ? (question.risk as Record<string, unknown>)
               : null;
-          const extensions =
-            question.extensions && typeof question.extensions === "object"
-              ? (question.extensions as Record<string, unknown>)
-              : {};
 
           return {
             questionId: String(question.question_id ?? ""),
@@ -145,31 +139,43 @@ function normalizeTenderAutofillResponse(
               question.confidence_level === "high"
                 ? question.confidence_level
                 : "low",
+            confidenceReason: String(question.confidence_reason ?? ""),
             historicalAlignmentIndicator: Boolean(
               question.historical_alignment_indicator,
             ),
+            alignmentScore:
+              metadata.alignment_score == null
+                ? null
+                : Number(metadata.alignment_score),
             status: String(question.status ?? ""),
+            groundingStatus: String(question.grounding_status ?? ""),
             flags: {
               highRisk: Boolean(flags.high_risk),
               inconsistentResponse: Boolean(flags.inconsistent_response),
             },
-            metadata: {
-              sourceRowIndex: Number(metadata.source_row_index ?? 0),
-              alignmentRecordId: String(metadata.alignment_record_id ?? ""),
-              alignmentScore: Number(metadata.alignment_score ?? 0),
-            },
-            reference: reference
+            risk: risk
               ? {
-                  alignmentRecordId: String(reference.alignment_record_id ?? ""),
-                  alignmentScore: Number(reference.alignment_score ?? 0),
-                  sourceDoc: String(reference.source_doc ?? ""),
-                  matchedQuestion: String(reference.matched_question ?? ""),
-                  matchedAnswer: String(reference.matched_answer ?? ""),
+                  level:
+                    risk.level === "high" ||
+                    risk.level === "medium" ||
+                    risk.level === "low"
+                      ? risk.level
+                      : "low",
+                  reason: String(risk.reason ?? ""),
                 }
               : null,
+            references: references.map((reference) => {
+              const value = (reference ?? {}) as Record<string, unknown>;
+
+              return {
+                sourceDoc: String(value.source_doc ?? ""),
+                matchedQuestion: String(value.matched_question ?? ""),
+                matchedAnswer: String(value.matched_answer ?? ""),
+                usedForAnswer: Boolean(value.used_for_answer),
+              };
+            }),
             errorMessage:
               question.error_message == null ? null : String(question.error_message),
-            extensions,
           };
         })
       : [],
@@ -185,6 +191,7 @@ function normalizeTenderAutofillResponse(
             summaryValue.overall_completion_status ?? "pending",
           ),
           completedQuestions: Number(summaryValue.completed_questions ?? 0),
+          unansweredQuestions: Number(summaryValue.unanswered_questions ?? 0),
           failedQuestions: Number(summaryValue.failed_questions ?? 0),
         }
       : {
@@ -192,6 +199,7 @@ function normalizeTenderAutofillResponse(
           flaggedHighRiskOrInconsistentResponses: 0,
           overallCompletionStatus: "pending",
           completedQuestions: 0,
+          unansweredQuestions: 0,
           failedQuestions: 0,
         },
   };
@@ -240,14 +248,6 @@ export async function fetchBackendHealth(): Promise<BackendHealth> {
   return {
     status: payload.status.trim().toLowerCase(),
   };
-}
-
-// The planning doc expects a history card, but the backend endpoint does not
-// exist yet. Returning a stable mock keeps the UI demonstrable without hiding
-// the dependency gap.
-export async function fetchHistoryStatus(): Promise<HistoryStatus> {
-  await wait(120);
-  return mockHistoryStatus;
 }
 
 export async function ingestHistoryFiles(

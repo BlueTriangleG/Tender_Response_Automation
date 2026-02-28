@@ -1,3 +1,5 @@
+"""Deterministic CSV header matching for history-ingest QA files."""
+
 import re
 from dataclasses import dataclass
 
@@ -25,11 +27,15 @@ DOMAIN_SYNONYMS = [
 
 
 def normalize_csv_header(header: str) -> str:
+    """Normalize headers so visually similar labels compare consistently."""
+
     return re.sub(r"[^a-z0-9]+", "", header.strip().lower())
 
 
 @dataclass(slots=True, eq=True)
 class CsvColumnMappingResult:
+    """Result of deterministic header matching before any LLM fallback."""
+
     question_col: str | None
     answer_col: str | None
     domain_col: str | None
@@ -38,10 +44,14 @@ class CsvColumnMappingResult:
 
     @property
     def is_complete(self) -> bool:
+        """Return True when every required target was resolved unambiguously."""
+
         return not self.unresolved_targets and not self.ambiguous_targets
 
 
 def infer_csv_columns_from_headers(headers: list[str]) -> CsvColumnMappingResult:
+    """Map raw CSV headers onto question/answer/domain targets."""
+
     question_col, question_ambiguous = _match_target(headers, QUESTION_SYNONYMS)
     answer_col, answer_ambiguous = _match_target(headers, ANSWER_SYNONYMS)
     domain_col, domain_ambiguous = _match_target(headers, DOMAIN_SYNONYMS)
@@ -73,6 +83,8 @@ def infer_csv_columns_from_headers(headers: list[str]) -> CsvColumnMappingResult
 
 
 def _match_target(headers: list[str], synonyms: list[str]) -> tuple[str | None, bool]:
+    """Return a unique matching header, or flag that multiple matches exist."""
+
     normalized_to_original = [(normalize_csv_header(header), header) for header in headers]
     candidates: list[str] = []
 

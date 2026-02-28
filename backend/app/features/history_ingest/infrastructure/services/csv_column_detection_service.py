@@ -1,3 +1,5 @@
+"""Column detection service that combines rule-based and LLM-assisted mapping."""
+
 import json
 from dataclasses import dataclass
 
@@ -9,6 +11,8 @@ from app.integrations.openai.chat_completions_client import OpenAIChatCompletion
 
 @dataclass(slots=True)
 class CsvColumnDetectionResult:
+    """Resolved column mapping plus metadata about how detection succeeded or failed."""
+
     detected_columns: DetectedCsvColumns | None
     used_llm: bool
     error_code: str | None = None
@@ -16,6 +20,8 @@ class CsvColumnDetectionResult:
 
 
 class CsvColumnDetectionService:
+    """Resolve question/answer/domain columns for uploaded history CSV files."""
+
     def __init__(
         self,
         completion_client: OpenAIChatCompletionsClient | None = None,
@@ -30,6 +36,8 @@ class CsvColumnDetectionService:
         sample_rows: list[dict[str, str]],
         deterministic_result: CsvColumnMappingResult,
     ) -> CsvColumnDetectionResult:
+        """Use deterministic matching first, then fall back to the LLM if needed."""
+
         if deterministic_result.is_complete:
             return CsvColumnDetectionResult(
                 detected_columns=DetectedCsvColumns(
@@ -70,6 +78,8 @@ class CsvColumnDetectionService:
         sample_rows: list[dict[str, str]],
         deterministic_result: CsvColumnMappingResult,
     ) -> str:
+        """Provide the model with enough context to resolve ambiguous CSV headers."""
+
         return (
             "You are identifying CSV columns for QA ingestion.\n"
             "Return strict JSON only with keys question_col, answer_col, domain_col.\n"
@@ -84,6 +94,8 @@ class CsvColumnDetectionService:
         detected_columns: DetectedCsvColumns,
         headers: list[str],
     ) -> None:
+        """Reject model output that references headers absent from the uploaded CSV."""
+
         valid_headers = set(headers)
         for value in [
             detected_columns.question_col,

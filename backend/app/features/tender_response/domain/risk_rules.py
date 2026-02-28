@@ -1,3 +1,5 @@
+"""Heuristic rules for catching obviously unsafe or inconsistent answers."""
+
 HIGH_RISK_CERTIFICATION_TERMS = [
     "fedramp",
     "soc 2",
@@ -29,6 +31,8 @@ def detect_high_risk_response(
     generated_answer: str,
     historical_alignment_answer: str | None,
 ) -> bool:
+    """Flag answers that introduce sensitive certifications absent from evidence."""
+
     lower_question = question.lower()
     lower_answer = generated_answer.lower()
     lower_alignment = (historical_alignment_answer or "").lower()
@@ -45,6 +49,8 @@ def detect_inconsistent_response(
     generated_answer: str,
     historical_alignment_answer: str | None,
 ) -> bool:
+    """Flag answers that contradict a positive historical reference with a negation."""
+
     if not historical_alignment_answer:
         return False
 

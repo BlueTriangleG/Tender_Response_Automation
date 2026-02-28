@@ -66,18 +66,16 @@ export type TenderAutofillQuestionFlags = {
   inconsistentResponse: boolean;
 };
 
-export type TenderAutofillQuestionMetadata = {
-  sourceRowIndex: number;
-  alignmentRecordId: string;
-  alignmentScore: number;
+export type TenderAutofillQuestionRisk = {
+  level: "high" | "medium" | "low";
+  reason: string;
 };
 
 export type TenderAutofillQuestionReference = {
-  alignmentRecordId: string;
-  alignmentScore: number;
   sourceDoc: string;
   matchedQuestion: string;
   matchedAnswer: string;
+  usedForAnswer: boolean;
 };
 
 export type TenderAutofillQuestion = {
@@ -86,13 +84,15 @@ export type TenderAutofillQuestion = {
   generatedAnswer: string;
   domainTag: string;
   confidenceLevel: "high" | "medium" | "low";
+  confidenceReason: string;
   historicalAlignmentIndicator: boolean;
+  alignmentScore: number | null;
   status: string;
+  groundingStatus: string;
   flags: TenderAutofillQuestionFlags;
-  metadata: TenderAutofillQuestionMetadata;
-  reference: TenderAutofillQuestionReference | null;
+  risk: TenderAutofillQuestionRisk | null;
+  references: TenderAutofillQuestionReference[];
   errorMessage: string | null;
-  extensions: Record<string, unknown>;
 };
 
 export type TenderAutofillSummary = {
@@ -100,6 +100,7 @@ export type TenderAutofillSummary = {
   flaggedHighRiskOrInconsistentResponses: number;
   overallCompletionStatus: string;
   completedQuestions: number;
+  unansweredQuestions: number;
   failedQuestions: number;
 };
 

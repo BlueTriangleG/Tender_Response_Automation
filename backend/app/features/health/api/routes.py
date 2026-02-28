@@ -1,3 +1,5 @@
+"""HTTP routes for health checks."""
+
 from fastapi import APIRouter
 
 from app.core.config import settings
@@ -9,4 +11,6 @@ router = APIRouter(prefix=settings.api_prefix)
 
 @router.get("/health", response_model=HealthResponse)
 def read_health() -> HealthResponse:
+    """Expose a simple liveness endpoint for the backend."""
+
     return get_health_status()

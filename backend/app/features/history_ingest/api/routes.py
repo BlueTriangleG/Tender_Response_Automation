@@ -1,3 +1,5 @@
+"""HTTP routes for historical QA ingestion."""
+
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -21,6 +23,8 @@ async def ingest_history(
     similarity_threshold: Annotated[float, Form(alias="similarityThreshold")] = 0.72,
     use_case: Annotated[IngestHistoryUseCase, Depends(get_history_ingest_use_case)] = None,
 ) -> HistoryIngestResponse:
+    """Accept uploaded history files and return per-file ingest results."""
+
     uploads = list(files or [])
 
     if file is not None:

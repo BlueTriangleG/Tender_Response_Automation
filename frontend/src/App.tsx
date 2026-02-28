@@ -65,6 +65,18 @@ function questionStatusTone(question: TenderAutofillQuestion) {
   return "warning" as const;
 }
 
+function riskTone(level: "high" | "medium" | "low") {
+  if (level === "high") {
+    return "danger" as const;
+  }
+
+  if (level === "medium") {
+    return "warning" as const;
+  }
+
+  return "success" as const;
+}
+
 function isCsvFile(file: File) {
   return file.name.toLowerCase().endsWith(".csv");
 }
@@ -81,6 +93,10 @@ function formatStatusLabel(value: string) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function formatGroundingStatus(value: string) {
+  return formatStatusLabel(value || "unknown");
+}
+
 function summarizeAnswer(answer: string) {
   const trimmed = answer.trim();
 
@@ -93,6 +109,28 @@ function summarizeAnswer(answer: string) {
   }
 
   return `${trimmed.slice(0, 177)}...`;
+}
+
+function reviewSignalSummary(question: TenderAutofillQuestion) {
+  const signals: string[] = [];
+
+  if (question.flags.highRisk) {
+    signals.push("High-risk wording");
+  }
+
+  if (question.flags.inconsistentResponse) {
+    signals.push("Potential historical inconsistency");
+  }
+
+  if (!question.historicalAlignmentIndicator) {
+    signals.push("Needs repository review");
+  }
+
+  if (signals.length === 0) {
+    return "No additional review signals on this answer.";
+  }
+
+  return signals.join(". ") + ".";
 }
 
 function App() {
@@ -157,6 +195,7 @@ function App() {
       return {
         total: 0,
         completed: 0,
+        unanswered: 0,
         failed: 0,
         label: processState === "loading" ? "processing" : "idle",
       };
@@ -165,6 +204,7 @@ function App() {
     return {
       total: session.summary.totalQuestionsProcessed,
       completed: session.summary.completedQuestions,
+      unanswered: session.summary.unansweredQuestions,
       failed: session.summary.failedQuestions,
       label: session.summary.overallCompletionStatus,
     };
@@ -394,6 +434,20 @@ function App() {
           null,
     [activeQuestionId, session],
   );
+
+  useEffect(() => {
+    if (!activeQuestion) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [activeQuestion]);
 
   return (
     <div className="app-shell">
@@ -707,6 +761,11 @@ function App() {
                       detail="Questions that need extra human review."
                     />
                     <MetricCard
+                      eyebrow="Unanswered"
+                      value={String(progressSnapshot.unanswered)}
+                      detail="Questions without a generated answer yet."
+                    />
+                    <MetricCard
                       eyebrow="Failed"
                       value={String(progressSnapshot.failed)}
                       detail="Questions that did not produce a usable answer."
@@ -786,7 +845,7 @@ function App() {
                   <article className="panel panel--summary">
                     <div className="panel__header">
                       <div>
-                        <p className="panel__eyebrow">Run metadata</p>
+                        <p className="panel__eyebrow">Run overview</p>
                         <h2>Summary</h2>
                       </div>
                       <StatusBadge
@@ -796,14 +855,26 @@ function App() {
                     </div>
 
                     <div className="summary-list">
+                      <p>Source file: {session.sourceFileName}</p>
+                      <p>
+                        Questions analyzed: {session.summary.totalQuestionsProcessed}
+                      </p>
                       <p>Completed questions: {session.summary.completedQuestions}</p>
                       <p>Failed questions: {session.summary.failedQuestions}</p>
+                      <p>
+                        Flagged for review:{" "}
+                        {
+                          session.summary
+                            .flaggedHighRiskOrInconsistentResponses
+                        }
+                      </p>
+                      <p>
+                        Unanswered questions: {session.summary.unansweredQuestions}
+                      </p>
                       <p>
                         Overall status:{" "}
                         {formatStatusLabel(session.summary.overallCompletionStatus)}
                       </p>
-                      <p>Request id: {session.requestId}</p>
-                      <p>Session id: {session.sessionId}</p>
                     </div>
 
                     <div className="download-actions">
@@ -866,6 +937,18 @@ function App() {
                   tone={confidenceTone(activeQuestion.confidenceLevel)}
                 />
                 <StatusBadge
+                  label={formatGroundingStatus(activeQuestion.groundingStatus)}
+                  tone={
+                    activeQuestion.groundingStatus === "grounded"
+                      ? "success"
+                      : activeQuestion.groundingStatus
+                            .toLowerCase()
+                            .includes("ungrounded")
+                        ? "danger"
+                        : "warning"
+                  }
+                />
+                <StatusBadge
                   label={
                     activeQuestion.historicalAlignmentIndicator
                       ? "Historically Aligned"
@@ -900,93 +983,97 @@ function App() {
                 ) : null}
 
                 <section className="details-card">
-                  <h3>Question flags</h3>
-                  <dl className="details-list">
-                    <div>
-                      <dt>high risk</dt>
-                      <dd>{activeQuestion.flags.highRisk ? "true" : "false"}</dd>
-                    </div>
-                    <div>
-                      <dt>inconsistent response</dt>
-                      <dd>
-                        {activeQuestion.flags.inconsistentResponse ? "true" : "false"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>domain</dt>
-                      <dd>{activeQuestion.domainTag || "unassigned"}</dd>
-                    </div>
-                  </dl>
+                  <h3>Confidence</h3>
+                  <div className="details-card__header">
+                    <StatusBadge
+                      label={formatStatusLabel(activeQuestion.confidenceLevel)}
+                      tone={confidenceTone(activeQuestion.confidenceLevel)}
+                    />
+                  </div>
+                  <p>
+                    {activeQuestion.confidenceReason ||
+                      "No confidence rationale was returned for this answer."}
+                  </p>
                 </section>
 
                 <section className="details-card">
-                  <h3>Metadata</h3>
-                  <dl className="details-list">
-                    <div>
-                      <dt>source row</dt>
-                      <dd>{activeQuestion.metadata.sourceRowIndex}</dd>
-                    </div>
-                    <div>
-                      <dt>alignment record</dt>
-                      <dd>{activeQuestion.metadata.alignmentRecordId || "n/a"}</dd>
-                    </div>
-                    <div>
-                      <dt>alignment score</dt>
-                      <dd>{activeQuestion.metadata.alignmentScore.toFixed(2)}</dd>
-                    </div>
-                  </dl>
+                  <h3>Risk review</h3>
+                  <div className="details-card__header">
+                    <StatusBadge
+                      label={formatStatusLabel(activeQuestion.risk?.level ?? "low")}
+                      tone={riskTone(activeQuestion.risk?.level ?? "low")}
+                    />
+                  </div>
+                  <p>
+                    {activeQuestion.risk?.reason ||
+                      "No elevated risk was returned for this answer."}
+                  </p>
                 </section>
 
-                {activeQuestion.reference ? (
+                <section className="details-card">
+                  <h3>Review signals</h3>
+                  <div className="details-card__stack">
+                    <p>
+                      <strong>Domain:</strong> {activeQuestion.domainTag || "unassigned"}
+                    </p>
+                    <p>
+                      <strong>Historical alignment:</strong>{" "}
+                      {activeQuestion.historicalAlignmentIndicator
+                        ? "Consistent with repository history"
+                        : "Manual review recommended"}
+                    </p>
+                    <p>
+                      <strong>Alignment score:</strong>{" "}
+                      {activeQuestion.alignmentScore == null
+                        ? "n/a"
+                        : activeQuestion.alignmentScore.toFixed(2)}
+                    </p>
+                    <p>{reviewSignalSummary(activeQuestion)}</p>
+                  </div>
+                </section>
+
+                {activeQuestion.references.length > 0 ? (
                   <section className="details-card details-card--wide">
-                    <h3>Reference match</h3>
-                    <dl className="details-list">
-                      <div>
-                        <dt>source document</dt>
-                        <dd>{activeQuestion.reference.sourceDoc || "n/a"}</dd>
-                      </div>
-                      <div>
-                        <dt>alignment record</dt>
-                        <dd>
-                          {activeQuestion.reference.alignmentRecordId || "n/a"}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>alignment score</dt>
-                        <dd>{activeQuestion.reference.alignmentScore.toFixed(2)}</dd>
-                      </div>
-                    </dl>
+                    <h3>Reference matches</h3>
+                    <div className="reference-list">
+                      {activeQuestion.references.map((reference, index) => (
+                        <article
+                          className="reference-card"
+                          key={`${reference.sourceDoc}-${reference.matchedQuestion}-${index}`}
+                        >
+                          <div className="reference-card__header">
+                            <strong>{reference.sourceDoc || "Unknown source"}</strong>
+                            <StatusBadge
+                              label={
+                                reference.usedForAnswer
+                                  ? "Used For Answer"
+                                  : "Reference Only"
+                              }
+                              tone={reference.usedForAnswer ? "success" : "neutral"}
+                            />
+                          </div>
+
+                          <div className="reference-card__body">
+                            <div>
+                              <h4>Matched question</h4>
+                              <p>
+                                {reference.matchedQuestion ||
+                                  "No matched question available."}
+                              </p>
+                            </div>
+                            <div>
+                              <h4>Matched answer</h4>
+                              <p>
+                                {reference.matchedAnswer ||
+                                  "No matched answer available."}
+                              </p>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
                   </section>
                 ) : null}
-
-                {activeQuestion.reference ? (
-                  <>
-                    <section className="details-card">
-                      <h3>Matched question</h3>
-                      <p>
-                        {activeQuestion.reference.matchedQuestion ||
-                          "No matched question available."}
-                      </p>
-                    </section>
-
-                    <section className="details-card">
-                      <h3>Matched answer</h3>
-                      <p>
-                        {activeQuestion.reference.matchedAnswer ||
-                          "No matched answer available."}
-                      </p>
-                    </section>
-                  </>
-                ) : null}
-
-                <section className="details-card details-card--wide">
-                  <h3>Extensions</h3>
-                  {Object.keys(activeQuestion.extensions).length > 0 ? (
-                    <pre>{JSON.stringify(activeQuestion.extensions, null, 2)}</pre>
-                  ) : (
-                    <p>No additional extensions for this question.</p>
-                  )}
-                </section>
               </div>
             </section>
           </div>

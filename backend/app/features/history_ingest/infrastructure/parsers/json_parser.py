@@ -1,3 +1,5 @@
+"""JSON parser used by the history-ingest upload flow."""
+
 import json
 
 from app.features.history_ingest.infrastructure.parsers.models import FileContent
@@ -5,10 +7,14 @@ from app.features.history_ingest.schemas.responses import ParsedFilePayload
 
 
 class JsonParser:
+    """Parse JSON uploads while preserving the original text payload."""
+
     extension = ".json"
     parsed_kind = "json"
 
     def parse(self, content: FileContent) -> ParsedFilePayload:
+        """Return the decoded JSON object as structured data."""
+
         structured_data = json.loads(content.raw_text)
         return ParsedFilePayload(
             file_name=content.file_name,

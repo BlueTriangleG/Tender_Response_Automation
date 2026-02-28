@@ -1,3 +1,5 @@
+"""Root API router that aggregates feature routers under one prefix."""
+
 from fastapi import APIRouter
 
 from app.features.agent_chat.api.routes import router as agent_router

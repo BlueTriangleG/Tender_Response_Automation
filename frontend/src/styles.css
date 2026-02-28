@@ -849,6 +849,18 @@ button {
   color: #171717;
 }
 
+.details-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
+}
+
+.details-card__stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .details-card p,
 .details-card pre,
 .details-card dd,
@@ -888,6 +900,39 @@ button {
 .details-list dt {
   font-weight: 700;
   text-transform: capitalize;
+}
+
+.reference-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.reference-card {
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(23, 23, 23, 0.08);
+  background: #faf8f4;
+}
+
+.reference-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.9rem;
+}
+
+.reference-card__body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.reference-card__body h4 {
+  margin: 0 0 0.45rem;
+  font-size: 0.92rem;
+  color: #171717;
 }
 
 .detail-grid {
@@ -1094,6 +1139,10 @@ select:focus-visible {
 
   .details-modal__header {
     flex-direction: column;
+  }
+
+  .reference-card__body {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -1,3 +1,5 @@
+"""Centralized application settings loaded from environment variables."""
+
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -12,6 +14,8 @@ DEFAULT_LANCEDB_URI = REPO_ROOT / "data" / "lancedb"
 
 
 class Settings(BaseSettings):
+    """Typed runtime configuration for the FastAPI backend."""
+
     app_name: str = "Pans Software Backend"
     api_prefix: str = "/api"
     lancedb_uri: str = str(DEFAULT_LANCEDB_URI)

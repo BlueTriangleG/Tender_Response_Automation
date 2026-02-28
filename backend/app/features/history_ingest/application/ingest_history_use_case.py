@@ -1,3 +1,5 @@
+"""Application service for importing historical QA CSV files."""
+
 import csv
 from io import StringIO
 
@@ -29,6 +31,8 @@ from app.features.history_ingest.schemas.responses import (
 
 
 class IngestHistoryUseCase:
+    """Coordinate parsing, column detection, normalization, embedding, and storage."""
+
     def __init__(
         self,
         file_processing_service: FileProcessingService | None = None,
@@ -48,9 +52,13 @@ class IngestHistoryUseCase:
         files: list[UploadFile],
         request_options: HistoryIngestRequestOptions | None = None,
     ) -> HistoryIngestResponse:
+        """Process each uploaded file and aggregate per-file ingest outcomes."""
+
         final_results: list[ProcessedHistoryFileResult] = []
 
         for upload_file in files:
+            # Parse every file first so unsupported formats and decode failures are
+            # reported using the same result shape as successful parses.
             parsed_result = await self._file_processing_service.process_upload(upload_file)
             if parsed_result.status == "failed" or parsed_result.payload is None:
                 final_results.append(parsed_result)
@@ -67,6 +75,8 @@ class IngestHistoryUseCase:
                 )
                 continue
 
+            # Header detection is split into deterministic matching plus optional
+            # LLM fallback so common CSV formats stay cheap and predictable.
             headers = self._extract_csv_headers(parsed_result.payload.raw_text)
             deterministic_result = infer_csv_columns_from_headers(headers)
             detection_result = await self._get_csv_column_detection_service().detect_columns(
@@ -87,6 +97,8 @@ class IngestHistoryUseCase:
                 )
                 continue
 
+            # Normalization converts loosely structured CSV rows into canonical QA
+            # records that can be embedded and persisted consistently.
             normalization_result = self._get_csv_qa_normalization_service().normalize_rows(
                 file_name=parsed_result.payload.file_name,
                 detected_columns=detection_result.detected_columns,
@@ -106,6 +118,8 @@ class IngestHistoryUseCase:
                 )
                 continue
 
+            # Skip duplicates both within the current upload and against records that
+            # are already present in LanceDB.
             new_records = self._filter_new_records(normalization_result.records)
 
             if not new_records:
@@ -125,6 +139,7 @@ class IngestHistoryUseCase:
                 [record.text for record in new_records]
             )
             repository_records = []
+            # Build persistence payloads only after dedupe so vector generation stays aligned.
             for record, vector in zip(new_records, vectors, strict=True):
                 repository_records.append(
                     {
@@ -167,35 +182,50 @@ class IngestHistoryUseCase:
         )
 
     async def persist_processed_files(self, _: list[ProcessedHistoryFileResult]) -> None:
+        """Reserved extension point for a later persistence stage."""
+
         return None
 
     def _extract_csv_headers(self, raw_text: str) -> list[str]:
+        """Read the first CSV row as headers without reparsing the full file."""
+
         reader = csv.reader(StringIO(raw_text))
         return next(reader, [])
 
     def _get_csv_column_detection_service(self) -> CsvColumnDetectionService:
+        """Lazily construct the column detection dependency."""
+
         if self._csv_column_detection_service is None:
             self._csv_column_detection_service = CsvColumnDetectionService()
         return self._csv_column_detection_service
 
     def _get_csv_qa_normalization_service(self) -> CsvQaNormalizationService:
+        """Lazily construct the row-normalization dependency."""
+
         if self._csv_qa_normalization_service is None:
             self._csv_qa_normalization_service = CsvQaNormalizationService()
         return self._csv_qa_normalization_service
 
     def _get_qa_embedding_service(self) -> QaEmbeddingService:
+        """Lazily construct the embeddings dependency."""
+
         if self._qa_embedding_service is None:
             self._qa_embedding_service = QaEmbeddingService()
         return self._qa_embedding_service
 
     def _get_qa_repository(self) -> QaLanceDbRepository:
+        """Lazily construct the persistence dependency."""
+
         if self._qa_repository is None:
             self._qa_repository = QaLanceDbRepository()
         return self._qa_repository
 
     def _filter_new_records(self, records):
+        """Deduplicate within the batch, then skip ids already stored in LanceDB."""
+
         unique_records_by_id = {}
         for record in records:
+            # setdefault preserves the first normalized instance for a stable id.
             unique_records_by_id.setdefault(record.id, record)
 
         unique_records = list(unique_records_by_id.values())

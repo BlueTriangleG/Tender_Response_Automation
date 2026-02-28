@@ -1,3 +1,5 @@
+"""HTTP routes for tender-response generation."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -20,6 +22,8 @@ async def tender_respond(
     alignment_threshold: Annotated[float, Form(alias="alignmentThreshold")] = 0.82,
     use_case: Annotated[ProcessTenderCsvUseCase, Depends(get_process_tender_csv_use_case)] = None,
 ) -> TenderResponseWorkflowResponse:
+    """Generate tender answers for the uploaded CSV and return workflow results."""
+
     try:
         option_kwargs = {"alignment_threshold": alignment_threshold}
         if session_id:

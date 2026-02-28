@@ -7,6 +7,7 @@ from app.features.tender_response.schemas.responses import (
     QuestionFlags,
     QuestionMetadata,
     QuestionReference,
+    QuestionRisk,
     TenderQuestionResponse,
     TenderResponseSummary,
     TenderResponseWorkflowResponse,
@@ -30,21 +31,30 @@ def test_tender_response_route_accepts_csv_upload_and_returns_json() -> None:
                     generated_answer="Yes.",
                     domain_tag="security",
                     confidence_level="high",
+                    confidence_reason="Direct historical evidence supports the answer.",
                     historical_alignment_indicator=True,
                     status="completed",
+                    grounding_status="grounded",
                     flags=QuestionFlags(high_risk=False, inconsistent_response=False),
+                    risk=QuestionRisk(
+                        level="medium",
+                        reason="Security posture responses should still be reviewed.",
+                    ),
                     metadata=QuestionMetadata(
                         source_row_index=0,
                         alignment_record_id="qa-1",
                         alignment_score=0.92,
                     ),
-                    reference=QuestionReference(
-                        alignment_record_id="qa-1",
-                        alignment_score=0.92,
-                        source_doc="historical_repository_qa.csv",
-                        matched_question="Do you support TLS 1.2 or above?",
-                        matched_answer="Yes.",
-                    ),
+                    references=[
+                        QuestionReference(
+                            alignment_record_id="qa-1",
+                            alignment_score=0.92,
+                            source_doc="historical_repository_qa.csv",
+                            matched_question="Do you support TLS 1.2 or above?",
+                            matched_answer="Yes.",
+                            used_for_answer=True,
+                        )
+                    ],
                     error_message=None,
                     extensions={},
                 )
@@ -54,6 +64,7 @@ def test_tender_response_route_accepts_csv_upload_and_returns_json() -> None:
                 flagged_high_risk_or_inconsistent_responses=0,
                 overall_completion_status="completed",
                 completed_questions=1,
+                unanswered_questions=0,
                 failed_questions=0,
             ),
         )
@@ -79,7 +90,9 @@ def test_tender_response_route_accepts_csv_upload_and_returns_json() -> None:
     payload = response.json()
     assert payload["total_questions_processed"] == 1
     assert payload["questions"][0]["generated_answer"] == "Yes."
-    assert payload["questions"][0]["reference"]["source_doc"] == "historical_repository_qa.csv"
+    assert payload["questions"][0]["confidence_reason"] is not None
+    assert payload["questions"][0]["risk"]["level"] == "medium"
+    assert payload["questions"][0]["references"][0]["source_doc"] == "historical_repository_qa.csv"
     assert payload["summary"]["overall_completion_status"] == "completed"
 
 

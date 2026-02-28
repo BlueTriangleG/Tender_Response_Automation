@@ -14,6 +14,8 @@ def test_tender_response_feature_modules_are_importable() -> None:
         "app.features.tender_response.infrastructure.services.answer_generation_service",
         "app.features.tender_response.infrastructure.services.confidence_service",
         "app.features.tender_response.infrastructure.services.domain_tagging_service",
+        "app.features.tender_response.infrastructure.services.reference_assessment_service",
+        "app.features.tender_response.infrastructure.services.response_review_service",
         "app.features.tender_response.infrastructure.workflows.tender_response_graph",
         "app.features.tender_response.schemas.requests",
         "app.features.tender_response.schemas.responses",
