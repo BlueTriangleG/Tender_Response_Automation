@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     lancedb_document_table_name: str = "document_records"
     openai_chat_model: str = "gpt-4o-mini"
     openai_csv_column_model: str = "gpt-4o-mini"
-    openai_tender_response_model: str = "gpt-4o-mini"
+    openai_tender_response_model: str = "gpt-5-mini-2025-08-07"
     openai_embedding_model: str = "text-embedding-3-small"
     cors_allowed_origins: list[str] = Field(
         default_factory=lambda: [

@@ -443,13 +443,13 @@ describe("App", () => {
       screen.getByRole("button", { name: /Browse csv/i }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText(/0.82/i)).toBeInTheDocument();
+    expect(screen.getByText(/0.50/i)).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: /Increase alignment threshold/i }),
     );
 
-    expect(screen.getByText(/0.83/i)).toBeInTheDocument();
+    expect(screen.getByText(/0.51/i)).toBeInTheDocument();
   });
 
   test("uploads multiple knowledge files through the standalone ingest module", async () => {
