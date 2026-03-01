@@ -242,3 +242,115 @@ async def test_find_historical_evidence_keeps_near_threshold_ssl_conflict_refere
         "qa-disable",
         "qa-migration",
     ]
+
+
+async def test_find_historical_evidence_keeps_assessable_near_threshold_audit_controls() -> None:
+    service = HistoricalEvidenceService(
+        qa_alignment_repository=FakeQaAlignmentRepository(
+            [
+                HistoricalReference(
+                    record_id="qa-retention",
+                    reference_type="qa",
+                    question="How long are audit logs retained?",
+                    answer=(
+                        "Application and administrative audit logs are retained for "
+                        "at least 365 days in the standard regulated deployment profile."
+                    ),
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.59,
+                ),
+                HistoricalReference(
+                    record_id="qa-immutable",
+                    reference_type="qa",
+                    question="Do you support immutable audit logs by default?",
+                    answer=(
+                        "Audit logs are retained for at least 365 days. Immutable "
+                        "storage is deployment-dependent and must not be assumed by default."
+                    ),
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.57,
+                ),
+            ]
+        ),
+        document_alignment_repository=FakeDocumentAlignmentRepository([]),
+    )
+
+    result = await service.find_historical_evidence(
+        TenderQuestion(
+            question_id="q-007",
+            original_question=(
+                "Do you provide tamper-proof immutable WORM audit storage for all "
+                "administrator actions?"
+            ),
+            declared_domain="Security",
+            source_file_name="tender.csv",
+            source_row_index=6,
+        ),
+        threshold=0.6,
+    )
+
+    assert result.matched is True
+    assert result.record_id == "qa-retention"
+    assert [reference.record_id for reference in result.references] == [
+        "qa-retention",
+        "qa-immutable",
+    ]
+
+
+async def test_keeps_assessable_near_threshold_isolated_deployment_controls() -> None:
+    service = HistoricalEvidenceService(
+        qa_alignment_repository=FakeQaAlignmentRepository(
+            [
+                HistoricalReference(
+                    record_id="qa-single-tenant",
+                    reference_type="qa",
+                    question="Can the platform be deployed as single-tenant?",
+                    answer=(
+                        "A single-tenant virtual private cloud deployment is "
+                        "available for customers with stronger isolation requirements."
+                    ),
+                    domain="Infrastructure",
+                    source_doc="history.csv",
+                    alignment_score=0.48,
+                ),
+                HistoricalReference(
+                    record_id="qa-customer-managed",
+                    reference_type="qa",
+                    question="Can the platform be deployed as single-tenant or customer-managed?",
+                    answer=(
+                        "Managed SaaS is the preferred model. Single-tenant virtual "
+                        "private cloud deployment is available, while customer-managed "
+                        "deployment is limited and requires separate scoping through "
+                        "professional services."
+                    ),
+                    domain="Infrastructure",
+                    source_doc="history.csv",
+                    alignment_score=0.47,
+                ),
+            ]
+        ),
+        document_alignment_repository=FakeDocumentAlignmentRepository([]),
+    )
+
+    result = await service.find_historical_evidence(
+        TenderQuestion(
+            question_id="q-101",
+            original_question=(
+                "Do you support a fully air-gapped on-premises deployment with zero "
+                "cloud dependency?"
+            ),
+            declared_domain="Infrastructure",
+            source_file_name="tender.csv",
+            source_row_index=0,
+        ),
+        threshold=0.5,
+    )
+
+    assert result.matched is True
+    assert result.record_id == "qa-single-tenant"
+    assert [reference.record_id for reference in result.references] == [
+        "qa-single-tenant",
+        "qa-customer-managed",
+    ]

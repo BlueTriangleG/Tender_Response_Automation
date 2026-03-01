@@ -443,9 +443,7 @@ async def test_assess_returns_insufficient_reference_for_human_review_only_claim
     assert model.runnable is None
 
 
-async def test_assess_returns_insufficient_reference_for_verification_only_certification_claims() -> (
-    None
-):
+async def test_assess_returns_insufficient_reference_for_cert_verification_only() -> None:
     model = FakeChatModel(
         {
             "answerability": "partial",

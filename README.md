@@ -2,7 +2,17 @@
 
 FastAPI + LangGraph + React prototype for the Pan Software AI Engineer take-home.
 
-The system ingests historical tender material, accepts a new tender questionnaire in Excel or CSV, and generates structured per-question responses that stay aligned with prior positioning, expose confidence and risk, and flag cross-answer conflicts.
+The system ingests historical tender material, accepts a new tender questionnaire in Excel or CSV, and returns structured per-question responses grounded in prior answers rather than model memory.
+
+## What This Project Needs To Do
+
+At a high level, the service needs to do five things well:
+
+- find relevant historical tender evidence
+- answer each new question in a way that stays consistent with prior positioning
+- adapt that answer to the wording and constraints of the new tender
+- avoid unsupported claims and over-promising
+- process a full questionnaire without letting one bad question block the rest
 
 ## Repository Details
 
@@ -12,8 +22,10 @@ The system ingests historical tender material, accepts a new tender questionnair
 - Demo datasets: [test_data](/Users/autumn/Learning/interview%20questions/pans_software/test_data)
 - Delivery docs:
   - Agent architecture: [AGENT_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/AGENT_ARCHITECTURE.md)
+  - RAG architecture: [RAG_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/RAG_ARCHITECTURE.md)
   - API and Postman calls: [API_POSTMAN.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/API_POSTMAN.md)
   - Sample dataset guide: [test_data/README.md](/Users/autumn/Learning/interview%20questions/pans_software/test_data/README.md)
+  - Docs guide: [docs/README.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/README.md)
 
 ## Technology Stack
 
@@ -153,39 +165,40 @@ Use the startup flow in [How To Run The Project](#how-to-run-the-project):
 
 ### Verification Commands
 
+Full repository verification:
+
+```bash
+npm run verify
+```
+
 Backend unit/integration tests:
 
 ```bash
-cd backend
-UV_CACHE_DIR=/tmp/pans-software-uv-cache uv run pytest tests -v
+npm run test:backend
 ```
 
 Backend lint:
 
 ```bash
-cd backend
-UV_CACHE_DIR=/tmp/pans-software-uv-cache uv run ruff check .
+npm run lint:backend
 ```
 
 Backend type-check:
 
 ```bash
-cd backend
-UV_CACHE_DIR=/tmp/pans-software-uv-cache uv run mypy app
+npm run typecheck:backend
 ```
 
 Frontend tests:
 
 ```bash
-cd frontend
-npm test -- --run
+npm run test:frontend
 ```
 
 Frontend production build:
 
 ```bash
-cd frontend
-npm run build
+npm run build:frontend
 ```
 
 Live E2E suite:
@@ -220,7 +233,7 @@ Dataset usage details are documented in [test_data/README.md](/Users/autumn/Lear
 
 ## Architecture Notes
 
-The tender response pipeline uses a LangGraph batch graph plus a per-question subgraph:
+The tender response pipeline is built around a batch graph plus an isolated per-question subgraph.
 
 - Retriever agent: retrieves top historical references from LanceDB
 - Grounding assessor agent: decides `grounded`, `partial_reference`, or fallback
@@ -228,7 +241,10 @@ The tender response pipeline uses a LangGraph batch graph plus a per-question su
 - Risk guard agent: validates output, retries recoverable errors, and materializes terminal states
 - Conflict reviewer agent: checks completed answers for session-level contradictions
 
-The full delivery-oriented architecture write-up is in [AGENT_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/AGENT_ARCHITECTURE.md).
+If you want the design rather than the code walkthrough:
+
+- workflow and agent design: [AGENT_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/AGENT_ARCHITECTURE.md)
+- retrieval and grounding design: [RAG_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/RAG_ARCHITECTURE.md)
 
 ## Notes And Limitations
 

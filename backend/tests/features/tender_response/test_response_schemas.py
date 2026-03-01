@@ -180,6 +180,23 @@ def test_unanswered_response_rejects_empty_confidence_reason() -> None:
         )
 
 
+def test_question_reference_rejects_unknown_fields_like_hunk_index() -> None:
+    with pytest.raises(ValidationError):
+        QuestionReference.model_validate(
+            {
+                "alignment_record_id": "doc-1#0",
+                "reference_type": "document_chunk",
+                "alignment_score": 0.87,
+                "source_doc": "operations_playbook.txt",
+                "matched_question": "",
+                "matched_answer": "",
+                "excerpt": "Quarterly recovery exercises are documented and reviewed.",
+                "hunk_index": 0,
+                "used_for_answer": True,
+            }
+        )
+
+
 def test_completed_partial_reference_response_supports_partial_answer_contract() -> None:
     response = TenderQuestionResponse(
         question_id="q-004",

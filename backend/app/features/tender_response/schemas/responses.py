@@ -3,7 +3,7 @@
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class QuestionFlags(BaseModel):
@@ -31,6 +31,8 @@ class QuestionMetadata(BaseModel):
 
 class QuestionReference(BaseModel):
     """Historical QA or document-chunk reference returned to explain grounding decisions."""
+
+    model_config = ConfigDict(extra="forbid")
 
     alignment_record_id: str
     reference_type: Literal["qa", "document_chunk"] = "qa"

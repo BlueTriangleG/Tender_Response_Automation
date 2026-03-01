@@ -571,6 +571,7 @@ def test_tender_response_route_exposes_document_chunk_reference_metadata() -> No
     assert reference["reference_type"] == "document_chunk"
     assert reference["excerpt"] == "Quarterly recovery exercises are documented and reviewed."
     assert reference["chunk_index"] == 0
+    assert "hunk_index" not in reference
     assert reference["matched_question"] == ""
     assert reference["matched_answer"] == ""
     assert reference["source_doc"] == "operations_playbook.txt"

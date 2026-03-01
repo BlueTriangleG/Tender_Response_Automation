@@ -144,7 +144,8 @@ class ReferenceAssessmentService:
                     duration_ms = (perf_counter() - started_at) * 1000
                     if _is_retryable_reference_assessment_error(exc) and attempt < max_attempts:
                         debug_log(
-                            f"question={question.question_id} reference_assessment_service request retry "
+                            f"question={question.question_id} "
+                            "reference_assessment_service request retry "
                             f"attempt={attempt} duration_ms={duration_ms:.2f} error={exc}"
                         )
                         continue

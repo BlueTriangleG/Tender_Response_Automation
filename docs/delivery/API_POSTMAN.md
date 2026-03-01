@@ -1,6 +1,6 @@
 # API Calls And Sample Payloads
 
-This document shows how to call the current backend with curl or Postman.
+This document shows the current API surface in the most practical way possible: what to call, what to send, and what comes back.
 
 Base URL:
 

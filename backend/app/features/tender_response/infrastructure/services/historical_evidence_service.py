@@ -1,5 +1,7 @@
 """Merge QA and document-chunk retrieval into one historical evidence result."""
 
+import re
+
 from app.features.tender_response.domain.models import (
     HistoricalAlignmentResult,
     HistoricalReference,
@@ -68,25 +70,32 @@ class HistoricalEvidenceService:
         qualified_references = [
             reference for reference in merged_references if reference.alignment_score >= threshold
         ]
-        if not qualified_references:
-            return HistoricalAlignmentResult(
-                matched=False,
-                record_id=None,
-                question=None,
-                answer=None,
-                domain=None,
-                source_doc=None,
-                alignment_score=best_reference.alignment_score,
-                references=[],
+        if qualified_references:
+            selected_reference = qualified_references[0]
+            returned_references = _merge_returned_references(
+                qualified_references=qualified_references,
+                all_references=merged_references,
+                question=question,
+                threshold=threshold,
             )
-
-        selected_reference = qualified_references[0]
-        returned_references = _merge_returned_references(
-            qualified_references=qualified_references,
-            all_references=merged_references,
-            question=question,
-            threshold=threshold,
-        )
+        else:
+            returned_references = _select_assessable_near_threshold_references(
+                question=question,
+                all_references=merged_references,
+                threshold=threshold,
+            )
+            if not returned_references:
+                return HistoricalAlignmentResult(
+                    matched=False,
+                    record_id=None,
+                    question=None,
+                    answer=None,
+                    domain=None,
+                    source_doc=None,
+                    alignment_score=best_reference.alignment_score,
+                    references=[],
+                )
+            selected_reference = returned_references[0]
         if selected_reference.reference_type == "qa":
             top_question = selected_reference.question
             top_answer = selected_reference.answer
@@ -110,6 +119,14 @@ def _normalize(text: str | None) -> str:
     return " ".join((text or "").lower().split())
 
 
+def _tokenize(text: str | None) -> set[str]:
+    return {
+        token
+        for token in re.findall(r"[a-z0-9]+", _normalize(text))
+        if len(token) >= 4 and token not in _STOPWORDS
+    }
+
+
 def _is_absolute_ssl_disable_question(text: str) -> bool:
     normalized = _normalize(text)
     return (
@@ -130,6 +147,107 @@ def _is_ssl_exception_reference(reference: HistoricalReference) -> bool:
             or "transition" in normalized
         )
     )
+
+
+def _is_audit_immutability_question(text: str) -> bool:
+    normalized = _normalize(text)
+    return "audit" in normalized and (
+        "immutable" in normalized or "worm" in normalized or "tamper-proof" in normalized
+    )
+
+
+def _is_audit_controls_reference(reference: HistoricalReference) -> bool:
+    normalized = _normalize(
+        " ".join((reference.question, reference.answer, reference.excerpt or ""))
+    )
+    return "audit" in normalized and (
+        "immutable" in normalized
+        or "retained" in normalized
+        or "retention" in normalized
+        or "administrator" in normalized
+    )
+
+
+def _has_immutability_anchor(reference: HistoricalReference) -> bool:
+    normalized = _normalize(
+        " ".join((reference.question, reference.answer, reference.excerpt or ""))
+    )
+    return (
+        "immutable" in normalized
+        or "worm" in normalized
+        or "tamper-proof" in normalized
+        or "tamper proof" in normalized
+    )
+
+
+def _is_air_gapped_deployment_question(text: str) -> bool:
+    normalized = _normalize(text)
+    return (
+        "air-gapped" in normalized
+        or "air gapped" in normalized
+        or "zero cloud" in normalized
+        or "on-prem" in normalized
+        or "on premises" in normalized
+    )
+
+
+def _is_isolated_deployment_reference(reference: HistoricalReference) -> bool:
+    normalized = _normalize(
+        " ".join((reference.question, reference.answer, reference.excerpt or ""))
+    )
+    return (
+        "single-tenant" in normalized
+        or "customer-managed" in normalized
+        or "customer managed" in normalized
+        or "isolation" in normalized
+        or "private cloud" in normalized
+        or "vpc" in normalized
+    )
+
+
+def _is_assessable_near_threshold_reference(
+    *,
+    question: TenderQuestion,
+    reference: HistoricalReference,
+    threshold: float,
+) -> bool:
+    if reference.alignment_score < max(0.0, threshold - 0.05):
+        return False
+
+    if _is_audit_immutability_question(question.original_question):
+        return _is_audit_controls_reference(reference)
+
+    if _is_air_gapped_deployment_question(question.original_question):
+        return _is_isolated_deployment_reference(reference)
+
+    question_tokens = _tokenize(question.original_question)
+    reference_tokens = _tokenize(
+        " ".join((reference.question, reference.answer, reference.excerpt or ""))
+    )
+    return len(question_tokens & reference_tokens) >= 2
+
+
+def _select_assessable_near_threshold_references(
+    *,
+    question: TenderQuestion,
+    all_references: list[HistoricalReference],
+    threshold: float,
+) -> list[HistoricalReference]:
+    candidates = [
+        reference
+        for reference in all_references
+        if _is_assessable_near_threshold_reference(
+            question=question,
+            reference=reference,
+            threshold=threshold,
+        )
+    ]
+
+    if _is_audit_immutability_question(question.original_question):
+        if not any(_has_immutability_anchor(reference) for reference in candidates):
+            return []
+
+    return candidates
 
 
 def _merge_returned_references(
@@ -155,3 +273,39 @@ def _merge_returned_references(
         references_by_id[reference.record_id] = reference
 
     return [reference for reference in all_references if reference.record_id in references_by_id]
+
+
+_STOPWORDS = {
+    "about",
+    "after",
+    "before",
+    "being",
+    "between",
+    "confirm",
+    "could",
+    "does",
+    "during",
+    "environment",
+    "every",
+    "higher",
+    "into",
+    "long",
+    "once",
+    "only",
+    "please",
+    "proposed",
+    "provide",
+    "question",
+    "restricted",
+    "should",
+    "support",
+    "that",
+    "their",
+    "this",
+    "through",
+    "what",
+    "when",
+    "whether",
+    "with",
+    "within",
+}
