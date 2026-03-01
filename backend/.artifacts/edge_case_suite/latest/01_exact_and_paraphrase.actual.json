@@ -5,10 +5,10 @@
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/01_clean_security_architecture.csv",
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/02_header_aliases.csv"
     ],
-    "recorded_at": "2026-03-01T00:06:38.155610+00:00"
+    "recorded_at": "2026-03-01T00:40:12.329660+00:00"
   },
   "response": {
-    "request_id": "e503165a-01f7-425d-ae4f-4e949072e641",
+    "request_id": "ba939049-71a6-48ed-83ad-6cd49feaae1e",
     "session_id": "edge-case-01_exact_and_paraphrase",
     "source_file_name": "01_exact_and_paraphrase.csv",
     "total_questions_processed": 5,
@@ -16,7 +16,7 @@
       {
         "question_id": "q-001",
         "original_question": "Do you support TLS 1.2 or higher for production traffic?",
-        "generated_answer": "Yes. External production endpoints enforce TLS 1.2 or higher; legacy SSL is not enabled for public production traffic.",
+        "generated_answer": "Yes — external production endpoints enforce TLS 1.2 or higher; legacy SSL is not enabled for public production traffic.",
         "domain_tag": "security",
         "confidence_level": "high",
         "confidence_reason": "The provided reference explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic.",
@@ -29,7 +29,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "Enforcing TLS 1.2+ and disabling legacy SSL for public production endpoints reduces the risk of insecure protocol use or downgrade to older SSL versions."
+          "reason": "The reference indicates strong TLS enforcement (TLS 1.2+) and the absence of legacy SSL for public production traffic, which reduces transport-layer encryption risk based on the supplied information."
         },
         "metadata": {
           "source_row_index": 0,
@@ -55,10 +55,10 @@
       {
         "question_id": "q-002",
         "original_question": "Does the service provide role-based access control across tenant and workspace scopes?",
-        "generated_answer": "Yes — role-based access control is available across tenant and workspace scopes (the reference also notes availability at the feature scope).",
+        "generated_answer": "Yes. Role-based access control is available across tenant and workspace scopes (the reference also notes feature scope).",
         "domain_tag": "architecture",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states: “Role-based access control is available across tenant, workspace, and feature scopes.”",
+        "confidence_reason": "The provided reference explicitly states: \"Role-based access control is available across tenant, workspace, and feature scopes.\"",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -68,7 +68,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "The reference directly and unambiguously supports the claim and there is no conflicting information in the provided material."
+          "reason": "The claim is directly supported by the reference. The source does not supply further implementation details (e.g., role definitions or enforcement), but that does not affect the factual claim about scope availability."
         },
         "metadata": {
           "source_row_index": 1,
@@ -87,14 +87,14 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference explicitly states: 'Role-based access control is available across tenant, workspace, and feature scopes,' which directly answers the question about tenant and workspace scope coverage.",
-          "confidence_review_reason": "The provided reference explicitly states: “Role-based access control is available across tenant, workspace, and feature scopes.”"
+          "reference_assessment_reason": "The provided reference explicitly states: 'Role-based access control is available across tenant, workspace, and feature scopes,' which directly answers the question about tenant and workspace scope support.",
+          "confidence_review_reason": "The provided reference explicitly states: \"Role-based access control is available across tenant, workspace, and feature scopes.\""
         }
       },
       {
         "question_id": "q-003",
         "original_question": "Are customer prompts and uploaded documents excluded from shared-model training by default?",
-        "generated_answer": "No — customer prompts, uploaded documents, and outputs are not used to train shared models by default. Opt-in is required for any model-improvement workflow.",
+        "generated_answer": "Yes — customer prompts, uploaded documents, and outputs are not used to train shared models by default; opt-in is required for any model-improvement workflow.",
         "domain_tag": "ai",
         "confidence_level": "high",
         "confidence_reason": "The provided reference explicitly states that customer prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required.",
@@ -107,7 +107,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "The answer directly quotes the reference without extrapolation or unsupported claims, minimizing risk of inaccuracy."
+          "reason": "The response directly reflects the single provided reference and makes no additional claims beyond that reference."
         },
         "metadata": {
           "source_row_index": 2,
@@ -126,17 +126,17 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference explicitly states that customer prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required for any model-improvement workflow, directly answering the question.",
+          "reference_assessment_reason": "The provided reference directly answers the question: it states that customer prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required for any model-improvement workflow. This single reference is sufficient to support the answer.",
           "confidence_review_reason": "The provided reference explicitly states that customer prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required."
         }
       },
       {
         "question_id": "q-004",
         "original_question": "Can the proposed service be hosted in Australia for local residency obligations?",
-        "generated_answer": "Yes — customer data can be hosted in Australia. Supported Australian regions are available for customers with local data residency requirements.",
+        "generated_answer": "Yes — the service can be hosted in Australia. Supported Australian regions are available for customers with local data residency requirements.",
         "domain_tag": "compliance",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states that customer data can be hosted in Australia and that supported Australian regions are available for customers with local data residency requirements.",
+        "confidence_reason": "The provided reference explicitly states that supported Australian regions are available for customers with local data residency requirements.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -145,8 +145,8 @@
           "inconsistent_response": false
         },
         "risk": {
-          "level": "medium",
-          "reason": "The reference confirms availability of Australian regions for data residency but does not specify which services, components, or contractual details are covered for the proposed service, so some implementation specifics may need verification."
+          "level": "low",
+          "reason": "The reference directly affirms Australian hosting for local residency obligations and does not indicate limitations in the provided material."
         },
         "metadata": {
           "source_row_index": 3,
@@ -165,8 +165,8 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference explicitly states: “Yes. Supported Australian regions are available for customers with local data residency requirements.” This directly answers whether the service can be hosted in Australia for local residency obligations, so the single reference is sufficient to support that claim.",
-          "confidence_review_reason": "The provided reference explicitly states that customer data can be hosted in Australia and that supported Australian regions are available for customers with local data residency requirements."
+          "reference_assessment_reason": "The provided reference explicitly states that supported Australian regions are available for customers with local data residency requirements, directly answering whether the service can be hosted in Australia.",
+          "confidence_review_reason": "The provided reference explicitly states that supported Australian regions are available for customers with local data residency requirements."
         }
       },
       {
@@ -175,7 +175,7 @@
         "generated_answer": "Yes. The platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action.",
         "domain_tag": "ai",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints for human reviewers to inspect supporting context before acting.",
+        "confidence_reason": "The provided reference explicitly states the platform can expose citations, confidence cues, and workflow checkpoints to allow human reviewers to inspect supporting context before acting.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -185,7 +185,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "Because the platform exposes citations, confidence cues, and workflow checkpoints, the risk of acting on unsupported content is reduced by enabling human inspection of supporting context."
+          "reason": "Because the platform exposes citations, confidence cues, and workflow checkpoints for human inspection, the likelihood that users act on AI-generated content without supporting context is reduced."
         },
         "metadata": {
           "source_row_index": 4,
@@ -204,8 +204,8 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The matched reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints allowing a human reviewer to inspect supporting context before taking action; it directly answers the question and is sufficient on its own.",
-          "confidence_review_reason": "The provided reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints for human reviewers to inspect supporting context before acting."
+          "reference_assessment_reason": "The provided reference directly states that the platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action, which answers the question without needing additional sources.",
+          "confidence_review_reason": "The provided reference explicitly states the platform can expose citations, confidence cues, and workflow checkpoints to allow human reviewers to inspect supporting context before acting."
         }
       }
     ],

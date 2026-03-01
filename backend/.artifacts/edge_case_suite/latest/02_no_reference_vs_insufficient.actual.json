@@ -6,10 +6,10 @@
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/02_header_aliases.csv",
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/06_dirty_rows_and_quoting.csv"
     ],
-    "recorded_at": "2026-03-01T00:05:03.372582+00:00"
+    "recorded_at": "2026-03-01T00:40:24.722782+00:00"
   },
   "response": {
-    "request_id": "d7808ae3-6230-4417-b8f3-b5441678c76c",
+    "request_id": "3a237830-3fe0-469b-a501-73c8de81664f",
     "session_id": "edge-case-02_no_reference_vs_insufficient",
     "source_file_name": "02_no_reference_vs_insufficient.csv",
     "total_questions_processed": 4,
@@ -20,7 +20,7 @@
         "generated_answer": null,
         "domain_tag": "infrastructure",
         "confidence_level": "low",
-        "confidence_reason": "The provided reference only states a single-tenant virtual private cloud (VPC) deployment. That implies a cloud-hosted private environment and does not confirm support for a fully air-gapped, on‑premises deployment with zero cloud dependency. No reference explicitly mentions on‑premises, air‑gapped, offline installation, or zero cloud dependency, so the materials are insufficient to answer the question.",
+        "confidence_reason": "The only reference indicates a single-tenant virtual private cloud deployment, which implies a cloud-based VPC model. It does not state support for a fully air-gapped on‑premises deployment or zero cloud dependency, so the references are insufficient to answer the question.",
         "historical_alignment_indicator": true,
         "status": "unanswered",
         "grounding_status": "insufficient_reference",
@@ -49,7 +49,7 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference only states a single-tenant virtual private cloud (VPC) deployment. That implies a cloud-hosted private environment and does not confirm support for a fully air-gapped, on‑premises deployment with zero cloud dependency. No reference explicitly mentions on‑premises, air‑gapped, offline installation, or zero cloud dependency, so the materials are insufficient to answer the question."
+          "reference_assessment_reason": "The only reference indicates a single-tenant virtual private cloud deployment, which implies a cloud-based VPC model. It does not state support for a fully air-gapped on‑premises deployment or zero cloud dependency, so the references are insufficient to answer the question."
         }
       },
       {
@@ -58,7 +58,7 @@
         "generated_answer": null,
         "domain_tag": "security",
         "confidence_level": "low",
-        "confidence_reason": "The three candidate references do not describe WORM/immutable tamper-proof audit storage nor do they state that all administrator actions are captured in an immutable audit trail. The available excerpts address right-to-erasure, role-based access control, and penetration testing—none of which prove tamper-proof WORM audit storage. To answer the question reliably, we would need references such as: product or architecture documentation stating write-once/read-many (WORM) or append-only audit log storage for admin actions; details on immutability guarantees (e.g., S3 Object Lock, immutable ledger, cryptographic hashing/chaining), retention and access controls for audit logs; or compliance/attestation documents that explicitly certify immutable audit logging for administrator actions.",
+        "confidence_reason": "None of the provided references address WORM, tamper‑proof or immutable audit storage for administrator actions. The three documents cover right-to-erasure handling, penetration-test evidence sharing, and role-based access control, but do not mention audit log immutability or WORM storage, so they are insufficient to answer the question.",
         "historical_alignment_indicator": false,
         "status": "unanswered",
         "grounding_status": "insufficient_reference",
@@ -85,25 +85,25 @@
             "used_for_answer": false
           },
           {
+            "alignment_record_id": "0acccfeea66be41c3e6a069d4f62c2e9a299e0c36ed2a9c547b626ce1d768bc0",
+            "alignment_score": 0.4375232782492785,
+            "source_doc": "06_dirty_rows_and_quoting.csv",
+            "matched_question": "What wording should we use for penetration test evidence?",
+            "matched_answer": "Testing summaries can be shared under NDA,\nwith scope and dates redacted where appropriate.",
+            "used_for_answer": false
+          },
+          {
             "alignment_record_id": "39166e292b66c0b8f18f836884468b62f5dc813e1c93346275fd0998b484b825",
             "alignment_score": 0.43637426733269435,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "Do you provide role-based access control?",
             "matched_answer": "Yes. Role-based access control is available across tenant, workspace, and feature scopes.",
             "used_for_answer": false
-          },
-          {
-            "alignment_record_id": "cce1bc53e4859f5331730ba850e1aec6e43d1f38013b6cfacd1d4361ba633854",
-            "alignment_score": 0.43562803033076614,
-            "source_doc": "02_header_aliases.csv",
-            "matched_question": "Do you perform independent penetration testing?",
-            "matched_answer": "Yes. Independent penetration testing is performed at least annually and after material architectural change.",
-            "used_for_answer": false
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The three candidate references do not describe WORM/immutable tamper-proof audit storage nor do they state that all administrator actions are captured in an immutable audit trail. The available excerpts address right-to-erasure, role-based access control, and penetration testing—none of which prove tamper-proof WORM audit storage. To answer the question reliably, we would need references such as: product or architecture documentation stating write-once/read-many (WORM) or append-only audit log storage for admin actions; details on immutability guarantees (e.g., S3 Object Lock, immutable ledger, cryptographic hashing/chaining), retention and access controls for audit logs; or compliance/attestation documents that explicitly certify immutable audit logging for administrator actions."
+          "reference_assessment_reason": "None of the provided references address WORM, tamper‑proof or immutable audit storage for administrator actions. The three documents cover right-to-erasure handling, penetration-test evidence sharing, and role-based access control, but do not mention audit log immutability or WORM storage, so they are insufficient to answer the question."
         }
       },
       {
@@ -112,7 +112,7 @@
         "generated_answer": null,
         "domain_tag": "compliance",
         "confidence_level": "low",
-        "confidence_reason": "None of the provided references state or support an IRAP PROTECTED certification. The three items concern FedRAMP (not IRAP), independent penetration testing, and right-to-erasure processes — none confirm an IRAP PROTECTED assessment or current certification. To answer the question you would need an authoritative source such as a current IRAP assessment report, a statement from the Australian Signals Directorate (ASD) or the organisation’s official certification/attestation for IRAP PROTECTED.",
+        "confidence_reason": "None of the provided references mention IRAP PROTECTED or provide evidence of an IRAP assessment/authorization. The three records address FedRAMP (negative statement), penetration testing, and right-to-erasure; they do not support a claim of current IRAP PROTECTED certification. Additional documentation (e.g., current IRAP assessor report, ASD authorisation/letter, or an explicit IRAP PROTECTED statement with date and scope) is required to answer the question.",
         "historical_alignment_indicator": false,
         "status": "unanswered",
         "grounding_status": "insufficient_reference",
@@ -157,7 +157,7 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "None of the provided references state or support an IRAP PROTECTED certification. The three items concern FedRAMP (not IRAP), independent penetration testing, and right-to-erasure processes — none confirm an IRAP PROTECTED assessment or current certification. To answer the question you would need an authoritative source such as a current IRAP assessment report, a statement from the Australian Signals Directorate (ASD) or the organisation’s official certification/attestation for IRAP PROTECTED."
+          "reference_assessment_reason": "None of the provided references mention IRAP PROTECTED or provide evidence of an IRAP assessment/authorization. The three records address FedRAMP (negative statement), penetration testing, and right-to-erasure; they do not support a claim of current IRAP PROTECTED certification. Additional documentation (e.g., current IRAP assessor report, ASD authorisation/letter, or an explicit IRAP PROTECTED statement with date and scope) is required to answer the question."
         }
       },
       {
@@ -166,7 +166,7 @@
         "generated_answer": null,
         "domain_tag": "infrastructure",
         "confidence_level": "low",
-        "confidence_reason": "The references show the managed production service RTO is 4 hours (not 15 minutes), state that customer-managed deployments require separate scoping (not generally available), and that single-tenant deployments are available — but none provide any contractual guarantee of a 15-minute RTO for single-tenant or customer-managed deployments. Therefore the provided references are insufficient to support a contractual 15-minute RTO guarantee.",
+        "confidence_reason": "The references show the managed production service has RPO = 15 minutes and RTO = 4 hours (not a 15-minute RTO), and that customer-managed deployments are not the default and require separate scoping/professional services. There is no statement that the vendor can contractually guarantee a 15-minute RTO for every single-tenant or customer-managed deployment, so the provided references are insufficient to support such a guarantee.",
         "historical_alignment_indicator": false,
         "status": "unanswered",
         "grounding_status": "insufficient_reference",
@@ -181,9 +181,17 @@
         "metadata": {
           "source_row_index": 3,
           "alignment_record_id": null,
-          "alignment_score": 0.49466632905050645
+          "alignment_score": 0.4998216371451862
         },
         "references": [
+          {
+            "alignment_record_id": "35725a234c35606823c07a0bace7694bbe92a5eb8690a3706551682ce8558d3d",
+            "alignment_score": 0.4998216371451862,
+            "source_doc": "06_dirty_rows_and_quoting.csv",
+            "matched_question": "What availability target do you provide?",
+            "matched_answer": "The managed service target is 99.9 percent monthly availability, subject to the contracted service definition.",
+            "used_for_answer": false
+          },
           {
             "alignment_record_id": "a2118cb7268f761de80251e31dd58f1c321bc0c5fe71c2efcd83293f47f1325f",
             "alignment_score": 0.49466632905050645,
@@ -199,19 +207,11 @@
             "matched_question": "Is customer-managed deployment generally available?",
             "matched_answer": "No. Customer-managed deployment is not the default delivery model and requires separate scoping through professional services.",
             "used_for_answer": false
-          },
-          {
-            "alignment_record_id": "8710a217fbee734f755e18c883f541f2e465b76ebae6d7a28e523ef58d420fa6",
-            "alignment_score": 0.48847147054135986,
-            "source_doc": "02_header_aliases.csv",
-            "matched_question": "Can the platform be deployed as single-tenant?",
-            "matched_answer": "Yes. A single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements.",
-            "used_for_answer": false
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The references show the managed production service RTO is 4 hours (not 15 minutes), state that customer-managed deployments require separate scoping (not generally available), and that single-tenant deployments are available — but none provide any contractual guarantee of a 15-minute RTO for single-tenant or customer-managed deployments. Therefore the provided references are insufficient to support a contractual 15-minute RTO guarantee."
+          "reference_assessment_reason": "The references show the managed production service has RPO = 15 minutes and RTO = 4 hours (not a 15-minute RTO), and that customer-managed deployments are not the default and require separate scoping/professional services. There is no statement that the vendor can contractually guarantee a 15-minute RTO for every single-tenant or customer-managed deployment, so the provided references are insufficient to support such a guarantee."
         }
       }
     ],

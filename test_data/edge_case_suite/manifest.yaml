@@ -2,7 +2,7 @@ suite: edge_case_suite
 version: 2026-03-01
 format_contract:
   historical_ingest: csv
-  tender_input: csv
+  tender_input: csv_or_xlsx
   output_expectations: oracle_json
 
 historical_repository:
@@ -70,6 +70,11 @@ tender_inputs:
     oracle: expected_output/06_blank_rows_only.oracle.json
     recommended_history:
       - historical_repository/01_clean_security_architecture.csv
+  - file: input/07_exact_and_paraphrase.xlsx
+    oracle: expected_output/07_exact_and_paraphrase_xlsx.oracle.json
+    recommended_history:
+      - historical_repository/01_clean_security_architecture.csv
+      - historical_repository/02_header_aliases.csv
 
 validation_notes:
   - Oracle JSON files capture behavioral expectations instead of exact generated prose.

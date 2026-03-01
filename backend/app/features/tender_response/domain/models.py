@@ -16,11 +16,14 @@ class TenderQuestion:
 
 
 @dataclass(slots=True)
-class TenderCsvParseResult:
-    """Questions extracted from a tender CSV file."""
+class TenderTabularParseResult:
+    """Questions extracted from a tender tabular upload."""
 
     source_file_name: str
     questions: list[TenderQuestion]
+
+
+TenderCsvParseResult = TenderTabularParseResult
 
 
 @dataclass(slots=True)

@@ -4,8 +4,21 @@
     "history_files": [
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/01_clean_security_architecture.csv"
     ],
-    "execution_error": "AttributeError: 'NoneType' object has no attribute 'total_questions_processed'",
-    "recorded_at": "2026-03-01T00:06:15.120669+00:00"
+    "recorded_at": "2026-03-01T00:41:11.641461+00:00"
   },
-  "response": null
+  "response": {
+    "request_id": "02626f6b-a586-4070-a4e8-2747bb051d3e",
+    "session_id": "edge-case-06_blank_rows_only",
+    "source_file_name": "06_blank_rows_only.csv",
+    "total_questions_processed": 0,
+    "questions": [],
+    "summary": {
+      "total_questions_processed": 0,
+      "flagged_high_risk_or_inconsistent_responses": 0,
+      "overall_completion_status": "completed",
+      "completed_questions": 0,
+      "unanswered_questions": 0,
+      "failed_questions": 0
+    }
+  }
 }

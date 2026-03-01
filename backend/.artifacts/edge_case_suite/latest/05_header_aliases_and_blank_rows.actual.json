@@ -5,10 +5,10 @@
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/01_clean_security_architecture.csv",
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/02_header_aliases.csv"
     ],
-    "recorded_at": "2026-03-01T00:06:14.921863+00:00"
+    "recorded_at": "2026-03-01T00:41:11.347080+00:00"
   },
   "response": {
-    "request_id": "c4406eb0-7703-44a3-8d8d-085beadfddd3",
+    "request_id": "9ecb0792-0c6c-42d5-8561-47d1582d88eb",
     "session_id": "edge-case-05_header_aliases_and_blank_rows",
     "source_file_name": "05_header_aliases_and_blank_rows.csv",
     "total_questions_processed": 4,
@@ -29,7 +29,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "Enforcing TLS 1.2+ and disabling legacy SSL for public production traffic reduces protocol-level security risks as described in the reference."
+          "reason": "Enforcing TLS 1.2+ and disabling legacy SSL for public production endpoints reduces the likelihood of insecure TLS versions being used."
         },
         "metadata": {
           "source_row_index": 0,
@@ -55,7 +55,7 @@
       {
         "question_id": "row-2",
         "original_question": "Can customer data be hosted in Australia?",
-        "generated_answer": "Yes. Customer data can be hosted in Australia; supported Australian regions are available for customers with local data residency requirements.",
+        "generated_answer": "Yes. Supported Australian regions are available for customers with local data residency requirements.",
         "domain_tag": "compliance",
         "confidence_level": "high",
         "confidence_reason": "The provided reference explicitly states that Australian regions are supported for customers with local data residency requirements.",
@@ -68,7 +68,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "The answer is a direct restatement of the referenced source and makes no claims beyond what the reference supports."
+          "reason": "The statement is directly supported by the reference and no contradictory information is present in the provided materials."
         },
         "metadata": {
           "source_row_index": 1,
@@ -87,7 +87,7 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference explicitly states that Australian regions are supported and that customers with local data residency requirements can host data in Australia, which directly answers the question.",
+          "reference_assessment_reason": "The provided reference explicitly answers the question: it states that customer data can be hosted in Australia and that supported Australian regions are available for customers with local data residency requirements. This single reference directly supports the affirmative answer without needing additional information.",
           "confidence_review_reason": "The provided reference explicitly states that Australian regions are supported for customers with local data residency requirements."
         }
       },
@@ -97,7 +97,7 @@
         "generated_answer": "Yes. The platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action.",
         "domain_tag": "ai",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints to allow a human reviewer to inspect supporting context before acting.",
+        "confidence_reason": "Reference 1 explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints for human reviewers to inspect supporting context before acting.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -107,7 +107,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "This is a restatement of the referenced capability and does not add unsupported claims, so the risk of misleading information is low."
+          "reason": "Reference 1 indicates that citations, confidence cues, and workflow checkpoints are exposed to enable human inspection prior to taking action, which reduces risk."
         },
         "metadata": {
           "source_row_index": 2,
@@ -126,8 +126,8 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference directly answers the question, stating the platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before acting. This single, explicit match is sufficient to support the answer without additional sources.",
-          "confidence_review_reason": "The provided reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints to allow a human reviewer to inspect supporting context before acting."
+          "reference_assessment_reason": "The provided reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action, directly answering the question.",
+          "confidence_review_reason": "Reference 1 explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints for human reviewers to inspect supporting context before acting."
         }
       },
       {
@@ -136,7 +136,7 @@
         "generated_answer": "Yes. A single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements. Note that customer-managed deployment is not the default delivery model and requires separate scoping through professional services.",
         "domain_tag": "infrastructure",
         "confidence_level": "high",
-        "confidence_reason": "Reference 1 explicitly states a single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements. Reference 2 explicitly states customer-managed deployment is not the default and requires separate scoping via professional services.",
+        "confidence_reason": "Reference 1 explicitly states a single-tenant VPC deployment is available for customers with stronger isolation requirements; Reference 2 explicitly states customer-managed deployment is not the default and requires separate scoping through professional services.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -146,7 +146,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "Both references are consistent and directly support the statements; there is no conflicting information in the provided references."
+          "reason": "Both references directly support the availability of single-tenant VPC and the procedural requirement for customer-managed deployments, so the statements are well supported by the provided sources."
         },
         "metadata": {
           "source_row_index": 3,
@@ -173,8 +173,8 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "Reference 1 explicitly states a single-tenant VPC deployment is available for customers with stronger isolation requirements. Reference 2 provides important context that customer-managed (non-default) deployments require separate scoping via professional services. Together they fully support the answer without needing additional sources.",
-          "confidence_review_reason": "Reference 1 explicitly states a single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements. Reference 2 explicitly states customer-managed deployment is not the default and requires separate scoping via professional services."
+          "reference_assessment_reason": "Reference 1 explicitly states a single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements. Reference 2 provides the necessary caveat that customer-managed deployment is not the default and requires separate scoping through professional services. Together they sufficiently answer the question.",
+          "confidence_review_reason": "Reference 1 explicitly states a single-tenant VPC deployment is available for customers with stronger isolation requirements; Reference 2 explicitly states customer-managed deployment is not the default and requires separate scoping through professional services."
         }
       }
     ],

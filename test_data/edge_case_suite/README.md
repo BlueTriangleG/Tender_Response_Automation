@@ -3,7 +3,7 @@
 This suite extends the existing demo data with regression-oriented assets for the current backend contract:
 
 - Historical repository ingest uses CSV
-- Tender inference input uses CSV
+- Tender inference input uses CSV and XLSX
 - Output expectations are captured as oracle JSON
 
 The goal is to cover realistic edge cases around:
@@ -78,6 +78,10 @@ Uses alias headers such as `Question Text`, `Category`, and `ID`, while also inc
 
 Intentional zero-question batch. Every row has a blank question value, so parsing should produce no questions and the workflow should terminate cleanly with a zero-count summary.
 
+### `input/07_exact_and_paraphrase.xlsx`
+
+Workbook version of the happy-path exact/paraphrase case. Use this to confirm XLSX uploads receive the same preprocessing and grounding behavior as the equivalent CSV path.
+
 ## Oracle Files
 
 Oracle JSON files in `expected_output/` are not literal backend responses. They describe the expected behavioral outcome for each tender file:
@@ -111,6 +115,9 @@ This keeps the dataset useful for LLM-based workflows where exact prose may vary
   - ingest `02_header_aliases.csv`
 - `06_blank_rows_only.csv`
   - any baseline history set is fine; the point is parser behavior
+- `07_exact_and_paraphrase.xlsx`
+  - ingest `01_clean_security_architecture.csv`
+  - ingest `02_header_aliases.csv`
 
 ## Notes
 

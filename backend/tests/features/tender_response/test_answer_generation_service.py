@@ -1,6 +1,7 @@
 from app.features.tender_response.domain.models import HistoricalReference, TenderQuestion
 from app.features.tender_response.infrastructure.services.answer_generation_service import (
     AnswerGenerationService,
+    _GroundedAnswerPayload,
 )
 
 
@@ -108,7 +109,7 @@ async def test_generate_grounded_response_uses_historical_context_and_returns_re
     assert result.generated_answer == "Aligned answer"
     assert result.confidence_level == "high"
     assert result.risk_level == "medium"
-    assert model.method == "json_schema"
+    assert model.method == "function_calling"
     assert model.strict is True
     rendered_messages = model.calls[0]
     assert "Reference 1 answer" in rendered_messages[1].content
@@ -174,3 +175,16 @@ async def test_generate_grounded_response_rewrites_invalid_structured_answer_out
         "rewrite" in model.calls[1][0].content.lower()
         or "rewrite" in model.calls[1][1].content.lower()
     )
+
+
+def test_grounded_answer_payload_marks_all_properties_as_required_for_strict_function_calling() -> None:
+    schema = _GroundedAnswerPayload.model_json_schema()
+
+    assert sorted(schema["required"]) == [
+        "confidence_level",
+        "confidence_reason",
+        "generated_answer",
+        "inconsistent_response",
+        "risk_level",
+        "risk_reason",
+    ]

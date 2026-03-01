@@ -77,8 +77,10 @@ function riskTone(level: "high" | "medium" | "low") {
   return "success" as const;
 }
 
-function isCsvFile(file: File) {
-  return file.name.toLowerCase().endsWith(".csv");
+function isSupportedTenderWorkbook(file: File) {
+  const normalizedName = file.name.toLowerCase();
+
+  return normalizedName.endsWith(".csv") || normalizedName.endsWith(".xlsx");
 }
 
 function formatStatusLabel(value: string) {
@@ -153,7 +155,7 @@ function App() {
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceTab>("repository");
   const [isDragActive, setIsDragActive] = useState(false);
   const [screenMessage, setScreenMessage] = useState(
-    "Waiting for a tender csv.",
+    "Waiting for a tender workbook.",
   );
   const [knowledgeBaseFiles, setKnowledgeBaseFiles] = useState<File[]>([]);
   const [knowledgeBaseMessage, setKnowledgeBaseMessage] = useState(
@@ -239,9 +241,9 @@ function App() {
     setIsDragActive(false);
     setWorkflowDurationMs(null);
 
-    if (file && !isCsvFile(file)) {
+    if (file && !isSupportedTenderWorkbook(file)) {
       setSelectedFile(null);
-      setScreenMessage("Autofill only accepts .csv files.");
+      setScreenMessage("Autofill only accepts .csv or .xlsx files.");
       return;
     }
 
@@ -254,7 +256,7 @@ function App() {
       return;
     }
 
-    setScreenMessage("Waiting for a tender csv.");
+    setScreenMessage("Waiting for a tender workbook.");
   }
 
   function updateAlignmentThreshold(value: number) {
@@ -333,7 +335,7 @@ function App() {
 
   async function handleProcessClick() {
     if (!selectedFile) {
-      setScreenMessage("Select a tender csv before starting the run.");
+      setScreenMessage("Select a tender CSV or XLSX file before starting the run.");
       return;
     }
 
@@ -707,8 +709,9 @@ function App() {
                 <div className="workspace-intro">
                   <p className="workspace-intro__title">Tender Response</p>
                   <p className="workspace-intro__copy">
-                    Upload a tender questionnaire in CSV format, send it to the response
-                    workflow, and review generated answers in a clean table.
+                    Upload a tender questionnaire in CSV or XLSX format, send it to
+                    the response workflow, and review generated answers in a clean
+                    table.
                   </p>
                 </div>
 
@@ -716,13 +719,13 @@ function App() {
                   fileName={selectedFile?.name ?? null}
                   inputId="tender-upload"
                   isDragActive={isDragActive}
-                  label="Upload tender csv"
+                  label="Upload tender workbook"
                   onDragEnter={handleDragEnter}
                   onDragLeave={handleDragLeave}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   onFileChange={applySelectedFile}
-                  supportLabel="Supports .csv only"
+                  supportLabel="Supports .csv and .xlsx"
                 />
 
                 <div className="field-grid field-grid--custom field-grid--single">
@@ -861,7 +864,7 @@ function App() {
                     </div>
                   ) : (
                     <p className="empty-state">
-                      Upload a csv and run autofill to populate the answer table.
+                      Upload a CSV or XLSX file and run autofill to populate the answer table.
                     </p>
                   )}
                 </article>

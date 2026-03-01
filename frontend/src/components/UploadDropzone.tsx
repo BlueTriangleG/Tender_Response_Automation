@@ -20,21 +20,21 @@ type UploadDropzoneProps = {
 };
 
 export function UploadDropzone({
-  accept = ".csv",
-  browseLabel = "Browse csv",
+  accept = ".csv,.xlsx",
+  browseLabel = "Browse files",
   caption = "Stage one tender questionnaire, then send it to the FastAPI workflow for autofill generation.",
-  dragActiveTitle = "Drop csv to queue this run",
+  dragActiveTitle = "Drop workbook to queue this run",
   fileName,
   inputId,
   isDragActive,
-  idleTitle = "Drag your tender csv here or browse from disk",
+  idleTitle = "Drag your tender workbook here or browse from disk",
   label,
   onDragEnter,
   onDragLeave,
   onDragOver,
   onDrop,
   onFileChange,
-  supportLabel = "Supports .csv only",
+  supportLabel = "Supports .csv and .xlsx",
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 

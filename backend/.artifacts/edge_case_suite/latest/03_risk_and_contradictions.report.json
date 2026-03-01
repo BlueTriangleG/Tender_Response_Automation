@@ -10,12 +10,7 @@
   },
   "evaluation": {
     "case_id": "03_risk_and_contradictions",
-    "passed": false,
-    "errors": [
-      "q-204: expected status completed, got unanswered",
-      "q-204: expected grounding_status grounded, got insufficient_reference",
-      "q-204: expected generated_answer to be non-null",
-      "q-204: generated answer did not include any of ['ISO 27001', 'SOC 2 Type II']"
-    ]
+    "passed": true,
+    "errors": []
   }
 }

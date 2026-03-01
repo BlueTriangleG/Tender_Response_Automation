@@ -2,7 +2,7 @@
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.core.config import settings
 from app.features.tender_response.domain.models import (
@@ -50,7 +50,7 @@ class ReferenceAssessmentService:
         try:
             structured_model = self._model.with_structured_output(
                 _ReferenceAssessmentPayload,
-                method="json_schema",
+                method="function_calling",
                 strict=True,
             )
             payload = await structured_model.ainvoke(messages)
@@ -91,5 +91,5 @@ class ReferenceAssessmentService:
 
 class _ReferenceAssessmentPayload(BaseModel):
     can_answer: bool
-    usable_reference_ids: list[str] = Field(default_factory=list)
+    usable_reference_ids: list[str]
     reason: str

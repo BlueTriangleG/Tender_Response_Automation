@@ -17,8 +17,16 @@ def route_after_assessment(state: QuestionProcessingState) -> str:
     return "finalize_unanswered"
 
 
-def dispatch_questions(state: BatchTenderResponseState) -> list[Send]:
-    """Fan out one processing task per question for parallel execution."""
+def dispatch_questions(state: BatchTenderResponseState) -> list[Send] | str:
+    """Fan out one processing task per question for parallel execution.
+
+    Returns a direct route to 'summarize_batch' when the question list is
+    empty so that the summary node always runs and ``result['summary']``
+    is never ``None`` after ``ainvoke`` returns.
+    """
+
+    if not state["questions"]:
+        return "summarize_batch"
 
     return [
         Send(

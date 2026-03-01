@@ -285,7 +285,7 @@ describe("App", () => {
     expect(
       screen.getByRole("heading", { name: /Build knowledge base/i }),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Upload tender csv/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Upload tender workbook/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Backend health: ok/i)).not.toBeInTheDocument();
   });
 
@@ -300,7 +300,7 @@ describe("App", () => {
 
     await user.click(screen.getByRole("tab", { name: /Tender Response/i }));
 
-    const input = screen.getByLabelText(/Upload tender csv/i);
+    const input = screen.getByLabelText(/Upload tender workbook/i);
     const file = new File(["question\nTLS"], "transport-tender.csv", {
       type: "text/csv",
     });
@@ -411,13 +411,13 @@ describe("App", () => {
 
     await user.click(screen.getByRole("tab", { name: /Tender Response/i }));
 
-    const dropzone = screen.getByLabelText(/Upload tender csv/i).closest("div");
+    const dropzone = screen.getByLabelText(/Upload tender workbook/i).closest("div");
 
     expect(dropzone).not.toBeNull();
 
     fireEvent.dragEnter(dropzone!);
 
-    expect(screen.getByText(/Drop csv to queue this run/i)).toBeInTheDocument();
+    expect(screen.getByText(/Drop workbook to queue this run/i)).toBeInTheDocument();
 
     const file = new File(["question\nTLS"], "dragged-tender.csv", {
       type: "text/csv",
@@ -432,6 +432,24 @@ describe("App", () => {
     expect(screen.getByText(/Selected file: dragged-tender\.csv/i)).toBeInTheDocument();
   });
 
+  test("accepts xlsx uploads in the tender response tab", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(screen.getByRole("tab", { name: /Tender Response/i }));
+
+    const input = screen.getByLabelText(/Upload tender workbook/i);
+    const file = new File(["fake workbook"], "transport-tender.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    await user.upload(input, file);
+
+    expect(screen.getByText(/Selected file: transport-tender\.xlsx/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Autofill only accepts \.csv files\./i)).not.toBeInTheDocument();
+  });
+
   test("uses custom upload controls instead of default form widgets", async () => {
     const user = userEvent.setup();
 
@@ -443,7 +461,7 @@ describe("App", () => {
     expect(screen.queryByRole("spinbutton", { name: /Similarity threshold/i })).not.toBeInTheDocument();
 
     expect(
-      screen.getByRole("button", { name: /Browse csv/i }),
+      screen.getByRole("button", { name: /Browse files/i }),
     ).toBeInTheDocument();
 
     expect(screen.getByText(/0.50/i)).toBeInTheDocument();

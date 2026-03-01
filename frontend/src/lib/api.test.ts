@@ -76,7 +76,7 @@ describe("processTenderWorkbook", () => {
     vi.restoreAllMocks();
   });
 
-  test("sends the tender csv to the tender response api as multipart form data", async () => {
+  test("sends a supported tender workbook to the tender response api as multipart form data", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -166,5 +166,42 @@ describe("processTenderWorkbook", () => {
 
     expect(formData.get("file")).toBe(file);
     expect(formData.get("alignmentThreshold")).toBe("0.84");
+  });
+
+  test("accepts xlsx uploads for tender autofill", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        request_id: "req-tender-43",
+        session_id: "session-43",
+        source_file_name: "tender.xlsx",
+        total_questions_processed: 0,
+        questions: [],
+        summary: {
+          total_questions_processed: 0,
+          flagged_high_risk_or_inconsistent_responses: 0,
+          overall_completion_status: "completed",
+          completed_questions: 0,
+          unanswered_questions: 0,
+          failed_questions: 0,
+        },
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const file = new File(["fake workbook"], "tender.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    await processTenderWorkbook(file, {
+      alignmentThreshold: 0.84,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const formData = init.body as FormData;
+
+    expect(formData.get("file")).toBe(file);
   });
 });

@@ -73,7 +73,7 @@ class AnswerGenerationService:
 
         structured_model = self._model.with_structured_output(
             _GroundedAnswerPayload,
-            method="json_schema",
+            method="function_calling",
             strict=True,
         )
         payload = await structured_model.ainvoke(messages)
@@ -119,4 +119,4 @@ class _GroundedAnswerPayload(BaseModel):
     confidence_reason: str
     risk_level: str
     risk_reason: str
-    inconsistent_response: bool = False
+    inconsistent_response: bool

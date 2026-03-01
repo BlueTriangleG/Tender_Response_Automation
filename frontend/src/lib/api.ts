@@ -284,8 +284,12 @@ export async function processTenderWorkbook(
   file: File,
   options: TenderAutofillOptions,
 ): Promise<TenderAutofillResponse> {
-  if (!file.name.toLowerCase().endsWith(".csv")) {
-    throw new Error("Autofill only accepts .csv files.");
+  const normalizedName = file.name.toLowerCase();
+  if (
+    !normalizedName.endsWith(".csv") &&
+    !normalizedName.endsWith(".xlsx")
+  ) {
+    throw new Error("Autofill only accepts .csv or .xlsx files.");
   }
 
   const formData = new FormData();

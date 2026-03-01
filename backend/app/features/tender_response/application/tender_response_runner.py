@@ -1,21 +1,30 @@
 """Thin application runner for tender-response workflow execution."""
 
+from __future__ import annotations
+
 from pathlib import Path
 from time import perf_counter
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from starlette.datastructures import UploadFile
 
+from app.features.tender_response.infrastructure.parsers.base import TenderUploadParser
 from app.features.tender_response.infrastructure.parsers.tender_csv_parser import (
     TenderCsvParser,
 )
-from app.features.tender_response.infrastructure.workflows.common.debug import debug_log
-from app.features.tender_response.infrastructure.workflows.registry import (
-    TenderWorkflowName,
-    TenderWorkflowRegistry,
+from app.features.tender_response.infrastructure.parsers.tender_excel_parser import (
+    TenderExcelParser,
 )
+from app.features.tender_response.infrastructure.workflows.common.debug import debug_log
 from app.features.tender_response.schemas.requests import TenderResponseRequestOptions
 from app.features.tender_response.schemas.responses import TenderResponseWorkflowResponse
+
+if TYPE_CHECKING:
+    from app.features.tender_response.infrastructure.workflows.registry import (
+        TenderWorkflowName,
+        TenderWorkflowRegistry,
+    )
 
 
 class TenderResponseRunner:
@@ -24,10 +33,12 @@ class TenderResponseRunner:
     def __init__(
         self,
         parser: TenderCsvParser | None = None,
+        excel_parser: TenderExcelParser | None = None,
         workflow_registry: TenderWorkflowRegistry | None = None,
     ) -> None:
-        self._parser = parser or TenderCsvParser()
-        self._workflow_registry = workflow_registry or TenderWorkflowRegistry()
+        self._csv_parser = parser or TenderCsvParser()
+        self._excel_parser = excel_parser or TenderExcelParser()
+        self._workflow_registry = workflow_registry or self._build_workflow_registry()
 
     async def process_upload(
         self,
@@ -36,13 +47,12 @@ class TenderResponseRunner:
         *,
         workflow_name: TenderWorkflowName = "parallel",
     ) -> TenderResponseWorkflowResponse:
-        """Run the selected tender-response workflow for one uploaded CSV file."""
+        """Run the selected tender-response workflow for one uploaded tabular file."""
 
         filename = upload_file.filename or "unknown"
         request_id = str(uuid4())
         started_at = perf_counter()
-        if Path(filename).suffix.lower() != ".csv":
-            raise ValueError("Only CSV files are supported for tender response generation.")
+        parser = self._get_parser_for_filename(filename)
 
         debug_log(
             f"request={request_id} upload start file={filename} "
@@ -50,12 +60,7 @@ class TenderResponseRunner:
         )
 
         raw_bytes = await upload_file.read()
-        try:
-            raw_text = raw_bytes.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise ValueError(f"Failed to decode CSV as UTF-8: {filename}") from exc
-
-        parsed_csv = self._parser.parse_text(raw_text, source_file_name=filename)
+        parsed_csv = parser.parse_bytes(raw_bytes, source_file_name=filename)
         debug_log(
             f"request={request_id} parsed questions={len(parsed_csv.questions)} file={filename}"
         )
@@ -84,6 +89,21 @@ class TenderResponseRunner:
             questions=result["question_results"],
             summary=result["summary"],
         )
+
+    def _build_workflow_registry(self) -> TenderWorkflowRegistry:
+        from app.features.tender_response.infrastructure.workflows.registry import (
+            TenderWorkflowRegistry,
+        )
+
+        return TenderWorkflowRegistry()
+
+    def _get_parser_for_filename(self, filename: str) -> TenderUploadParser:
+        suffix = Path(filename).suffix.lower()
+        if suffix == ".csv":
+            return self._csv_parser
+        if suffix == ".xlsx":
+            return self._excel_parser
+        raise ValueError("Only CSV and XLSX files are supported for tender response generation.")
 
     def _build_initial_state(
         self,

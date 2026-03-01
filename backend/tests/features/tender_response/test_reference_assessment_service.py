@@ -1,6 +1,7 @@
 from app.features.tender_response.domain.models import HistoricalReference, TenderQuestion
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
     ReferenceAssessmentService,
+    _ReferenceAssessmentPayload,
 )
 
 
@@ -88,7 +89,7 @@ async def test_assess_returns_grounded_when_llm_marks_references_sufficient() ->
     assert result.can_answer is True
     assert result.grounding_status == "grounded"
     assert result.usable_reference_ids == ["qa-1"]
-    assert model.method == "json_schema"
+    assert model.method == "function_calling"
     assert model.strict is True
     assert "Only mark can_answer=true" in model.runnable.calls[0][1].content
 
@@ -120,3 +121,13 @@ async def test_assess_returns_insufficient_reference_when_llm_fails() -> None:
     assert result.can_answer is False
     assert result.grounding_status == "insufficient_reference"
     assert result.usable_reference_ids == []
+
+
+def test_reference_assessment_payload_marks_all_properties_as_required_for_strict_function_calling() -> None:
+    schema = _ReferenceAssessmentPayload.model_json_schema()
+
+    assert sorted(schema["required"]) == [
+        "can_answer",
+        "reason",
+        "usable_reference_ids",
+    ]

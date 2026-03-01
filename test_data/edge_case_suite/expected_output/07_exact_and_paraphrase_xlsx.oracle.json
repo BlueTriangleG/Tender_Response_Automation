@@ -1,0 +1,75 @@
+{
+  "case_id": "07_exact_and_paraphrase_xlsx",
+  "recommended_history_files": [
+    "historical_repository/01_clean_security_architecture.csv",
+    "historical_repository/02_header_aliases.csv"
+  ],
+  "purpose": "Baseline successful run using XLSX tender input with the same grounding expectations as the CSV happy path.",
+  "expected_summary": {
+    "total_questions_processed": 5,
+    "allowed_overall_completion_statuses": [
+      "completed"
+    ],
+    "completed_min": 5,
+    "unanswered_max": 0,
+    "failed_max": 0
+  },
+  "questions": [
+    {
+      "question_id": "q-001",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded",
+      "expected_historical_alignment_indicator": true,
+      "generated_answer_should_be_null": false,
+      "allowed_domain_tags": [
+        "security"
+      ],
+      "must_include_any": [
+        "TLS 1.2",
+        "TLS 1.2 or higher"
+      ]
+    },
+    {
+      "question_id": "q-002",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded",
+      "expected_historical_alignment_indicator": true,
+      "generated_answer_should_be_null": false,
+      "allowed_domain_tags": [
+        "architecture",
+        "security"
+      ]
+    },
+    {
+      "question_id": "q-003",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded",
+      "expected_historical_alignment_indicator": true,
+      "generated_answer_should_be_null": false,
+      "must_not_include": [
+        "used to train shared models by default"
+      ]
+    },
+    {
+      "question_id": "q-004",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded",
+      "expected_historical_alignment_indicator": true,
+      "generated_answer_should_be_null": false,
+      "allowed_domain_tags": [
+        "compliance",
+        "infrastructure"
+      ]
+    },
+    {
+      "question_id": "q-005",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded",
+      "expected_historical_alignment_indicator": true,
+      "generated_answer_should_be_null": false,
+      "allowed_domain_tags": [
+        "ai"
+      ]
+    }
+  ]
+}

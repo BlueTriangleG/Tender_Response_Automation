@@ -12,6 +12,12 @@ from tests.e2e.live.edge_case_suite.reporting import write_case_artifacts
 pytestmark = pytest.mark.live_e2e
 
 
+def _tender_content_type(tender_file: Path) -> str:
+    if tender_file.suffix.lower() == ".xlsx":
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    return "text/csv"
+
+
 def _upload_history_file(client, history_file: Path) -> dict:
     with history_file.open("rb") as handle:
         response = client.post(
@@ -37,7 +43,7 @@ def _run_tender_case(client, tender_file: Path, *, session_id: str) -> dict:
                 "file": (
                     tender_file.name,
                     handle.read(),
-                    "text/csv",
+                    _tender_content_type(tender_file),
                 )
             },
             data={"sessionId": session_id},

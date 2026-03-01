@@ -11,7 +11,13 @@
   },
   "evaluation": {
     "case_id": "04_mixed_batch_12_questions",
-    "passed": true,
-    "errors": []
+    "passed": false,
+    "errors": [
+      "unanswered_questions below minimum: expected >= 2, got 1",
+      "q-308: expected status in ['unanswered'], got completed",
+      "q-308: expected grounding_status in ['insufficient_reference'], got grounded",
+      "q-308: expected generated_answer to be null",
+      "q-309: generated answer included forbidden phrase 'FedRAMP High authorized'"
+    ]
   }
 }
