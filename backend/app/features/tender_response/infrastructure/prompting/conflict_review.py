@@ -26,7 +26,13 @@ def build_conflict_review_messages(
                 f"Target answers: {json.dumps(target_payload, ensure_ascii=True)}\n"
                 f"Reference answers: {json.dumps(reference_payload, ensure_ascii=True)}\n"
                 "Return only material contradictions or mutually incompatible commitments. "
-                "Do not return duplicates, formatting differences, or harmless wording variation."
+                "Do not return duplicates, formatting differences, harmless wording variation, "
+                "or partial-answer caveats that simply describe missing evidence.\n"
+                "Ignore overlap caused only by generic process words such as evidence, "
+                "references, review, approved, policy, standard, report, or authority.\n"
+                "Only report a conflict when both answers are about the same underlying "
+                "capability, certification, deployment model, commercial commitment, or "
+                "security/compliance claim."
             )
         ),
     ]
@@ -50,6 +56,8 @@ _SYSTEM_PROMPT = (
     "conflicting with any other answer that allows the same capability during "
     "migration windows, approved exceptions, or temporary transition scenarios. "
     "Ignore unanswered or failed items; they are not included in the payload. "
+    "Do not infer a conflict merely because two answers both mention review processes, "
+    "missing evidence, approval status, or references. "
     "Each reported conflict must identify one target_question_id, one conflicting_question_id, "
     "a concise reason, and a severity of high, medium, or low."
 )

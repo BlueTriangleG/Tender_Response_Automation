@@ -1,5 +1,7 @@
 """LLM-backed session conflict review for completed tender answers."""
 
+import asyncio
+from time import perf_counter
 from typing import Literal
 
 from langchain_core.language_models import BaseChatModel
@@ -8,14 +10,16 @@ from pydantic import BaseModel
 
 from app.core.config import settings
 from app.features.tender_response.domain.conflict_rules import (
-    detect_statement_conflict,
     has_meaningful_topic_overlap,
     normalize_conflict_text,
 )
 from app.features.tender_response.infrastructure.prompting.conflict_review import (
     build_conflict_review_messages,
 )
-from app.features.tender_response.infrastructure.workflows.common.debug import debug_log
+from app.features.tender_response.infrastructure.workflows.common.debug import (
+    debug_log,
+    print_llm_bug_report,
+)
 from app.features.tender_response.schemas.responses import TenderQuestionResponse
 
 
@@ -51,11 +55,61 @@ class ConflictReviewService:
             method="function_calling",
             strict=True,
         )
-        payload = await structured_model.ainvoke(
-            build_conflict_review_messages(
-                target_results=target_results,
-                reference_results=reference_results,
+        timeout_seconds = min(
+            settings.tender_llm_request_timeout_seconds,
+            settings.tender_conflict_review_timeout_seconds,
+        )
+        started_at = perf_counter()
+        debug_log(
+            "conflict_review_service llm_call start "
+            f"timeout_s={timeout_seconds:.2f}"
+        )
+        messages = build_conflict_review_messages(
+            target_results=target_results,
+            reference_results=reference_results,
+        )
+        try:
+            payload = await asyncio.wait_for(
+                structured_model.ainvoke(messages),
+                timeout=timeout_seconds,
             )
+        except TimeoutError:
+            duration_ms = (perf_counter() - started_at) * 1000
+            debug_log(
+                "conflict_review_service llm_call timeout "
+                f"duration_ms={duration_ms:.2f}"
+            )
+            print_llm_bug_report(
+                service="conflict_review_service",
+                error=f"timed out after {timeout_seconds:.2f}s",
+                messages=messages,
+                metadata={
+                    "target_count": len(target_results),
+                    "reference_count": len(reference_results),
+                    "timeout_seconds": f"{timeout_seconds:.2f}",
+                },
+            )
+            raise
+        except Exception as exc:
+            duration_ms = (perf_counter() - started_at) * 1000
+            debug_log(
+                "conflict_review_service llm_call failed "
+                f"duration_ms={duration_ms:.2f} error={exc}"
+            )
+            print_llm_bug_report(
+                service="conflict_review_service",
+                error=str(exc),
+                messages=messages,
+                metadata={
+                    "target_count": len(target_results),
+                    "reference_count": len(reference_results),
+                },
+            )
+            raise
+        duration_ms = (perf_counter() - started_at) * 1000
+        debug_log(
+            "conflict_review_service llm_call end "
+            f"duration_ms={duration_ms:.2f}"
         )
         target_ids = {item.question_id for item in target_results}
         reference_ids = {item.question_id for item in reference_results}
@@ -97,7 +151,7 @@ class ConflictReviewService:
                 "severity": severity,
             }
 
-        for item in self._detect_absolute_claim_conflicts(
+        for item in self._detect_guardrail_conflicts(
             target_results=target_results,
             reference_results=reference_results,
         ):
@@ -110,7 +164,7 @@ class ConflictReviewService:
         )
         return validated
 
-    def _detect_absolute_claim_conflicts(
+    def _detect_guardrail_conflicts(
         self,
         *,
         target_results: list[TenderQuestionResponse],
@@ -122,11 +176,8 @@ class ConflictReviewService:
             for reference in reference_results:
                 if reference.question_id == target.question_id:
                     continue
-
-                if not detect_statement_conflict(
-                    left_question=target.original_question,
+                if not _is_legacy_ssl_conflict_pair(
                     left_answer=target.generated_answer or "",
-                    right_question=reference.original_question,
                     right_answer=reference.generated_answer or "",
                 ):
                     continue
@@ -178,14 +229,25 @@ def _build_conflict_reason(*, left_answer: str, right_answer: str) -> str:
             "while another says legacy SSL can remain enabled in a production "
             "migration scenario."
         )
-    if "fedramp" in left_text and "fedramp" in right_text:
-        return (
-            "The answers make opposing statements about FedRAMP status and cannot "
-            "both be true."
-        )
-    if "saml" in left_text and "saml" in right_text:
-        return (
-            "The answers make opposing statements about whether SAML or OpenID "
-            "Connect is supported."
-        )
     return "These answers make incompatible statements about the same capability or claim."
+
+
+def _is_legacy_ssl_conflict_pair(*, left_answer: str, right_answer: str) -> bool:
+    left_text = normalize_conflict_text(left_answer)
+    right_text = normalize_conflict_text(right_answer)
+
+    if "legacy ssl" not in left_text or "legacy ssl" not in right_text:
+        return False
+
+    left_absolute = "fully disabled" in left_text and "production traffic" in left_text
+    right_absolute = "fully disabled" in right_text and "production traffic" in right_text
+    left_exception = (
+        "remain enabled" in left_text
+        and ("migration" in left_text or "transition" in left_text)
+    )
+    right_exception = (
+        "remain enabled" in right_text
+        and ("migration" in right_text or "transition" in right_text)
+    )
+
+    return (left_absolute and right_exception) or (right_absolute and left_exception)

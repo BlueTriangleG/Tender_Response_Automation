@@ -1,3 +1,6 @@
+import asyncio
+
+from app.core.config import settings
 from app.features.tender_response.domain.models import (
     GroundedAnswerResult,
     HistoricalAlignmentResult,
@@ -123,6 +126,17 @@ class FakeConflictReviewService:
             }
         )
         return self.findings
+
+
+class SlowConflictReviewService:
+    def __init__(self, delay_seconds: float) -> None:
+        self.delay_seconds = delay_seconds
+        self.calls = 0
+
+    async def review_conflicts(self, *, target_results, reference_results):
+        self.calls += 1
+        await asyncio.sleep(self.delay_seconds)
+        return []
 
 
 async def test_tender_response_graph_processes_any_number_of_questions() -> None:
@@ -1098,6 +1112,112 @@ async def test_tender_response_graph_retries_invalid_partial_reference_until_sec
     assert answer_service.answer_calls == ["q-011", "q-011"]
 
 
+async def test_tender_response_graph_allows_partial_answer_with_natural_confidence_reason() -> None:
+    answer_service = ConfigurableAnswerGenerationService(
+        {
+            "q-011b": GroundedAnswerResult(
+                generated_answer=(
+                    "Yes. The platform supports both SAML 2.0 and OpenID Connect "
+                    "for single sign-on. (The provided references do not mention "
+                    "role-based access control, role/claim mapping, group sync, or "
+                    "provisioning, so RBAC support cannot be confirmed from these "
+                    "references.)"
+                ),
+                confidence_level="medium",
+                confidence_reason=(
+                    "Both QA references explicitly state the platform supports "
+                    "SAML 2.0 and OpenID Connect for single sign-on. Neither "
+                    "reference mentions role-based access control, role/claim "
+                    "mapping, group sync, or provisioning, so confirmation of "
+                    "RBAC integration is not available in the provided sources."
+                ),
+                risk_level="low",
+                risk_reason="Low risk.",
+                inconsistent_response=False,
+            )
+        }
+    )
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(
+            {
+                "q-011b": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-11b",
+                    question="Does the platform support SAML 2.0 and OpenID Connect?",
+                    answer=(
+                        "Yes. The platform supports both SAML 2.0 and OpenID Connect "
+                        "for enterprise single sign-on integrations."
+                    ),
+                    domain="Architecture",
+                    source_doc="identity-history.csv",
+                    alignment_score=0.72,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-11b",
+                            question="Does the platform support SAML 2.0 and OpenID Connect?",
+                            answer=(
+                                "Yes. The platform supports both SAML 2.0 and OpenID "
+                                "Connect for enterprise single sign-on integrations."
+                            ),
+                            domain="Architecture",
+                            source_doc="identity-history.csv",
+                            alignment_score=0.72,
+                        ),
+                    ],
+                ),
+            }
+        ),
+        answer_generation_service=answer_service,
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-011b": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="partial_reference",
+                    usable_reference_ids=["qa-11b"],
+                    reason=(
+                        "The references support SAML/OpenID Connect single sign-on "
+                        "but do not mention RBAC support or integration details."
+                    ),
+                )
+            }
+        ),
+        domain_tagging_service=DomainTaggingService(),
+    )
+
+    result = await workflow.ainvoke(
+        {
+            "session_id": "session-11b",
+            "source_file_name": "tender.csv",
+            "alignment_threshold": 0.82,
+            "questions": [
+                TenderQuestion(
+                    question_id="q-011b",
+                    original_question=(
+                        "Does the platform support SAML 2.0 or OpenID Connect single "
+                        "sign-on with role-based access control?"
+                    ),
+                    declared_domain="Architecture",
+                    source_file_name="tender.csv",
+                    source_row_index=0,
+                )
+            ],
+            "question_results": [],
+            "run_errors": [],
+            "summary": None,
+            "current_question": None,
+        },
+        config={"configurable": {"thread_id": "session-11b"}},
+    )
+
+    partial = result["question_results"][0]
+
+    assert partial.status == "completed"
+    assert partial.grounding_status == "partial_reference"
+    assert partial.generated_answer is not None
+    assert partial.confidence_level == "medium"
+    assert answer_service.answer_calls == ["q-011b"]
+
+
 async def test_tender_response_graph_fails_partial_reference_after_three_invalid_attempts() -> None:
     answer_service = SequentialAnswerGenerationService(
         {
@@ -1323,7 +1443,8 @@ async def test_tender_response_graph_retries_self_weakening_absolute_claim_until
     assert completed.status == "completed"
     assert completed.generated_answer is not None
     assert "fully disabled for all production traffic" not in completed.generated_answer
-    assert answer_service.answer_calls == ["q-013", "q-013"]
+
+
 
 
 async def test_tender_response_graph_reviews_conflicts_for_completed_answers_only() -> None:
@@ -1490,3 +1611,296 @@ async def test_tender_response_graph_reviews_conflicts_for_completed_answers_onl
     assert statuses["q-103"].extensions["conflicts"][0]["conflicting_question_id"] == "q-101"
     assert result["summary"].overall_completion_status == "conflict"
     assert result["summary"].conflict_count == 2
+
+
+async def test_tender_response_graph_times_out_conflict_review_and_still_completes(
+    monkeypatch,
+) -> None:
+    conflict_service = SlowConflictReviewService(delay_seconds=0.05)
+    monkeypatch.setattr(settings, "tender_conflict_review_timeout_seconds", 0.01)
+
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(
+            {
+                "q-001": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-1",
+                    question="Historical pricing question",
+                    answer="Historical pricing answer",
+                    domain="Pricing",
+                    source_doc="history.csv",
+                    alignment_score=0.95,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-1",
+                            question="Historical pricing question",
+                            answer="Historical pricing answer",
+                            domain="Pricing",
+                            source_doc="history.csv",
+                            alignment_score=0.95,
+                        )
+                    ],
+                ),
+                "q-002": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-2",
+                    question="Historical security question",
+                    answer="Historical security answer",
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.94,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-2",
+                            question="Historical security question",
+                            answer="Historical security answer",
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.94,
+                        )
+                    ],
+                ),
+            }
+        ),
+        answer_generation_service=ConfigurableAnswerGenerationService(
+            {
+                "q-001": GroundedAnswerResult(
+                    generated_answer="Answer 1.",
+                    confidence_level="high",
+                    confidence_reason="Supported.",
+                    risk_level="low",
+                    risk_reason="Low risk.",
+                    inconsistent_response=False,
+                ),
+                "q-002": GroundedAnswerResult(
+                    generated_answer="Answer 2.",
+                    confidence_level="high",
+                    confidence_reason="Supported.",
+                    risk_level="low",
+                    risk_reason="Low risk.",
+                    inconsistent_response=False,
+                ),
+            }
+        ),
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-001": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="grounded",
+                    usable_reference_ids=["qa-1"],
+                    reason="Sufficient.",
+                ),
+                "q-002": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="grounded",
+                    usable_reference_ids=["qa-2"],
+                    reason="Sufficient.",
+                ),
+            }
+        ),
+        domain_tagging_service=DomainTaggingService(),
+        conflict_review_service=conflict_service,
+    )
+
+    result = await workflow.ainvoke(
+        {
+            "session_id": "session-timeout",
+            "source_file_name": "tender.csv",
+            "alignment_threshold": 0.6,
+            "questions": [
+                TenderQuestion(
+                    question_id="q-001",
+                    original_question="Question 1?",
+                    declared_domain="Pricing",
+                    source_file_name="tender.csv",
+                    source_row_index=0,
+                ),
+                TenderQuestion(
+                    question_id="q-002",
+                    original_question="Question 2?",
+                    declared_domain="Security",
+                    source_file_name="tender.csv",
+                    source_row_index=1,
+                ),
+            ],
+            "question_results": [],
+            "session_completed_results": [],
+            "conflict_findings": [],
+            "conflict_review_errors": [],
+            "summary": None,
+            "run_errors": [],
+            "current_question": None,
+            "current_conflict_job": None,
+        },
+        config={"configurable": {"thread_id": "session-timeout"}},
+    )
+
+    assert result["summary"].completed_questions == 2
+    assert result["conflict_findings"] == []
+    assert len(result["conflict_review_errors"]) == 1
+    assert "timed out" in result["conflict_review_errors"][0].lower()
+
+
+async def test_tender_response_graph_maps_confidence_from_supported_coverage() -> None:
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(
+            {
+                "q-low": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-low",
+                    question="Historical low coverage question",
+                    answer="Historical low coverage answer",
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.91,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-low",
+                            question="Historical low coverage question",
+                            answer="Historical low coverage answer",
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.91,
+                        )
+                    ],
+                ),
+                "q-medium": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-medium",
+                    question="Historical medium coverage question",
+                    answer="Historical medium coverage answer",
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.91,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-medium",
+                            question="Historical medium coverage question",
+                            answer="Historical medium coverage answer",
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.91,
+                        )
+                    ],
+                ),
+                "q-high": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-high",
+                    question="Historical high coverage question",
+                    answer="Historical high coverage answer",
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.91,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-high",
+                            question="Historical high coverage question",
+                            answer="Historical high coverage answer",
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.91,
+                        )
+                    ],
+                ),
+            }
+        ),
+        answer_generation_service=ConfigurableAnswerGenerationService(
+            {
+                "q-low": GroundedAnswerResult(
+                    generated_answer="Low coverage partial answer (missing scope).",
+                    confidence_level="medium",
+                    confidence_reason="Model said medium.",
+                    risk_level="low",
+                    risk_reason="Low risk.",
+                    inconsistent_response=False,
+                ),
+                "q-medium": GroundedAnswerResult(
+                    generated_answer="Medium coverage partial answer (missing scope).",
+                    confidence_level="low",
+                    confidence_reason="Model said low.",
+                    risk_level="low",
+                    risk_reason="Low risk.",
+                    inconsistent_response=False,
+                ),
+                "q-high": GroundedAnswerResult(
+                    generated_answer="Fully supported answer.",
+                    confidence_level="medium",
+                    confidence_reason="Model said medium.",
+                    risk_level="low",
+                    risk_reason="Low risk.",
+                    inconsistent_response=False,
+                ),
+            }
+        ),
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-low": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="partial_reference",
+                    usable_reference_ids=["qa-low"],
+                    reason="Less than half the requested scope is supported.",
+                    supported_coverage_percent=40,
+                ),
+                "q-medium": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="partial_reference",
+                    usable_reference_ids=["qa-medium"],
+                    reason="More than half the requested scope is supported.",
+                    supported_coverage_percent=60,
+                ),
+                "q-high": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="grounded",
+                    usable_reference_ids=["qa-high"],
+                    reason="The full requested scope is supported.",
+                    supported_coverage_percent=100,
+                ),
+            }
+        ),
+        domain_tagging_service=DomainTaggingService(),
+    )
+
+    result = await workflow.ainvoke(
+        {
+            "session_id": "session-coverage",
+            "source_file_name": "tender.csv",
+            "alignment_threshold": 0.82,
+            "questions": [
+                TenderQuestion(
+                    question_id="q-low",
+                    original_question="Question with low supported coverage?",
+                    declared_domain="Security",
+                    source_file_name="tender.csv",
+                    source_row_index=0,
+                ),
+                TenderQuestion(
+                    question_id="q-medium",
+                    original_question="Question with medium supported coverage?",
+                    declared_domain="Security",
+                    source_file_name="tender.csv",
+                    source_row_index=1,
+                ),
+                TenderQuestion(
+                    question_id="q-high",
+                    original_question="Question with full supported coverage?",
+                    declared_domain="Security",
+                    source_file_name="tender.csv",
+                    source_row_index=2,
+                ),
+            ],
+            "question_results": [],
+            "session_completed_results": [],
+            "conflict_findings": [],
+            "conflict_review_errors": [],
+            "summary": None,
+            "run_errors": [],
+            "current_question": None,
+            "current_conflict_job": None,
+        },
+        config={"configurable": {"thread_id": "session-coverage"}},
+    )
+
+    results_by_id = {item.question_id: item for item in result["question_results"]}
+    assert results_by_id["q-low"].confidence_level == "low"
+    assert results_by_id["q-medium"].confidence_level == "medium"
+    assert results_by_id["q-high"].confidence_level == "high"

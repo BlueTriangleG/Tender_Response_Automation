@@ -1,5 +1,8 @@
 """Single-call grounded answer generation plus confidence/risk review."""
 
+import asyncio
+from time import perf_counter
+
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
@@ -13,6 +16,10 @@ from app.features.tender_response.domain.models import (
 from app.features.tender_response.infrastructure.prompting.answer_generation import (
     build_answer_generation_messages,
     build_answer_rewrite_messages,
+)
+from app.features.tender_response.infrastructure.workflows.common.debug import (
+    debug_log,
+    print_llm_bug_report,
 )
 
 
@@ -43,6 +50,7 @@ class AnswerGenerationService:
         """Render references into a prompt and ask for answer plus structured review."""
 
         result = await self._request_grounded_response(
+            question=question,
             messages=build_answer_generation_messages(
                 question=question,
                 usable_references=usable_references,
@@ -52,17 +60,22 @@ class AnswerGenerationService:
                 last_invalid_confidence_level=last_invalid_confidence_level,
                 last_invalid_confidence_reason=last_invalid_confidence_reason,
                 assessment_reason=assessment_reason,
-            )
+            ),
+            phase="primary",
+            attempt_number=attempt_number,
         )
         if self._is_displayable_answer(result.generated_answer):
             return result
 
         rewritten_result = await self._request_grounded_response(
+            question=question,
             messages=build_answer_rewrite_messages(
                 question=question,
                 usable_references=usable_references,
                 invalid_generated_answer=result.generated_answer,
-            )
+            ),
+            phase="rewrite",
+            attempt_number=attempt_number,
         )
         if self._is_displayable_answer(rewritten_result.generated_answer):
             return rewritten_result
@@ -79,7 +92,10 @@ class AnswerGenerationService:
     async def _request_grounded_response(
         self,
         *,
+        question: TenderQuestion,
         messages,
+        phase: str,
+        attempt_number: int,
     ) -> GroundedAnswerResult:
         """Request one structured grounded-response payload from the model."""
 
@@ -88,7 +104,64 @@ class AnswerGenerationService:
             method="function_calling",
             strict=True,
         )
-        payload = await structured_model.ainvoke(messages)
+        timeout_seconds = settings.tender_llm_request_timeout_seconds
+        started_at = perf_counter()
+        debug_log(
+            f"question={question.question_id} answer_generation_service request start "
+            f"phase={phase} attempt={attempt_number} timeout_s={timeout_seconds:.2f}"
+        )
+        try:
+            payload = await asyncio.wait_for(
+                structured_model.ainvoke(messages),
+                timeout=timeout_seconds,
+            )
+        except TimeoutError as exc:
+            duration_ms = (perf_counter() - started_at) * 1000
+            debug_log(
+                f"question={question.question_id} answer_generation_service request timeout "
+                f"phase={phase} attempt={attempt_number} duration_ms={duration_ms:.2f}"
+            )
+            print_llm_bug_report(
+                service="answer_generation_service",
+                error=(
+                    f"timed out during {phase} request after "
+                    f"{timeout_seconds:.2f}s"
+                ),
+                messages=messages,
+                metadata={
+                    "question_id": question.question_id,
+                    "phase": phase,
+                    "attempt": attempt_number,
+                    "timeout_seconds": f"{timeout_seconds:.2f}",
+                },
+            )
+            raise RuntimeError(
+                f"Answer generation timed out during {phase} request after "
+                f"{timeout_seconds:.2f}s."
+            ) from exc
+        except Exception as exc:
+            duration_ms = (perf_counter() - started_at) * 1000
+            debug_log(
+                f"question={question.question_id} answer_generation_service request failed "
+                f"phase={phase} attempt={attempt_number} duration_ms={duration_ms:.2f} "
+                f"error={exc}"
+            )
+            print_llm_bug_report(
+                service="answer_generation_service",
+                error=str(exc),
+                messages=messages,
+                metadata={
+                    "question_id": question.question_id,
+                    "phase": phase,
+                    "attempt": attempt_number,
+                },
+            )
+            raise
+        duration_ms = (perf_counter() - started_at) * 1000
+        debug_log(
+            f"question={question.question_id} answer_generation_service request end "
+            f"phase={phase} attempt={attempt_number} duration_ms={duration_ms:.2f}"
+        )
         return GroundedAnswerResult(
             generated_answer=payload.generated_answer.strip(),
             confidence_level=payload.confidence_level.lower(),

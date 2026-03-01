@@ -90,7 +90,6 @@ EXCEPTION_OR_CAVEAT_TERMS = [
     "may allow",
 ]
 
-
 def _normalize(text: str | None) -> str:
     return " ".join((text or "").lower().split())
 

@@ -26,5 +26,5 @@ def test_openai_model_defaults_have_feature_specific_names(
 
     assert settings.openai_chat_model == "gpt-4o-mini"
     assert settings.openai_csv_column_model == "gpt-4o-mini"
-    assert settings.openai_tender_response_model == "gpt-5-mini-2025-08-07"
+    assert settings.openai_tender_response_model == "gpt-5.2"
     assert settings.tender_workflow_debug is False

@@ -65,6 +65,10 @@ _STOPWORDS = {
     "disabled",
     "enabled",
     "human",
+    "evidence",
+    "authority",
+    "report",
+    "reports",
     "reference",
     "references",
     "response",
@@ -73,10 +77,6 @@ _STOPWORDS = {
     "state",
     "tender",
     "whether",
-    "authorized",
-    "authorised",
-    "certified",
-    "compliant",
 }
 
 _HIGH_SIGNAL_TOPIC_TOKENS = {
@@ -109,13 +109,12 @@ _CONTRADICTION_PAIRS = [
     (("supports", "support", "supported"), ("does not support", "do not support", "unsupported")),
     (("available", "generally available", "is available"), ("not available", "unavailable")),
     (
-        ("authorized", "authorised", "certified", "compliant", "approved"),
+        ("authorized", "authorised", "certified", "compliant"),
         (
             "not authorized",
             "not authorised",
             "not certified",
             "not compliant",
-            "not approved",
             "cannot confirm",
             "should be escalated",
         ),
@@ -131,7 +130,7 @@ def normalize_conflict_text(text: str | None) -> str:
 
 def extract_topic_tokens(*texts: str) -> set[str]:
     combined = normalize_conflict_text(" ".join(texts))
-    tokens = set(re.findall(r"[a-z0-9][a-z0-9.+-]{2,}", combined))
+    tokens = set(re.findall(r"[a-z0-9][a-z0-9+-]{2,}", combined))
     return {
         token
         for token in tokens

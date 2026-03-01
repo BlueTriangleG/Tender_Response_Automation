@@ -1,3 +1,6 @@
+import asyncio
+
+from app.core.config import settings
 from app.features.tender_response.domain.models import HistoricalReference, TenderQuestion
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
     ReferenceAssessmentService,
@@ -6,23 +9,40 @@ from app.features.tender_response.infrastructure.services.reference_assessment_s
 
 
 class FakeStructuredRunnable:
-    def __init__(self, schema, response: dict, should_raise: bool = False) -> None:
+    def __init__(
+        self,
+        schema,
+        response: dict,
+        should_raise: bool = False,
+        *,
+        delay_seconds: float = 0.0,
+    ) -> None:
         self._schema = schema
         self._response = response
         self.should_raise = should_raise
+        self.delay_seconds = delay_seconds
         self.calls: list[list] = []
 
     async def ainvoke(self, messages):
         self.calls.append(messages)
+        if self.delay_seconds > 0:
+            await asyncio.sleep(self.delay_seconds)
         if self.should_raise:
             raise RuntimeError("llm unavailable")
         return self._schema(**self._response)
 
 
 class FakeChatModel:
-    def __init__(self, response: dict, should_raise: bool = False) -> None:
+    def __init__(
+        self,
+        response: dict,
+        should_raise: bool = False,
+        *,
+        delay_seconds: float = 0.0,
+    ) -> None:
         self.response = response
         self.should_raise = should_raise
+        self.delay_seconds = delay_seconds
         self.schema = None
         self.method = None
         self.strict = None
@@ -36,13 +56,19 @@ class FakeChatModel:
             schema,
             self.response,
             should_raise=self.should_raise,
+            delay_seconds=self.delay_seconds,
         )
         return self.runnable
 
 
 async def test_assess_returns_no_reference_without_llm_call() -> None:
     model = FakeChatModel(
-        {"answerability": "grounded", "usable_reference_ids": [], "reason": "unused"}
+        {
+            "answerability": "grounded",
+            "none_reason_kind": "not_applicable",
+            "usable_reference_ids": [],
+            "reason": "unused",
+        }
     )
     service = ReferenceAssessmentService(model=model)
 
@@ -66,6 +92,8 @@ async def test_assess_returns_grounded_when_llm_marks_references_sufficient() ->
     model = FakeChatModel(
         {
             "answerability": "grounded",
+            "none_reason_kind": "not_applicable",
+            "supported_coverage_percent": 100,
             "usable_reference_ids": ["qa-1"],
             "reason": "Enough evidence.",
         }
@@ -95,15 +123,21 @@ async def test_assess_returns_grounded_when_llm_marks_references_sufficient() ->
     assert result.can_answer is True
     assert result.grounding_status == "grounded"
     assert result.usable_reference_ids == ["qa-1"]
+    assert result.supported_coverage_percent == 100
     assert model.method == "function_calling"
     assert model.strict is True
     assert "Classify answerability as none, partial, or grounded." in model.runnable.calls[0][1].content
+    assert "If any material sub-part, scope, timeframe, environment, commitment" in (
+        model.runnable.calls[0][1].content
+    )
 
 
 async def test_assess_returns_partial_reference_when_llm_marks_references_partial() -> None:
     model = FakeChatModel(
         {
             "answerability": "partial",
+            "none_reason_kind": "not_applicable",
+            "supported_coverage_percent": 40,
             "usable_reference_ids": ["qa-1"],
             "reason": "The references support deployment controls but not sovereign guarantees.",
         }
@@ -133,6 +167,7 @@ async def test_assess_returns_partial_reference_when_llm_marks_references_partia
     assert result.can_answer is True
     assert result.grounding_status == "partial_reference"
     assert result.usable_reference_ids == ["qa-1"]
+    assert result.supported_coverage_percent == 40
     assert "deployment controls" in result.reason
 
 
@@ -140,6 +175,8 @@ async def test_assess_renders_document_chunk_references_as_excerpts() -> None:
     model = FakeChatModel(
         {
             "answerability": "grounded",
+            "none_reason_kind": "not_applicable",
+            "supported_coverage_percent": 100,
             "usable_reference_ids": ["doc-1#0"],
             "reason": "The excerpt directly supports the answer.",
         }
@@ -267,10 +304,60 @@ async def test_assess_returns_conflict_for_conflicting_ssl_history() -> None:
     assert model.runnable is None
 
 
+async def test_assess_defers_generic_reference_conflicts_to_llm_judgment() -> None:
+    model = FakeChatModel(
+        {
+            "answerability": "none",
+            "none_reason_kind": "conflict",
+            "supported_coverage_percent": 0,
+            "usable_reference_ids": [],
+            "reason": (
+                "The references make opposing statements about SAML support, so human "
+                "review is required."
+            ),
+        }
+    )
+    service = ReferenceAssessmentService(model=model)
+
+    result = await service.assess(
+        question=TenderQuestion(
+            question_id="q-002",
+            original_question="Does the platform support SAML 2.0 for single sign-on?",
+            declared_domain="Architecture",
+            source_file_name="tender.csv",
+            source_row_index=1,
+        ),
+        references=[
+            HistoricalReference(
+                record_id="qa-1",
+                question="Does the platform support SAML 2.0?",
+                answer="Yes. The platform supports SAML 2.0 and OpenID Connect.",
+                domain="Architecture",
+                source_doc="history.csv",
+                alignment_score=0.88,
+            ),
+            HistoricalReference(
+                record_id="qa-2",
+                question="State that the platform does not support SAML 2.0.",
+                answer="No. The platform does not support SAML 2.0 or OpenID Connect.",
+                domain="Architecture",
+                source_doc="history.csv",
+                alignment_score=0.85,
+            ),
+        ],
+    )
+
+    assert result.can_answer is False
+    assert result.grounding_status == "conflict"
+    assert "human review" in result.reason.lower()
+    assert model.runnable is not None
+
+
 async def test_assess_returns_insufficient_reference_for_human_review_only_claims() -> None:
     model = FakeChatModel(
         {
             "answerability": "grounded",
+            "none_reason_kind": "not_applicable",
             "usable_reference_ids": ["qa-1", "qa-2"],
             "reason": "unused",
         }
@@ -328,6 +415,91 @@ def test_reference_assessment_payload_marks_all_properties_as_required_for_stric
 
     assert sorted(schema["required"]) == [
         "answerability",
+        "none_reason_kind",
         "reason",
+        "supported_coverage_percent",
         "usable_reference_ids",
     ]
+
+
+async def test_assess_returns_insufficient_reference_when_llm_times_out(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "tender_llm_request_timeout_seconds", 0.01)
+    service = ReferenceAssessmentService(
+        model=FakeChatModel(
+            {
+                "answerability": "grounded",
+                "none_reason_kind": "not_applicable",
+                "supported_coverage_percent": 100,
+                "usable_reference_ids": ["qa-1"],
+                "reason": "Enough evidence.",
+            },
+            delay_seconds=0.05,
+        )
+    )
+
+    result = await service.assess(
+        question=TenderQuestion(
+            question_id="q-timeout",
+            original_question="Do you support TLS 1.2 or higher?",
+            declared_domain="Security",
+            source_file_name="tender.csv",
+            source_row_index=0,
+        ),
+        references=[
+            HistoricalReference(
+                record_id="qa-1",
+                question="Historical TLS question",
+                answer="Yes. Production traffic is restricted to TLS 1.2 or higher.",
+                domain="Security",
+                source_doc="history.csv",
+                alignment_score=0.91,
+            )
+        ],
+    )
+
+    assert result.can_answer is False
+    assert result.grounding_status == "insufficient_reference"
+    assert "timed out" in result.reason.lower()
+
+
+async def test_assess_prints_bug_report_with_request_on_timeout(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(settings, "tender_llm_request_timeout_seconds", 0.01)
+    service = ReferenceAssessmentService(
+        model=FakeChatModel(
+            {
+                "answerability": "grounded",
+                "none_reason_kind": "not_applicable",
+                "supported_coverage_percent": 100,
+                "usable_reference_ids": ["qa-1"],
+                "reason": "Enough evidence.",
+            },
+            delay_seconds=0.05,
+        )
+    )
+
+    await service.assess(
+        question=TenderQuestion(
+            question_id="q-bug-report",
+            original_question="Do you support TLS 1.2 or higher?",
+            declared_domain="Security",
+            source_file_name="tender.csv",
+            source_row_index=0,
+        ),
+        references=[
+            HistoricalReference(
+                record_id="qa-1",
+                question="Historical TLS question",
+                answer="Yes. Production traffic is restricted to TLS 1.2 or higher.",
+                domain="Security",
+                source_doc="history.csv",
+                alignment_score=0.91,
+            )
+        ],
+    )
+
+    output = capsys.readouterr().out
+    assert "BUG REPORT" in output
+    assert "service=reference_assessment_service" in output
+    assert "question_id=q-bug-report" in output
+    assert "role=system" in output
+    assert "Candidate references:" in output

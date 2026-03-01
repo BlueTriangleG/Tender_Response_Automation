@@ -119,3 +119,37 @@ def test_detect_statement_conflict_ignores_sample_pen_test_vs_fedramp_false_posi
         )
         is False
     )
+
+
+def test_detect_statement_conflict_ignores_penetration_testing_vs_pricing_false_positive() -> None:
+    assert (
+        detect_statement_conflict(
+            left_question=(
+                "Do you perform independent penetration testing and can evidence "
+                "be shared during procurement under NDA?"
+            ),
+            left_answer=(
+                "Yes. Independent penetration testing is performed at least annually "
+                "and after material architectural change, with tracked remediation for "
+                "critical findings. (The provided references do not state whether "
+                "penetration-test evidence or reports can be shared during procurement "
+                "under NDA, so I cannot confirm that from these references.)"
+            ),
+            right_question=(
+                "Can you commit to fixed pricing for five years including unlimited "
+                "AI token usage across all business units?"
+            ),
+            right_answer=(
+                "I cannot commit to fixed pricing for five years that includes "
+                "unlimited AI token usage across all business units. The provided "
+                "historical references state that unlimited AI usage is not part of "
+                "the standard approved commercial position and that fixed-fee terms "
+                "historically applied only to defined base volumes, with excess usage "
+                "and third-party AI consumption excluded. (The references do not "
+                "provide authority or evidence to support committing to a five-year "
+                "fixed-price term — that specific timeframe/commitment is unsupported "
+                "by the provided references.)"
+            ),
+        )
+        is False
+    )

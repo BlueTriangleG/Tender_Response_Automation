@@ -1,3 +1,6 @@
+import asyncio
+
+from app.core.config import settings
 from app.features.tender_response.infrastructure.services.conflict_review_service import (
     ConflictReviewService,
 )
@@ -19,9 +22,21 @@ class FakeStructuredRunnable:
         return self._schema(**self._response)
 
 
+class SlowStructuredRunnable(FakeStructuredRunnable):
+    def __init__(self, schema, response: dict, *, delay_seconds: float) -> None:
+        super().__init__(schema, response)
+        self._delay_seconds = delay_seconds
+
+    async def ainvoke(self, messages):
+        self.messages = messages
+        await asyncio.sleep(self._delay_seconds)
+        return self._schema(**self._response)
+
+
 class FakeChatModel:
-    def __init__(self, response: dict) -> None:
+    def __init__(self, response: dict, *, delay_seconds: float = 0.0) -> None:
         self.response = response
+        self.delay_seconds = delay_seconds
         self.schema = None
         self.method = None
         self.strict = None
@@ -30,6 +45,12 @@ class FakeChatModel:
         self.schema = schema
         self.method = method
         self.strict = strict
+        if self.delay_seconds > 0:
+            return SlowStructuredRunnable(
+                schema,
+                self.response,
+                delay_seconds=self.delay_seconds,
+            )
         return FakeStructuredRunnable(schema, self.response)
 
 
@@ -113,10 +134,7 @@ async def test_conflict_review_service_filters_invalid_or_unknown_conflicts() ->
         {
             "target_question_id": "q-1",
             "conflicting_question_id": "q-2",
-            "reason": (
-                "The answers make opposing statements about whether SAML or OpenID "
-                "Connect is supported."
-            ),
+            "reason": "These answers conflict.",
             "severity": "high",
         }
     ]
@@ -249,6 +267,81 @@ async def test_conflict_review_service_filters_penetration_testing_vs_fedramp_fa
     assert findings == []
 
 
+async def test_conflict_review_service_filters_penetration_testing_vs_pricing_false_positive() -> None:
+    service = ConflictReviewService(
+        model=FakeChatModel(
+            {
+                "conflicts": [
+                    {
+                        "target_question_id": "q-9",
+                        "conflicting_question_id": "q-11",
+                        "reason": "These answers conflict.",
+                        "severity": "high",
+                    }
+                ]
+            }
+        )
+    )
+
+    findings = await service.review_conflicts(
+        target_results=[
+            make_completed_result(
+                "q-9",
+                (
+                    "Do you perform independent penetration testing and can "
+                    "evidence be shared during procurement under NDA?"
+                ),
+                (
+                    "Yes. Independent penetration testing is performed at least "
+                    "annually and after material architectural change, with tracked "
+                    "remediation for critical findings. (The provided references do "
+                    "not state whether penetration-test evidence or reports can be "
+                    "shared during procurement under NDA, so I cannot confirm that "
+                    "from these references.)"
+                ),
+            )
+        ],
+        reference_results=[
+            make_completed_result(
+                "q-9",
+                (
+                    "Do you perform independent penetration testing and can "
+                    "evidence be shared during procurement under NDA?"
+                ),
+                (
+                    "Yes. Independent penetration testing is performed at least "
+                    "annually and after material architectural change, with tracked "
+                    "remediation for critical findings. (The provided references do "
+                    "not state whether penetration-test evidence or reports can be "
+                    "shared during procurement under NDA, so I cannot confirm that "
+                    "from these references.)"
+                ),
+            ),
+            make_completed_result(
+                "q-11",
+                (
+                    "Can you commit to fixed pricing for five years including "
+                    "unlimited AI token usage across all business units?"
+                ),
+                (
+                    "I cannot commit to fixed pricing for five years that includes "
+                    "unlimited AI token usage across all business units. The "
+                    "provided historical references state that unlimited AI usage is "
+                    "not part of the standard approved commercial position and that "
+                    "fixed-fee terms historically applied only to defined base "
+                    "volumes, with excess usage and third-party AI consumption "
+                    "excluded. (The references do not provide authority or evidence "
+                    "to support committing to a five-year fixed-price term — that "
+                    "specific timeframe/commitment is unsupported by the provided "
+                    "references.)"
+                ),
+            ),
+        ],
+    )
+
+    assert findings == []
+
+
 async def test_conflict_review_service_detects_absolute_claim_conflict_even_when_llm_returns_none() -> None:
     service = ConflictReviewService(
         model=FakeChatModel(
@@ -303,7 +396,7 @@ async def test_conflict_review_service_detects_absolute_claim_conflict_even_when
     ]
 
 
-async def test_conflict_review_service_detects_capability_conflict_even_when_llm_returns_none() -> None:
+async def test_conflict_review_service_does_not_inject_generic_capability_conflict_when_llm_returns_none() -> None:
     service = ConflictReviewService(
         model=FakeChatModel(
             {
@@ -334,14 +427,50 @@ async def test_conflict_review_service_detects_capability_conflict_even_when_llm
         ],
     )
 
-    assert findings == [
-        {
-            "target_question_id": "q-21",
-            "conflicting_question_id": "q-22",
-            "reason": (
-                "The answers make opposing statements about whether SAML or OpenID "
-                "Connect is supported."
-            ),
-            "severity": "high",
-        }
-    ]
+    assert findings == []
+
+
+async def test_conflict_review_service_prints_bug_report_with_request_on_timeout(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setattr(settings, "tender_llm_request_timeout_seconds", 0.01)
+    monkeypatch.setattr(settings, "tender_conflict_review_timeout_seconds", 0.5)
+    service = ConflictReviewService(
+        model=FakeChatModel(
+            {"conflicts": []},
+            delay_seconds=0.05,
+        )
+    )
+
+    try:
+        await service.review_conflicts(
+            target_results=[
+                make_completed_result(
+                    "q-1",
+                    "Do you support TLS 1.2?",
+                    "Yes. Production traffic is restricted to TLS 1.2 or higher.",
+                )
+            ],
+            reference_results=[
+                make_completed_result(
+                    "q-1",
+                    "Do you support TLS 1.2?",
+                    "Yes. Production traffic is restricted to TLS 1.2 or higher.",
+                ),
+                make_completed_result(
+                    "q-2",
+                    "Do you support SSL?",
+                    "Legacy SSL can remain enabled during migration windows.",
+                ),
+            ],
+        )
+    except TimeoutError:
+        pass
+    else:
+        raise AssertionError("expected conflict review timeout")
+
+    output = capsys.readouterr().out
+    assert "BUG REPORT" in output
+    assert "service=conflict_review_service" in output
+    assert "Target answers:" in output
+    assert "Reference answers:" in output

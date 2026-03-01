@@ -1,5 +1,7 @@
 """LLM-backed assessment of whether retrieved references are sufficient."""
 
+import asyncio
+from time import perf_counter
 from typing import Literal
 
 from langchain_core.language_models import BaseChatModel
@@ -7,9 +9,6 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
 from app.core.config import settings
-from app.features.tender_response.domain.conflict_rules import (
-    detect_statement_conflict,
-)
 from app.features.tender_response.domain.models import (
     HistoricalReference,
     ReferenceAssessmentResult,
@@ -17,6 +16,10 @@ from app.features.tender_response.domain.models import (
 )
 from app.features.tender_response.infrastructure.prompting.reference_assessment import (
     build_reference_assessment_messages,
+)
+from app.features.tender_response.infrastructure.workflows.common.debug import (
+    debug_log,
+    print_llm_bug_report,
 )
 
 
@@ -46,6 +49,7 @@ class ReferenceAssessmentService:
                 grounding_status="no_reference",
                 usable_reference_ids=[],
                 reason="No qualified historical references were retrieved.",
+                supported_coverage_percent=0,
             )
 
         conflict_reason = _detect_material_reference_conflict(
@@ -58,6 +62,7 @@ class ReferenceAssessmentService:
                 grounding_status="conflict",
                 usable_reference_ids=[],
                 reason=conflict_reason,
+                supported_coverage_percent=0,
             )
 
         if _references_require_human_review_only(references):
@@ -69,6 +74,7 @@ class ReferenceAssessmentService:
                     "Retrieved references do not provide an approved factual answer and "
                     "instead require human review before any claim can be asserted."
                 ),
+                supported_coverage_percent=0,
             )
 
         messages = build_reference_assessment_messages(
@@ -81,7 +87,21 @@ class ReferenceAssessmentService:
                 method="function_calling",
                 strict=True,
             )
-            payload = await structured_model.ainvoke(messages)
+            timeout_seconds = settings.tender_llm_request_timeout_seconds
+            started_at = perf_counter()
+            debug_log(
+                f"question={question.question_id} reference_assessment_service request start "
+                f"refs={len(references)} timeout_s={timeout_seconds:.2f}"
+            )
+            payload = await asyncio.wait_for(
+                structured_model.ainvoke(messages),
+                timeout=timeout_seconds,
+            )
+            duration_ms = (perf_counter() - started_at) * 1000
+            debug_log(
+                f"question={question.question_id} reference_assessment_service request end "
+                f"answerability={payload.answerability} duration_ms={duration_ms:.2f}"
+            )
             usable_reference_ids = payload.usable_reference_ids
             valid_reference_ids = {reference.record_id for reference in references}
             # Never trust the model to return only ids we supplied in the prompt.
@@ -95,12 +115,55 @@ class ReferenceAssessmentService:
                 answerability: Literal["none", "partial", "grounded"] = "none"
             else:
                 answerability = payload.answerability
+            none_reason_kind = payload.none_reason_kind
+            supported_coverage_percent = max(0, min(payload.supported_coverage_percent, 100))
+        except TimeoutError:
+            debug_log(
+                f"question={question.question_id} reference_assessment_service request timeout "
+                f"refs={len(references)}"
+            )
+            print_llm_bug_report(
+                service="reference_assessment_service",
+                error=(
+                    "timed out before the retrieved references could be evaluated"
+                ),
+                messages=messages,
+                metadata={
+                    "question_id": question.question_id,
+                    "reference_count": len(references),
+                    "timeout_seconds": f"{settings.tender_llm_request_timeout_seconds:.2f}",
+                },
+            )
+            return ReferenceAssessmentResult(
+                can_answer=False,
+                grounding_status="insufficient_reference",
+                usable_reference_ids=[],
+                reason=(
+                    "Reference assessment timed out before the retrieved references "
+                    "could be evaluated."
+                ),
+                supported_coverage_percent=0,
+            )
         except Exception as exc:
+            debug_log(
+                f"question={question.question_id} reference_assessment_service request failed "
+                f"refs={len(references)} error={exc}"
+            )
+            print_llm_bug_report(
+                service="reference_assessment_service",
+                error=str(exc),
+                messages=messages,
+                metadata={
+                    "question_id": question.question_id,
+                    "reference_count": len(references),
+                },
+            )
             return ReferenceAssessmentResult(
                 can_answer=False,
                 grounding_status="insufficient_reference",
                 usable_reference_ids=[],
                 reason=f"Reference assessment failed: {exc}",
+                supported_coverage_percent=0,
             )
 
         if answerability == "grounded":
@@ -109,6 +172,7 @@ class ReferenceAssessmentService:
                 grounding_status="grounded",
                 usable_reference_ids=usable_reference_ids,
                 reason=reason,
+                supported_coverage_percent=100,
             )
 
         if answerability == "partial":
@@ -117,18 +181,24 @@ class ReferenceAssessmentService:
                 grounding_status="partial_reference",
                 usable_reference_ids=usable_reference_ids,
                 reason=reason,
+                supported_coverage_percent=min(max(supported_coverage_percent, 0), 99),
             )
 
         return ReferenceAssessmentResult(
             can_answer=False,
-            grounding_status="insufficient_reference",
+            grounding_status=(
+                "conflict" if none_reason_kind == "conflict" else "insufficient_reference"
+            ),
             usable_reference_ids=[],
             reason=reason,
+            supported_coverage_percent=0,
         )
 
 
 class _ReferenceAssessmentPayload(BaseModel):
     answerability: Literal["none", "partial", "grounded"]
+    none_reason_kind: Literal["insufficient_reference", "conflict", "not_applicable"]
+    supported_coverage_percent: int
     usable_reference_ids: list[str]
     reason: str
 
@@ -184,20 +254,6 @@ def _detect_material_reference_conflict(
                 "migration scenarios. Human review is required before answering."
             )
 
-    for index, left_reference in enumerate(references):
-        for right_reference in references[index + 1 :]:
-            if not detect_statement_conflict(
-                left_question=left_reference.question,
-                left_answer=left_reference.answer,
-                right_question=right_reference.question,
-                right_answer=right_reference.answer,
-            ):
-                continue
-            return (
-                "Conflicting historical references provide opposing statements about the "
-                "same capability or certification. Human review is required before "
-                "answering."
-            )
     return None
 
 

@@ -1,8 +1,11 @@
+import asyncio
+
 from app.features.tender_response.domain.models import HistoricalReference, TenderQuestion
 from app.features.tender_response.infrastructure.services.answer_generation_service import (
     AnswerGenerationService,
     _GroundedAnswerPayload,
 )
+from app.core.config import settings
 
 
 class FakeStructuredRunnable:
@@ -17,9 +20,29 @@ class FakeStructuredRunnable:
         return self._schema(**payload)
 
 
+class SlowStructuredRunnable(FakeStructuredRunnable):
+    def __init__(
+        self,
+        schema,
+        responses: dict | list[dict],
+        all_calls: list[list],
+        *,
+        delay_seconds: float,
+    ) -> None:
+        super().__init__(schema, responses, all_calls)
+        self._delay_seconds = delay_seconds
+
+    async def ainvoke(self, messages):
+        self._all_calls.append(messages)
+        await asyncio.sleep(self._delay_seconds)
+        payload = self._responses[0] if len(self._responses) == 1 else self._responses.pop(0)
+        return self._schema(**payload)
+
+
 class FakeChatModel:
-    def __init__(self, responses: dict | list[dict]) -> None:
+    def __init__(self, responses: dict | list[dict], *, delay_seconds: float = 0.0) -> None:
         self.responses = responses
+        self.delay_seconds = delay_seconds
         self.schema = None
         self.method = None
         self.strict = None
@@ -29,6 +52,13 @@ class FakeChatModel:
         self.schema = schema
         self.method = method
         self.strict = strict
+        if self.delay_seconds > 0:
+            return SlowStructuredRunnable(
+                schema,
+                self.responses,
+                self.calls,
+                delay_seconds=self.delay_seconds,
+            )
         return FakeStructuredRunnable(schema, self.responses, self.calls)
 
 
@@ -115,6 +145,8 @@ async def test_generate_grounded_response_uses_historical_context_and_returns_re
     assert "Reference 1 answer" in rendered_messages[1].content
     assert "confidence_level=high" in rendered_messages[1].content.lower()
     assert "do not fabricate" in rendered_messages[0].content.lower()
+    assert "do not include next steps" in rendered_messages[0].content.lower()
+    assert "confidence_level must not be high" in rendered_messages[0].content.lower()
     assert "explicitly note the missing or unsupported scope in parentheses" in (
         rendered_messages[1].content.lower()
     )
@@ -175,6 +207,9 @@ async def test_generate_grounded_response_prompts_for_explicit_partial_gap_and_c
         rendered_messages[1].content.lower()
     )
     assert "reference assessment reason" in rendered_messages[1].content.lower()
+    assert "do not use confidence_level=high. use medium or low instead." in (
+        rendered_messages[1].content.lower()
+    )
 
 
 async def test_generate_grounded_response_renders_document_chunk_as_excerpt_context() -> None:
@@ -371,3 +406,97 @@ def test_grounded_answer_payload_marks_all_properties_as_required_for_strict_fun
         "risk_level",
         "risk_reason",
     ]
+
+
+async def test_generate_grounded_response_times_out_fast_when_llm_hangs(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "tender_llm_request_timeout_seconds", 0.01)
+    service = AnswerGenerationService(
+        model=FakeChatModel(
+            {
+                "generated_answer": "Aligned answer",
+                "confidence_level": "high",
+                "confidence_reason": "Supported.",
+                "risk_level": "low",
+                "risk_reason": "Low risk.",
+                "inconsistent_response": False,
+            },
+            delay_seconds=0.05,
+        )
+    )
+
+    try:
+        await service.generate_grounded_response(
+            question=TenderQuestion(
+                question_id="q-timeout",
+                original_question="Do you support TLS 1.2 or higher?",
+                declared_domain="Security",
+                source_file_name="tender.csv",
+                source_row_index=0,
+            ),
+            usable_references=[
+                HistoricalReference(
+                    record_id="qa-timeout",
+                    question="Historical TLS question",
+                    answer="Yes. Production traffic is restricted to TLS 1.2 or higher.",
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.91,
+                )
+            ],
+        )
+    except RuntimeError as exc:
+        assert "timed out" in str(exc).lower()
+    else:
+        raise AssertionError("expected answer generation timeout")
+
+
+async def test_generate_grounded_response_prints_bug_report_with_request_on_timeout(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setattr(settings, "tender_llm_request_timeout_seconds", 0.01)
+    service = AnswerGenerationService(
+        model=FakeChatModel(
+            {
+                "generated_answer": "Aligned answer",
+                "confidence_level": "high",
+                "confidence_reason": "Supported.",
+                "risk_level": "low",
+                "risk_reason": "Low risk.",
+                "inconsistent_response": False,
+            },
+            delay_seconds=0.05,
+        )
+    )
+
+    try:
+        await service.generate_grounded_response(
+            question=TenderQuestion(
+                question_id="q-bug-report",
+                original_question="Do you support TLS 1.2 or higher?",
+                declared_domain="Security",
+                source_file_name="tender.csv",
+                source_row_index=0,
+            ),
+            usable_references=[
+                HistoricalReference(
+                    record_id="qa-timeout",
+                    question="Historical TLS question",
+                    answer="Yes. Production traffic is restricted to TLS 1.2 or higher.",
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.91,
+                )
+            ],
+        )
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("expected answer generation timeout")
+
+    output = capsys.readouterr().out
+    assert "BUG REPORT" in output
+    assert "service=answer_generation_service" in output
+    assert "question_id=q-bug-report" in output
+    assert "role=system" in output
+    assert "role=human" in output
+    assert "Question: Do you support TLS 1.2 or higher?" in output

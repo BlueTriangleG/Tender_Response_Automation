@@ -1,7 +1,10 @@
 """Node factories for the parallel tender-response workflow."""
 
+import asyncio
+
 from time import perf_counter
 
+from app.core.config import settings
 from app.features.tender_response.domain.risk_rules import (
     detect_high_risk_response,
     detect_inconsistent_response,
@@ -22,6 +25,7 @@ from app.features.tender_response.infrastructure.services.domain_tagging_service
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
     ReferenceAssessmentService,
 )
+from app.features.tender_response.domain.models import ReferenceAssessmentResult
 from app.features.tender_response.infrastructure.workflows.common.builders import (
     build_reference_payload,
     failed_question_result,
@@ -40,23 +44,6 @@ from app.features.tender_response.schemas.responses import (
     TenderQuestionResponse,
     TenderResponseSummary,
 )
-
-_PARTIAL_CONFIDENCE_REASON_MARKERS = (
-    "missing",
-    "not evidence",
-    "not evidenced",
-    "not supported",
-    "unsupported",
-    "not documented",
-    "not provided",
-    "scope",
-    "partial",
-    "cannot",
-    "can't",
-    "does not",
-    "do not",
-)
-
 
 def _completed_results_with_answers(
     results: list[TenderQuestionResponse],
@@ -82,16 +69,42 @@ def _merged_session_completed_results(
 
 
 def _validate_partial_answer_contract(*, answer: str, review: ReviewPayload) -> str | None:
-    """Return a validation error when a partial answer does not explain its gap clearly."""
+    """Return a validation error when a partial answer omits its missing-scope disclosure."""
 
     if "(" not in answer or ")" not in answer:
         return "Partial answer must identify missing scope in parentheses."
-    confidence_reason = review["confidence_reason"].strip().lower()
-    if not confidence_reason:
-        return "Partial answer confidence reason must explain missing scope."
-    if not any(marker in confidence_reason for marker in _PARTIAL_CONFIDENCE_REASON_MARKERS):
-        return "Partial answer confidence reason must identify the missing evidence or scope."
     return None
+
+
+def _confidence_from_supported_coverage(
+    *,
+    assessment: ReferenceAssessmentResult,
+    current_confidence_level: str,
+) -> str:
+    """Map supported coverage to the final confidence bucket.
+
+    Coverage policy:
+    - 100% => high
+    - 50-99% => medium
+    - 0-49% => low
+
+    Fallback for tests/legacy callers with no coverage estimate:
+    keep the current confidence level except cap partial answers at medium.
+    """
+
+    coverage = assessment.supported_coverage_percent
+    if coverage is None:
+        if (
+            assessment.grounding_status == "partial_reference"
+            and current_confidence_level == "high"
+        ):
+            return "medium"
+        return current_confidence_level
+    if coverage >= 100:
+        return "high"
+    if coverage >= 50:
+        return "medium"
+    return "low"
 
 
 def _build_failed_generated_answer_result(
@@ -401,11 +414,13 @@ def make_assess_output_node(domain_tagging_service: DomainTaggingService):
                     state=state,
                     error_message=partial_validation_error,
                 )
-            if review["confidence_level"] == "high":
-                review = {
-                    **review,
-                    "confidence_level": "medium",
-                }
+        review = {
+            **review,
+            "confidence_level": _confidence_from_supported_coverage(
+                assessment=assessment,
+                current_confidence_level=review["confidence_level"],
+            ),
+        }
 
         generation_validation_error = find_generation_validation_error(
             question=question.original_question,
@@ -597,10 +612,21 @@ def make_review_conflict_group_node(conflict_review_service: ConflictReviewServi
             return {"conflict_findings": []}
 
         try:
-            findings = await conflict_review_service.review_conflicts(
-                target_results=target_results,
-                reference_results=reference_results,
+            findings = await asyncio.wait_for(
+                conflict_review_service.review_conflicts(
+                    target_results=target_results,
+                    reference_results=reference_results,
+                ),
+                timeout=settings.tender_conflict_review_timeout_seconds,
             )
+        except TimeoutError:
+            debug_log("conflict_review failed error=timed out")
+            return {
+                "conflict_findings": [],
+                "conflict_review_errors": [
+                    "Session conflict review timed out and was skipped."
+                ],
+            }
         except Exception as exc:
             debug_log(f"conflict_review failed error={exc}")
             return {

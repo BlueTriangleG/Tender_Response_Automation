@@ -64,6 +64,7 @@ class ReferenceAssessmentResult:
     grounding_status: str
     usable_reference_ids: list[str]
     reason: str
+    supported_coverage_percent: int | None = None
 
 
 @dataclass(slots=True)
