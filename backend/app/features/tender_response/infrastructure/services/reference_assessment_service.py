@@ -60,6 +60,17 @@ class ReferenceAssessmentService:
                 reason=conflict_reason,
             )
 
+        if _references_require_human_review_only(references):
+            return ReferenceAssessmentResult(
+                can_answer=False,
+                grounding_status="insufficient_reference",
+                usable_reference_ids=[],
+                reason=(
+                    "Retrieved references do not provide an approved factual answer and "
+                    "instead require human review before any claim can be asserted."
+                ),
+            )
+
         messages = build_reference_assessment_messages(
             question=question,
             references=references,
@@ -188,3 +199,18 @@ def _detect_material_reference_conflict(
                 "answering."
             )
     return None
+
+
+def _is_human_review_only_reference(text: str) -> bool:
+    normalized = _normalize(text)
+    return (
+        "not an approved claim" in normalized
+        and "human review" in normalized
+        and ("rather than asserted" in normalized or "should be referred" in normalized)
+    )
+
+
+def _references_require_human_review_only(references: list[HistoricalReference]) -> bool:
+    return bool(references) and all(
+        _is_human_review_only_reference(reference.answer) for reference in references
+    )

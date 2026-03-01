@@ -182,3 +182,64 @@ async def test_find_historical_evidence_drops_below_threshold_near_misses() -> N
     assert result.record_id is None
     assert result.references == []
     assert result.alignment_score == 0.59
+
+
+async def test_find_historical_evidence_keeps_near_threshold_ssl_conflict_reference() -> None:
+    service = HistoricalEvidenceService(
+        qa_alignment_repository=FakeQaAlignmentRepository(
+            [
+                HistoricalReference(
+                    record_id="qa-disable",
+                    reference_type="qa",
+                    question="Is legacy SSL fully disabled for all production traffic?",
+                    answer=(
+                        "Yes. Legacy SSL is fully disabled for all public and private "
+                        "production traffic, and only TLS 1.2 or higher is permitted "
+                        "in production environments."
+                    ),
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.6944,
+                ),
+                HistoricalReference(
+                    record_id="qa-migration",
+                    reference_type="qa",
+                    question=(
+                        "Do you support SSL and TLS, and what is enforced for "
+                        "production traffic?"
+                    ),
+                    answer=(
+                        "Production traffic to external service endpoints is "
+                        "restricted to TLS 1.2 or higher. Legacy SSL is not enabled "
+                        "for public production access, though isolated transition "
+                        "handling may be used in rare migration scenarios."
+                    ),
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.5837,
+                ),
+            ]
+        ),
+        document_alignment_repository=FakeDocumentAlignmentRepository([]),
+    )
+
+    result = await service.find_historical_evidence(
+        TenderQuestion(
+            question_id="q-013",
+            original_question=(
+                "Please confirm that legacy SSL is fully disabled for all "
+                "production traffic in the proposed environment."
+            ),
+            declared_domain="Security",
+            source_file_name="tender.csv",
+            source_row_index=12,
+        ),
+        threshold=0.6,
+    )
+
+    assert result.matched is True
+    assert result.record_id == "qa-disable"
+    assert [reference.record_id for reference in result.references] == [
+        "qa-disable",
+        "qa-migration",
+    ]

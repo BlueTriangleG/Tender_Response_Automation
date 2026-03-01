@@ -27,7 +27,7 @@ class DocumentAlignmentRepository:
         threshold: float,
         limit: int = 4,
     ) -> list[HistoricalReference]:
-        """Return qualified document chunks, or near-misses when none clear the threshold."""
+        """Return top document-chunk candidates for downstream thresholding and conflict checks."""
 
         table = self._connection.open_table(self._table_name)
         rows = table.to_arrow().to_pylist()
@@ -53,9 +53,4 @@ class DocumentAlignmentRepository:
             )
             for match in matches
         ]
-        qualified_references = [
-            reference
-            for reference in candidate_references
-            if reference.alignment_score >= threshold
-        ]
-        return qualified_references or candidate_references
+        return candidate_references

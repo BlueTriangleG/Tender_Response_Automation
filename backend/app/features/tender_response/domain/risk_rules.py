@@ -44,6 +44,21 @@ POSITIVE_TERMS = [
     "enforce",
 ]
 
+REFERENCE_SCOPE_LIMITATION_TERMS = [
+    "provided references do not",
+    "the provided references do not",
+    "references do not",
+    "reference does not",
+    "do not say whether",
+    "do not specify",
+    "do not state whether",
+    "not evidenced",
+    "cannot be confirmed from the available references",
+    "cannot be confirmed from the provided references",
+    "cannot confirm from the available references",
+    "cannot confirm from the provided references",
+]
+
 STRONG_MODALITY_TERMS = [
     "must",
     "shall",
@@ -167,8 +182,15 @@ def detect_inconsistent_response(
     lower_generated = _normalize(generated_answer)
     lower_alignment = _normalize(historical_alignment_answer)
 
+    if _contains_any(lower_generated, REFERENCE_SCOPE_LIMITATION_TERMS):
+        return False
+
     generated_negative = any(term in lower_generated for term in NEGATION_TERMS)
-    alignment_positive = any(term in lower_alignment for term in POSITIVE_TERMS)
+    alignment_positive = any(
+        _supports_term_positively(evidence_text=lower_alignment, term=term)
+        for term in POSITIVE_TERMS
+        if term in lower_alignment
+    )
 
     return generated_negative and alignment_positive
 

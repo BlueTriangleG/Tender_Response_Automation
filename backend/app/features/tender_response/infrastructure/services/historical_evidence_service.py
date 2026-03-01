@@ -83,6 +83,12 @@ class HistoricalEvidenceService:
             )
 
         selected_reference = qualified_references[0]
+        returned_references = _merge_returned_references(
+            qualified_references=qualified_references,
+            all_references=merged_references,
+            question=question,
+            threshold=threshold,
+        )
         if selected_reference.reference_type == "qa":
             top_question = selected_reference.question
             top_answer = selected_reference.answer
@@ -98,5 +104,62 @@ class HistoricalEvidenceService:
             domain=selected_reference.domain,
             source_doc=selected_reference.source_doc,
             alignment_score=selected_reference.alignment_score,
-            references=qualified_references,
+            references=returned_references,
         )
+
+
+def _normalize(text: str | None) -> str:
+    return " ".join((text or "").lower().split())
+
+
+def _is_absolute_ssl_disable_question(text: str) -> bool:
+    normalized = _normalize(text)
+    return (
+        "legacy ssl" in normalized
+        and "production" in normalized
+        and "fully disabled" in normalized
+    )
+
+
+def _is_ssl_exception_reference(reference: HistoricalReference) -> bool:
+    normalized = _normalize(reference.answer)
+    return (
+        "legacy ssl" in normalized
+        and "production" in normalized
+        and (
+            "migration scenario" in normalized
+            or "migration scenarios" in normalized
+            or "migration window" in normalized
+            or "migration windows" in normalized
+            or "transition" in normalized
+        )
+    )
+
+
+def _merge_returned_references(
+    *,
+    qualified_references: list[HistoricalReference],
+    all_references: list[HistoricalReference],
+    question: TenderQuestion,
+    threshold: float,
+) -> list[HistoricalReference]:
+    references_by_id = {reference.record_id: reference for reference in qualified_references}
+
+    if not _is_absolute_ssl_disable_question(question.original_question):
+        return qualified_references
+
+    near_threshold_floor = max(0.0, threshold - 0.03)
+    for reference in all_references:
+        if reference.record_id in references_by_id:
+            continue
+        if reference.alignment_score < near_threshold_floor:
+            continue
+        if not _is_ssl_exception_reference(reference):
+            continue
+        references_by_id[reference.record_id] = reference
+
+    return [
+        reference
+        for reference in all_references
+        if reference.record_id in references_by_id
+    ]

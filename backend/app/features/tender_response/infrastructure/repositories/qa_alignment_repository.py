@@ -31,7 +31,7 @@ class QaAlignmentRepository:
         threshold: float,
         limit: int = 3,
     ) -> list[HistoricalReference]:
-        """Return qualified QA references, or near-misses when none clear the threshold."""
+        """Return top QA candidates for downstream thresholding and conflict checks."""
 
         table = self._connection.open_table(self._table_name)
         rows = table.to_arrow().to_pylist()
@@ -55,12 +55,7 @@ class QaAlignmentRepository:
             )
             for match in matches
         ]
-        qualified_references = [
-            reference
-            for reference in candidate_references
-            if reference.alignment_score >= threshold
-        ]
-        return qualified_references or candidate_references
+        return candidate_references
 
     async def find_best_match(
         self,

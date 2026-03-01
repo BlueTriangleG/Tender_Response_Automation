@@ -267,6 +267,62 @@ async def test_assess_returns_conflict_for_conflicting_ssl_history() -> None:
     assert model.runnable is None
 
 
+async def test_assess_returns_insufficient_reference_for_human_review_only_claims() -> None:
+    model = FakeChatModel(
+        {
+            "answerability": "grounded",
+            "usable_reference_ids": ["qa-1", "qa-2"],
+            "reason": "unused",
+        }
+    )
+    service = ReferenceAssessmentService(model=model)
+
+    result = await service.assess(
+        question=TenderQuestion(
+            question_id="q-012",
+            original_question=(
+                "Do you currently hold FedRAMP High authorization for the "
+                "platform environment proposed in this tender?"
+            ),
+            declared_domain="Compliance",
+            source_file_name="tender.csv",
+            source_row_index=11,
+        ),
+        references=[
+            HistoricalReference(
+                record_id="qa-1",
+                question="Do you currently hold FedRAMP High authorization?",
+                answer=(
+                    "FedRAMP High authorization is not an approved claim in the "
+                    "current response library and should be referred for human "
+                    "review rather than asserted in a tender response."
+                ),
+                domain="Compliance",
+                source_doc="history.csv",
+                alignment_score=0.69,
+            ),
+            HistoricalReference(
+                record_id="qa-2",
+                question="Do you currently hold FedRAMP High authorization?",
+                answer=(
+                    "FedRAMP High authorization is not an approved claim in the "
+                    "current response library and should be referred for human "
+                    "review rather than asserted in a tender response."
+                ),
+                domain="Compliance",
+                source_doc="history.csv",
+                alignment_score=0.68,
+            ),
+        ],
+    )
+
+    assert result.can_answer is False
+    assert result.grounding_status == "insufficient_reference"
+    assert result.usable_reference_ids == []
+    assert "human review" in result.reason.lower()
+    assert model.runnable is None
+
+
 def test_reference_assessment_payload_marks_all_properties_as_required_for_strict_function_calling() -> None:
     schema = _ReferenceAssessmentPayload.model_json_schema()
 

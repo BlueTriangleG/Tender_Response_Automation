@@ -37,6 +37,41 @@ def test_detect_inconsistent_response_allows_consistent_answer() -> None:
     )
 
 
+def test_detect_inconsistent_response_ignores_reference_scope_caveat() -> None:
+    assert (
+        detect_inconsistent_response(
+            generated_answer=(
+                "Yes. The platform can return source citations, confidence cues, "
+                "and workflow checkpoints for human review. (The provided references "
+                "do not say whether these controls are mandatory for every "
+                "procurement workflow.)"
+            ),
+            historical_alignment_answer=(
+                "Yes. The platform can return source citations, confidence cues, "
+                "and workflow checkpoints for human review when AI-assisted outputs "
+                "inform business decisions."
+            ),
+        )
+        is False
+    )
+
+
+def test_detect_inconsistent_response_ignores_negated_historical_positioning() -> None:
+    assert (
+        detect_inconsistent_response(
+            generated_answer=(
+                "No. We cannot commit to unlimited AI token usage across all "
+                "business units on a fixed-fee basis."
+            ),
+            historical_alignment_answer=(
+                "No standard approved position supports unlimited AI usage across "
+                "all scenarios."
+            ),
+        )
+        is False
+    )
+
+
 def test_detect_high_risk_response_allows_negated_certification_refusal() -> None:
     assert (
         detect_high_risk_response(
