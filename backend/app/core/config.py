@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     openai_tender_response_model: str = "gpt-5.2"
     openai_embedding_model: str = "text-embedding-3-small"
     tender_llm_request_timeout_seconds: float = 45.0
+    tender_reference_assessment_retry_attempts: int = 2
     tender_conflict_review_timeout_seconds: float = 20.0
     tender_workflow_debug: bool = False
     cors_allowed_origins: list[str] = Field(

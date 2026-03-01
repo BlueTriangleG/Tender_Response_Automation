@@ -61,6 +61,36 @@ class FakeChatModel:
         return self.runnable
 
 
+class SequenceStructuredRunnable:
+    def __init__(self, schema, responses: list[dict | Exception]) -> None:
+        self._schema = schema
+        self._responses = responses
+        self.calls: list[list] = []
+
+    async def ainvoke(self, messages):
+        self.calls.append(messages)
+        response = self._responses[len(self.calls) - 1]
+        if isinstance(response, Exception):
+            raise response
+        return self._schema(**response)
+
+
+class SequenceChatModel:
+    def __init__(self, responses: list[dict | Exception]) -> None:
+        self.responses = responses
+        self.schema = None
+        self.method = None
+        self.strict = None
+        self.runnable = None
+
+    def with_structured_output(self, schema, *, method, strict):
+        self.schema = schema
+        self.method = method
+        self.strict = strict
+        self.runnable = SequenceStructuredRunnable(schema, self.responses)
+        return self.runnable
+
+
 async def test_assess_returns_no_reference_without_llm_call() -> None:
     model = FakeChatModel(
         {
@@ -413,6 +443,65 @@ async def test_assess_returns_insufficient_reference_for_human_review_only_claim
     assert model.runnable is None
 
 
+async def test_assess_returns_insufficient_reference_for_verification_only_certification_claims() -> (
+    None
+):
+    model = FakeChatModel(
+        {
+            "answerability": "partial",
+            "none_reason_kind": "not_applicable",
+            "supported_coverage_percent": 40,
+            "usable_reference_ids": ["qa-1", "qa-2"],
+            "reason": "unused",
+        }
+    )
+    service = ReferenceAssessmentService(model=model)
+
+    result = await service.assess(
+        question=TenderQuestion(
+            question_id="q-309",
+            original_question=(
+                "Please confirm the platform is FedRAMP High authorized for the "
+                "proposed environment."
+            ),
+            declared_domain="Compliance",
+            source_file_name="tender.csv",
+            source_row_index=0,
+        ),
+        references=[
+            HistoricalReference(
+                record_id="qa-1",
+                question="Do you currently hold FedRAMP High authorization?",
+                answer=(
+                    "FedRAMP High authorization is not an approved claim and should "
+                    "be escalated for human review rather than asserted."
+                ),
+                domain="Compliance",
+                source_doc="history.csv",
+                alignment_score=0.69,
+            ),
+            HistoricalReference(
+                record_id="qa-2",
+                question="Which certifications can you currently claim?",
+                answer=(
+                    "Approved certifications do not include FedRAMP High or HIPAA "
+                    "certification unless separately verified for the specific "
+                    "environment."
+                ),
+                domain="Compliance",
+                source_doc="history.csv",
+                alignment_score=0.60,
+            ),
+        ],
+    )
+
+    assert result.can_answer is False
+    assert result.grounding_status == "insufficient_reference"
+    assert result.usable_reference_ids == []
+    assert "approved factual answer" in result.reason.lower()
+    assert model.runnable is None
+
+
 def test_reference_assessment_payload_marks_all_properties_as_required_for_strict_function_calling() -> (  # noqa: E501
     None
 ):
@@ -508,3 +597,45 @@ async def test_assess_prints_bug_report_with_request_on_timeout(monkeypatch, cap
     assert "question_id=q-bug-report" in output
     assert "role=system" in output
     assert "Candidate references:" in output
+
+
+async def test_assess_retries_once_on_connection_error_and_then_succeeds() -> None:
+    model = SequenceChatModel(
+        [
+            RuntimeError("Connection error."),
+            {
+                "answerability": "partial",
+                "none_reason_kind": "not_applicable",
+                "supported_coverage_percent": 40,
+                "usable_reference_ids": ["qa-1"],
+                "reason": "Only part of the requested deployment posture is supported.",
+            },
+        ]
+    )
+    service = ReferenceAssessmentService(model=model)
+
+    result = await service.assess(
+        question=TenderQuestion(
+            question_id="q-retry",
+            original_question="Do you support single-tenant deployment for isolation needs?",
+            declared_domain="Infrastructure",
+            source_file_name="tender.csv",
+            source_row_index=0,
+        ),
+        references=[
+            HistoricalReference(
+                record_id="qa-1",
+                question="Can the platform be deployed as single-tenant?",
+                answer="Yes. A single-tenant virtual private cloud deployment is available.",
+                domain="Infrastructure",
+                source_doc="history.csv",
+                alignment_score=0.82,
+            )
+        ],
+    )
+
+    assert result.can_answer is True
+    assert result.grounding_status == "partial_reference"
+    assert result.usable_reference_ids == ["qa-1"]
+    assert model.runnable is not None
+    assert len(model.runnable.calls) == 2

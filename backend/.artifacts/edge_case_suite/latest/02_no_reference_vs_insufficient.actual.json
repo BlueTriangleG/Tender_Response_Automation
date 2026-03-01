@@ -6,10 +6,10 @@
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/02_header_aliases.csv",
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/06_dirty_rows_and_quoting.csv"
     ],
-    "recorded_at": "2026-03-01T10:48:13.969602+00:00"
+    "recorded_at": "2026-03-01T11:13:42.413857+00:00"
   },
   "response": {
-    "request_id": "59b9f2ee-f971-4db5-b02c-4385c00c8dc5",
+    "request_id": "67fbe555-80ea-40dd-a5bf-fe8e69b884ee",
     "session_id": "edge-case-02_no_reference_vs_insufficient",
     "source_file_name": "02_no_reference_vs_insufficient.csv",
     "total_questions_processed": 4,
@@ -53,7 +53,7 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "Reference assessment failed: Connection error.",
+          "reference_assessment_reason": "The only reference discusses single-tenant deployment in a virtual private cloud, which implies cloud usage and does not address an on-premises, fully air-gapped deployment with zero cloud dependency. No evidence is provided about on-prem support or air-gapped operation.",
           "requires_human_review": false,
           "conflicts": []
         }

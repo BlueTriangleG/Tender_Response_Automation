@@ -5,10 +5,10 @@
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/01_clean_security_architecture.csv",
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/02_header_aliases.csv"
     ],
-    "recorded_at": "2026-03-01T10:48:38.337079+00:00"
+    "recorded_at": "2026-03-01T11:14:04.751062+00:00"
   },
   "response": {
-    "request_id": "e145c24e-5344-46b1-9f02-29aaa42509ca",
+    "request_id": "90b6c6ae-ef03-4949-a73d-b807c780eb68",
     "session_id": "edge-case-05_header_aliases_and_blank_rows",
     "source_file_name": "05_header_aliases_and_blank_rows.csv",
     "total_questions_processed": 4,
@@ -16,10 +16,10 @@
       {
         "question_id": "q-501",
         "original_question": "Do you support TLS 1.2 or higher for production traffic?",
-        "generated_answer": "Yes. External production endpoints enforce TLS 1.2 or higher for public production traffic, and legacy SSL is not enabled.",
+        "generated_answer": "Yes. External production endpoints enforce TLS 1.2 or higher, and legacy SSL is not enabled for public production traffic.",
         "domain_tag": "security",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic, directly answering the question.",
+        "confidence_reason": "The provided reference explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic, directly answering the question with matching scope.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -30,7 +30,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "Minimal risk of overstatement because the response repeats the reference language and stays within the stated scope (external/public production endpoints)."
+          "reason": "The answer restates the reference without adding unsupported claims or commitments beyond what is documented."
         },
         "metadata": {
           "source_row_index": 0,
@@ -52,21 +52,21 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided QA reference directly answers the tender question, stating external production endpoints enforce TLS 1.2 or higher and legacy SSL is not enabled for public production traffic. This fully covers support for TLS 1.2+ in production traffic.",
-          "confidence_review_reason": "The provided reference explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic, directly answering the question.",
+          "reference_assessment_reason": "The reference directly answers the exact question, stating external production endpoints enforce TLS 1.2 or higher and legacy SSL is not enabled for public production traffic. No conflicting references provided; scope matches production traffic.",
+          "confidence_review_reason": "The provided reference explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic, directly answering the question with matching scope.",
           "conflicts": []
         }
       },
       {
         "question_id": "row-2",
         "original_question": "Can customer data be hosted in Australia?",
-        "generated_answer": null,
+        "generated_answer": "Yes. Customer data can be hosted in Australia using supported Australian regions for local data residency requirements.",
         "domain_tag": "compliance",
-        "confidence_level": null,
-        "confidence_reason": null,
+        "confidence_level": "high",
+        "confidence_reason": "The provided reference explicitly states that customer data can be hosted in Australia and that supported Australian regions are available for local data residency requirements, matching the question directly with no conflicting information.",
         "historical_alignment_indicator": true,
-        "status": "unanswered",
-        "grounding_status": "insufficient_reference",
+        "status": "completed",
+        "grounding_status": "grounded",
         "flags": {
           "high_risk": false,
           "inconsistent_response": false,
@@ -74,7 +74,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "No grounded answer was produced."
+          "reason": "The response is a straightforward restatement of the reference with no additional assumptions or commitments beyond what is stated."
         },
         "metadata": {
           "source_row_index": 1,
@@ -91,26 +91,26 @@
             "matched_answer": "Yes. Supported Australian regions are available for customers with local data residency requirements.",
             "excerpt": null,
             "chunk_index": null,
-            "used_for_answer": false
+            "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "Reference assessment failed: Connection error.",
-          "requires_human_review": false,
+          "reference_assessment_reason": "The reference directly answers the tender question, stating that Australian regions are supported for local data residency requirements. No conflicting information is provided, and the question scope is simple (yes/no about hosting in Australia).",
+          "confidence_review_reason": "The provided reference explicitly states that customer data can be hosted in Australia and that supported Australian regions are available for local data residency requirements, matching the question directly with no conflicting information.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-503",
         "original_question": "Can users inspect citations before acting on AI-generated content?",
-        "generated_answer": null,
+        "generated_answer": "Yes. The platform can expose citations (along with confidence cues and workflow checkpoints) so a human reviewer can inspect the supporting context before taking action.",
         "domain_tag": "ai",
-        "confidence_level": null,
-        "confidence_reason": null,
+        "confidence_level": "high",
+        "confidence_reason": "The provided QA reference explicitly states that citations can be exposed so a human reviewer can inspect supporting context before acting, directly answering the question without additional conditions.",
         "historical_alignment_indicator": true,
-        "status": "unanswered",
-        "grounding_status": "insufficient_reference",
+        "status": "completed",
+        "grounding_status": "grounded",
         "flags": {
           "high_risk": false,
           "inconsistent_response": false,
@@ -118,7 +118,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "No grounded answer was produced."
+          "reason": "The response restates the referenced capability without adding unsupported claims, requirements, or commitments."
         },
         "metadata": {
           "source_row_index": 2,
@@ -135,26 +135,26 @@
             "matched_answer": "Yes. The platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action.",
             "excerpt": null,
             "chunk_index": null,
-            "used_for_answer": false
+            "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "Reference assessment failed: Connection error.",
-          "requires_human_review": false,
+          "reference_assessment_reason": "The single QA reference directly answers the question, stating the platform can expose citations and checkpoints so users can inspect supporting context before acting. No additional scope or conditions are requested beyond this capability.",
+          "confidence_review_reason": "The provided QA reference explicitly states that citations can be exposed so a human reviewer can inspect supporting context before acting, directly answering the question without additional conditions.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-504",
         "original_question": "Is a single-tenant deployment available for high-isolation customers?",
-        "generated_answer": null,
+        "generated_answer": "Yes. A single-tenant virtual private cloud (VPC) deployment is available for customers with stronger isolation requirements.",
         "domain_tag": "infrastructure",
-        "confidence_level": null,
-        "confidence_reason": null,
+        "confidence_level": "high",
+        "confidence_reason": "The provided reference explicitly states that a single-tenant VPC deployment is available for customers with stronger isolation requirements, which directly answers the question.",
         "historical_alignment_indicator": true,
-        "status": "unanswered",
-        "grounding_status": "insufficient_reference",
+        "status": "completed",
+        "grounding_status": "grounded",
         "flags": {
           "high_risk": false,
           "inconsistent_response": false,
@@ -162,7 +162,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "No grounded answer was produced."
+          "reason": "The answer is a direct restatement of the reference without adding unverified details or commitments beyond availability."
         },
         "metadata": {
           "source_row_index": 3,
@@ -179,7 +179,7 @@
             "matched_answer": "Yes. A single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements.",
             "excerpt": null,
             "chunk_index": null,
-            "used_for_answer": false
+            "used_for_answer": true
           },
           {
             "alignment_record_id": "def1b23506da9fa92d305e539c2bf51b4e44627afd85b6b85b54f45239981da0",
@@ -195,8 +195,8 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "Reference assessment failed: Connection error.",
-          "requires_human_review": false,
+          "reference_assessment_reason": "The first reference directly answers the tender question, stating that a single-tenant VPC deployment is available for customers with stronger isolation requirements. The second reference concerns customer-managed deployments and does not conflict with single-tenant availability.",
+          "confidence_review_reason": "The provided reference explicitly states that a single-tenant VPC deployment is available for customers with stronger isolation requirements, which directly answers the question.",
           "conflicts": []
         }
       }
@@ -205,8 +205,8 @@
       "total_questions_processed": 4,
       "flagged_high_risk_or_inconsistent_responses": 0,
       "overall_completion_status": "completed",
-      "completed_questions": 1,
-      "unanswered_questions": 3,
+      "completed_questions": 4,
+      "unanswered_questions": 0,
       "failed_questions": 0,
       "conflict_count": 0
     }

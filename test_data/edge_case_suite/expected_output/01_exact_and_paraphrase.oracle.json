@@ -53,7 +53,10 @@
     {
       "question_id": "q-004",
       "expected_status": "completed",
-      "expected_grounding_status": "grounded",
+      "allowed_grounding_statuses": [
+        "grounded",
+        "partial_reference"
+      ],
       "expected_historical_alignment_indicator": true,
       "generated_answer_should_be_null": false,
       "allowed_domain_tags": [

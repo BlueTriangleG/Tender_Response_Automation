@@ -2,6 +2,9 @@
   "name": "pans-software",
   "private": true,
   "scripts": {
+    "setup": "npm run setup:frontend && npm run setup:backend",
+    "setup:frontend": "npm install --prefix frontend",
+    "setup:backend": "cd backend && UV_CACHE_DIR=/tmp/pans-software-uv-cache uv sync --group dev",
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev:backend": "cd backend && UV_CACHE_DIR=/tmp/pans-software-uv-cache uv run uvicorn app.main:app --reload"

@@ -77,6 +77,19 @@ class ReferenceAssessmentService:
                 supported_coverage_percent=0,
             )
 
+        if _references_require_verification_before_claim(question, references):
+            return ReferenceAssessmentResult(
+                can_answer=False,
+                grounding_status="insufficient_reference",
+                usable_reference_ids=[],
+                reason=(
+                    "Retrieved references do not provide an approved factual answer and "
+                    "instead require separate verification before any certification or "
+                    "authorization claim can be asserted."
+                ),
+                supported_coverage_percent=0,
+            )
+
         messages = build_reference_assessment_messages(
             question=question,
             references=references,
@@ -88,35 +101,54 @@ class ReferenceAssessmentService:
                 strict=True,
             )
             timeout_seconds = settings.tender_llm_request_timeout_seconds
-            started_at = perf_counter()
-            debug_log(
-                f"question={question.question_id} reference_assessment_service request start "
-                f"refs={len(references)} timeout_s={timeout_seconds:.2f}"
-            )
-            payload = await asyncio.wait_for(
-                structured_model.ainvoke(messages),
-                timeout=timeout_seconds,
-            )
-            duration_ms = (perf_counter() - started_at) * 1000
-            debug_log(
-                f"question={question.question_id} reference_assessment_service request end "
-                f"answerability={payload.answerability} duration_ms={duration_ms:.2f}"
-            )
-            usable_reference_ids = payload.usable_reference_ids
+            max_attempts = max(1, settings.tender_reference_assessment_retry_attempts)
             valid_reference_ids = {reference.record_id for reference in references}
-            # Never trust the model to return only ids we supplied in the prompt.
-            usable_reference_ids = [
-                str(reference_id)
-                for reference_id in usable_reference_ids
-                if str(reference_id) in valid_reference_ids
-            ]
-            reason = payload.reason.strip() or "Reference assessment completed."
-            if not usable_reference_ids:
-                answerability: Literal["none", "partial", "grounded"] = "none"
-            else:
-                answerability = payload.answerability
-            none_reason_kind = payload.none_reason_kind
-            supported_coverage_percent = max(0, min(payload.supported_coverage_percent, 100))
+            for attempt in range(1, max_attempts + 1):
+                started_at = perf_counter()
+                debug_log(
+                    f"question={question.question_id} reference_assessment_service request start "
+                    f"refs={len(references)} attempt={attempt} timeout_s={timeout_seconds:.2f}"
+                )
+                try:
+                    payload = await asyncio.wait_for(
+                        structured_model.ainvoke(messages),
+                        timeout=timeout_seconds,
+                    )
+                    duration_ms = (perf_counter() - started_at) * 1000
+                    debug_log(
+                        f"question={question.question_id} reference_assessment_service request end "
+                        f"answerability={payload.answerability} attempt={attempt} "
+                        f"duration_ms={duration_ms:.2f}"
+                    )
+                    usable_reference_ids = payload.usable_reference_ids
+                    # Never trust the model to return only ids we supplied in the prompt.
+                    usable_reference_ids = [
+                        str(reference_id)
+                        for reference_id in usable_reference_ids
+                        if str(reference_id) in valid_reference_ids
+                    ]
+                    reason = payload.reason.strip() or "Reference assessment completed."
+                    if not usable_reference_ids:
+                        answerability: Literal["none", "partial", "grounded"] = "none"
+                    else:
+                        answerability = payload.answerability
+                    none_reason_kind = payload.none_reason_kind
+                    supported_coverage_percent = max(
+                        0,
+                        min(payload.supported_coverage_percent, 100),
+                    )
+                    break
+                except TimeoutError:
+                    raise
+                except Exception as exc:
+                    duration_ms = (perf_counter() - started_at) * 1000
+                    if _is_retryable_reference_assessment_error(exc) and attempt < max_attempts:
+                        debug_log(
+                            f"question={question.question_id} reference_assessment_service request retry "
+                            f"attempt={attempt} duration_ms={duration_ms:.2f} error={exc}"
+                        )
+                        continue
+                    raise
         except TimeoutError:
             debug_log(
                 f"question={question.question_id} reference_assessment_service request timeout "
@@ -274,4 +306,40 @@ def _is_human_review_only_reference(text: str) -> bool:
 def _references_require_human_review_only(references: list[HistoricalReference]) -> bool:
     return bool(references) and all(
         _is_human_review_only_reference(reference.answer) for reference in references
+    )
+
+
+def _is_retryable_reference_assessment_error(exc: Exception) -> bool:
+    return "connection error" in str(exc).lower()
+
+
+def _is_verification_only_reference(text: str) -> bool:
+    normalized = _normalize(text)
+    return (
+        "separately verified" in normalized
+        or "requires verification" in normalized
+        or "must be verified" in normalized
+    ) and (
+        "fedramp" in normalized
+        or "hipaa" in normalized
+        or "authorization" in normalized
+        or "certification" in normalized
+    )
+
+
+def _references_require_verification_before_claim(
+    question: TenderQuestion,
+    references: list[HistoricalReference],
+) -> bool:
+    normalized_question = _normalize(question.original_question)
+    if not any(
+        token in normalized_question
+        for token in ("fedramp", "hipaa", "authorization", "authorized", "certification")
+    ):
+        return False
+
+    return bool(references) and all(
+        _is_human_review_only_reference(reference.answer)
+        or _is_verification_only_reference(reference.answer)
+        for reference in references
     )

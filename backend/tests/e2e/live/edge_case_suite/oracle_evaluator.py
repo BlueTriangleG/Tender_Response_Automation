@@ -21,6 +21,15 @@ _NEGATION_OR_REFUSAL_MARKERS = (
 )
 
 
+def _normalize_text(text: str) -> str:
+    return (
+        text.replace("\u2019", "'")
+        .replace("\u2018", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+    )
+
+
 def _window_around_phrase(text: str, phrase: str, *, padding: int = 64) -> str:
     index = text.find(phrase)
     if index == -1:
@@ -31,7 +40,10 @@ def _window_around_phrase(text: str, phrase: str, *, padding: int = 64) -> str:
 
 
 def _is_negated_or_refused_phrase(answer_text: str, phrase: str) -> bool:
-    window = _window_around_phrase(answer_text.lower(), phrase.lower())
+    window = _window_around_phrase(
+        _normalize_text(answer_text).lower(),
+        _normalize_text(phrase).lower(),
+    )
     return any(marker in window for marker in _NEGATION_OR_REFUSAL_MARKERS)
 
 
@@ -154,11 +166,13 @@ def _assert_question(
         errors.append(f"{question_id}: generated answer did not include any of {must_include_any}")
 
     must_not_include = question_oracle.get("must_not_include", [])
+    normalized_answer_text = _normalize_text(answer_text)
     violating_phrase = next(
         (
             needle
             for needle in must_not_include
-            if needle in answer_text and not _is_negated_or_refused_phrase(answer_text, needle)
+            if _normalize_text(needle) in normalized_answer_text
+            and not _is_negated_or_refused_phrase(answer_text, needle)
         ),
         None,
     )
