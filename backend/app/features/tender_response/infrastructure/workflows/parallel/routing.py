@@ -11,7 +11,9 @@ from app.features.tender_response.infrastructure.workflows.common.state import (
 def route_after_assessment(state: QuestionProcessingState) -> str:
     """Branch to grounded generation only when references are sufficient."""
 
-    assessment = state["current_assessment"]
+    assessment = state.get("current_assessment")
+    if assessment is None:
+        return "finalize_unanswered"
     if (
         assessment.can_answer
         and assessment.usable_reference_ids

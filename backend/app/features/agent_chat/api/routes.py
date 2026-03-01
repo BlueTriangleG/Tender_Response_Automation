@@ -11,12 +11,13 @@ from app.features.agent_chat.schemas.requests import ChatRequest
 from app.features.agent_chat.schemas.responses import ChatResponse
 
 router = APIRouter(prefix=settings.api_prefix)
+AgentChatUseCaseDep = Annotated[AgentChatUseCase, Depends(get_agent_chat_use_case)]
 
 
 @router.post("/agent/chat", response_model=ChatResponse)
 async def chat(
     req: ChatRequest,
-    use_case: Annotated[AgentChatUseCase, Depends(get_agent_chat_use_case)] = None,
+    use_case: AgentChatUseCaseDep,
 ) -> ChatResponse:
     """Forward a chat request to the configured agent workflow."""
 

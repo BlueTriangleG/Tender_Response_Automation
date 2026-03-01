@@ -2,9 +2,14 @@
 
 import asyncio
 from time import perf_counter
+from typing import Literal, cast
 
 from app.core.config import settings
-from app.features.tender_response.domain.models import ReferenceAssessmentResult
+from app.features.tender_response.domain.models import (
+    HistoricalAlignmentResult,
+    ReferenceAssessmentResult,
+    TenderQuestion,
+)
 from app.features.tender_response.domain.risk_rules import (
     detect_high_risk_response,
     detect_inconsistent_response,
@@ -14,7 +19,7 @@ from app.features.tender_response.infrastructure.services.answer_generation_serv
     AnswerGenerationService,
 )
 from app.features.tender_response.infrastructure.services.conflict_review_service import (
-    ConflictReviewService,
+    ConflictReviewer,
 )
 from app.features.tender_response.infrastructure.services.domain_tagging_service import (
     DomainTaggingService,
@@ -40,6 +45,59 @@ from app.features.tender_response.schemas.responses import (
     TenderQuestionResponse,
     TenderResponseSummary,
 )
+
+RiskLevel = Literal["high", "medium", "low"]
+GroundingStatus = Literal[
+    "grounded",
+    "partial_reference",
+    "conflict",
+    "insufficient_reference",
+    "no_reference",
+    "failed",
+]
+OverallCompletionStatus = Literal[
+    "completed",
+    "completed_with_flags",
+    "conflict",
+    "unanswered",
+    "partial_failure",
+    "failed",
+]
+
+
+def _require_question(state: QuestionProcessingState | BatchTenderResponseState) -> TenderQuestion:
+    question = state.get("current_question")
+    if question is None:
+        raise RuntimeError("Question state was missing current_question.")
+    return question
+
+
+def _require_alignment(state: QuestionProcessingState) -> HistoricalAlignmentResult:
+    alignment = state.get("current_alignment")
+    if alignment is None:
+        raise RuntimeError("Question state was missing current_alignment.")
+    return alignment
+
+
+def _require_assessment(state: QuestionProcessingState) -> ReferenceAssessmentResult:
+    assessment = state.get("current_assessment")
+    if assessment is None:
+        raise RuntimeError("Question state was missing current_assessment.")
+    return assessment
+
+
+def _review_with_defaults(state: QuestionProcessingState) -> ReviewPayload:
+    return cast(
+        ReviewPayload,
+        state.get("current_review")
+        or {
+            "confidence_level": "low",
+            "confidence_reason": "",
+            "risk_level": "low",
+            "risk_reason": "No risk review was returned.",
+            "inconsistent_response": False,
+        },
+    )
 
 
 def _completed_results_with_answers(
@@ -135,7 +193,10 @@ def _build_failed_generated_answer_result(
             high_risk=review["risk_level"] == "high",
             inconsistent_response=review["inconsistent_response"],
         ),
-        risk=QuestionRisk(level=review["risk_level"], reason=review["risk_reason"]),
+        risk=QuestionRisk(
+            level=cast(RiskLevel, review["risk_level"]),
+            reason=review["risk_reason"],
+        ),
         metadata=QuestionMetadata(
             source_row_index=question.source_row_index,
             alignment_record_id=alignment.record_id,
@@ -189,16 +250,17 @@ def make_retrieve_alignment_node(alignment_repository):
 
     async def retrieve_alignment(state: QuestionProcessingState) -> dict:
         started_at = perf_counter()
-        question_id = state["current_question"].question_id
+        question = _require_question(state)
+        question_id = question.question_id
         debug_log(f"question={question_id} retrieve_alignment start")
         if hasattr(alignment_repository, "find_historical_evidence"):
             alignment = await alignment_repository.find_historical_evidence(
-                state["current_question"],
+                question,
                 threshold=state["alignment_threshold"],
             )
         else:
             alignment = await alignment_repository.find_best_match(
-                state["current_question"],
+                question,
                 threshold=state["alignment_threshold"],
             )
         duration_ms = (perf_counter() - started_at) * 1000
@@ -217,11 +279,12 @@ def make_assess_references_node(reference_assessment_service: ReferenceAssessmen
 
     async def assess_references(state: QuestionProcessingState) -> dict:
         started_at = perf_counter()
-        question_id = state["current_question"].question_id
+        question = _require_question(state)
+        question_id = question.question_id
         debug_log(f"question={question_id} assess_references start")
         assessment = await reference_assessment_service.assess(
-            question=state["current_question"],
-            references=state["current_alignment"].references,
+            question=question,
+            references=_require_alignment(state).references,
         )
         duration_ms = (perf_counter() - started_at) * 1000
         debug_log(
@@ -240,9 +303,10 @@ def make_generate_answer_node(answer_generation_service: AnswerGenerationService
 
     async def generate_answer(state: QuestionProcessingState) -> dict:
         started_at = perf_counter()
-        alignment = state["current_alignment"]
-        assessment = state["current_assessment"]
-        question_id = state["current_question"].question_id
+        question = _require_question(state)
+        alignment = _require_alignment(state)
+        assessment = _require_assessment(state)
+        question_id = question.question_id
         debug_log(
             f"question={question_id} generate_answer start "
             f"usable_refs={len(assessment.usable_reference_ids)}"
@@ -254,7 +318,7 @@ def make_generate_answer_node(answer_generation_service: AnswerGenerationService
             if reference.record_id in usable_reference_ids
         ]
         grounded_result = await answer_generation_service.generate_grounded_response(
-            question=state["current_question"],
+            question=question,
             usable_references=usable_references,
             attempt_number=state.get("generation_attempt_count", 0) + 1,
             validation_error=state.get("generation_validation_error"),
@@ -290,9 +354,9 @@ def make_finalize_unanswered_node(domain_tagging_service: DomainTaggingService):
     """Create the node that returns unanswered results."""
 
     def finalize_unanswered(state: QuestionProcessingState) -> dict:
-        question = state["current_question"]
-        alignment = state["current_alignment"]
-        assessment = state["current_assessment"]
+        question = _require_question(state)
+        alignment = _require_alignment(state)
+        assessment = _require_assessment(state)
         debug_log(
             f"question={question.question_id} finalize_unanswered "
             f"grounding_status={assessment.grounding_status} refs={len(alignment.references)}"
@@ -326,13 +390,13 @@ def make_finalize_unanswered_node(domain_tagging_service: DomainTaggingService):
             confidence_reason=None,
             historical_alignment_indicator=alignment.matched,
             status="unanswered",
-            grounding_status=assessment.grounding_status,
+            grounding_status=cast(GroundingStatus, assessment.grounding_status),
             flags=QuestionFlags(
                 high_risk=False,
                 inconsistent_response=False,
                 has_conflict=has_conflict,
             ),
-            risk=QuestionRisk(level=risk_level, reason=risk_reason),
+            risk=QuestionRisk(level=cast(RiskLevel, risk_level), reason=risk_reason),
             metadata=QuestionMetadata(
                 source_row_index=question.source_row_index,
                 alignment_record_id=alignment.record_id,
@@ -356,10 +420,10 @@ def make_assess_output_node(domain_tagging_service: DomainTaggingService):
 
     def assess_output(state: QuestionProcessingState) -> dict:
         started_at = perf_counter()
-        question = state["current_question"]
-        alignment = state["current_alignment"]
-        assessment = state["current_assessment"]
-        review: ReviewPayload = state["current_review"]  # type: ignore[assignment]
+        question = _require_question(state)
+        alignment = _require_alignment(state)
+        assessment = _require_assessment(state)
+        review = _review_with_defaults(state)
         answer = (state["current_answer"] or "").strip()
         debug_log(f"question={question.question_id} assess_output start")
         usable_reference_ids = set(assessment.usable_reference_ids)
@@ -445,16 +509,19 @@ def make_assess_output_node(domain_tagging_service: DomainTaggingService):
             original_question=question.original_question,
             generated_answer=answer,
             domain_tag=domain_tag,
-            confidence_level=review["confidence_level"],
+            confidence_level=cast(RiskLevel, review["confidence_level"]),
             confidence_reason=review["confidence_reason"],
             historical_alignment_indicator=alignment.matched,
             status="completed",
-            grounding_status=assessment.grounding_status,
+            grounding_status=cast(GroundingStatus, assessment.grounding_status),
             flags=QuestionFlags(
                 high_risk=review["risk_level"] == "high" or high_risk,
                 inconsistent_response=review["inconsistent_response"] or inconsistent_response,
             ),
-            risk=QuestionRisk(level=review["risk_level"], reason=review["risk_reason"]),
+            risk=QuestionRisk(
+                level=cast(RiskLevel, review["risk_level"]),
+                reason=review["risk_reason"],
+            ),
             metadata=QuestionMetadata(
                 source_row_index=question.source_row_index,
                 alignment_record_id=alignment.record_id,
@@ -479,16 +546,10 @@ def make_fail_generation_node(domain_tagging_service: DomainTaggingService):
     """Create the node that materializes a failed result after retry exhaustion."""
 
     def fail_generation(state: QuestionProcessingState) -> dict:
-        question = state["current_question"]
-        alignment = state["current_alignment"]
-        assessment = state["current_assessment"]
-        review: ReviewPayload = state["current_review"] or {  # type: ignore[assignment]
-            "confidence_level": "low",
-            "confidence_reason": "",
-            "risk_level": "low",
-            "risk_reason": "No risk review was returned.",
-            "inconsistent_response": False,
-        }
+        question = _require_question(state)
+        alignment = _require_alignment(state)
+        assessment = _require_assessment(state)
+        review = _review_with_defaults(state)
         domain_tag = domain_tagging_service.tag(
             question=question,
             generated_answer=(state.get("current_answer") or ""),
@@ -522,7 +583,7 @@ def make_process_question_node(question_graph):
     """Create the batch-level node that invokes the single-question subgraph."""
 
     async def process_question(state: BatchTenderResponseState) -> dict:
-        question = state["current_question"]
+        question = _require_question(state)
         started_at = perf_counter()
         debug_log(f"question={question.question_id} process_question start")
         try:
@@ -579,7 +640,7 @@ def prepare_conflict_review(state: BatchTenderResponseState) -> dict:
     return {}
 
 
-def make_review_conflict_group_node(conflict_review_service: ConflictReviewService):
+def make_review_conflict_group_node(conflict_review_service: ConflictReviewer):
     """Create the node that reviews one group of up to ten target answers."""
 
     async def review_conflict_group(state: BatchTenderResponseState) -> dict:
@@ -739,7 +800,7 @@ def summarize_batch(state: BatchTenderResponseState) -> dict:
     )
 
     if total_questions == 0:
-        overall_status = "completed"
+            overall_status: OverallCompletionStatus = "completed"
     elif failed_questions == total_questions:
         overall_status = "failed"
     elif failed_questions > 0:

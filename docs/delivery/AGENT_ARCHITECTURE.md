@@ -155,6 +155,7 @@ Benefits:
 - retry is controlled by state, not hidden inside one long prompt
 - session memory can be reused across multiple requests
 - post-batch consistency review becomes possible
+- the backend is easier to test, lint, and type-check because the workflow contracts are explicit
 
 In short, the graph turns the system from “one model trying to do everything” into a workflow with explicit control points.
 

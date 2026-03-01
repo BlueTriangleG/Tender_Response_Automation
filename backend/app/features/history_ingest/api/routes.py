@@ -13,19 +13,23 @@ from app.features.history_ingest.schemas.requests import HistoryIngestRequestOpt
 from app.features.history_ingest.schemas.responses import HistoryIngestResponse
 
 router = APIRouter(prefix=settings.api_prefix)
+HistoryIngestUseCaseDep = Annotated[
+    IngestHistoryUseCase,
+    Depends(get_history_ingest_use_case),
+]
 
 
 @router.post("/ingest/history", response_model=HistoryIngestResponse)
 async def ingest_history(
+    use_case: HistoryIngestUseCaseDep,
     files: Annotated[list[UploadFile] | None, File()] = None,
     file: Annotated[UploadFile | None, File()] = None,
     output_format: Annotated[Literal["json", "excel"], Form(alias="outputFormat")] = "json",
     similarity_threshold: Annotated[float, Form(alias="similarityThreshold")] = 0.72,
-    use_case: Annotated[IngestHistoryUseCase, Depends(get_history_ingest_use_case)] = None,
 ) -> HistoryIngestResponse:
     """Accept uploaded history files and return per-file ingest results."""
 
-    uploads = list(files or [])
+    uploads: list[UploadFile] = list(files or [])
 
     if file is not None:
         uploads.insert(0, file)

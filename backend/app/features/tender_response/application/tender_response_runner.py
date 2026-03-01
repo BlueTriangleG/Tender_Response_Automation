@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+from langchain_core.runnables import RunnableConfig
 from starlette.datastructures import UploadFile
 
 from app.features.tender_response.infrastructure.parsers.base import TenderUploadParser
@@ -130,7 +131,7 @@ class TenderResponseRunner:
         options: TenderResponseRequestOptions,
         parsed_questions: list,
         session_completed_results: list,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Seed every workflow field explicitly so graph state starts from a stable shape."""
 
         return {
@@ -154,7 +155,7 @@ class TenderResponseRunner:
         *,
         session_id: str | None,
         request_id: str,
-    ) -> dict:
+    ) -> RunnableConfig:
         thread_id = session_id or request_id
         return {"configurable": {"thread_id": thread_id}}
 
@@ -162,7 +163,7 @@ class TenderResponseRunner:
         self,
         *,
         workflow,
-        config: dict,
+        config: RunnableConfig,
     ) -> list:
         if not hasattr(workflow, "aget_state"):
             return []

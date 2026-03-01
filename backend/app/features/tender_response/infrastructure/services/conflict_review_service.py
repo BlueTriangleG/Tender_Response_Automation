@@ -2,7 +2,7 @@
 
 import asyncio
 from time import perf_counter
-from typing import Literal
+from typing import Literal, Protocol
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
@@ -66,10 +66,11 @@ class ConflictReviewService:
             reference_results=reference_results,
         )
         try:
-            payload = await asyncio.wait_for(
+            raw_payload = await asyncio.wait_for(
                 structured_model.ainvoke(messages),
                 timeout=timeout_seconds,
             )
+            payload = _ConflictReviewPayload.model_validate(raw_payload)
         except TimeoutError:
             duration_ms = (perf_counter() - started_at) * 1000
             debug_log(f"conflict_review_service llm_call timeout duration_ms={duration_ms:.2f}")
@@ -139,11 +140,13 @@ class ConflictReviewService:
                 "severity": severity,
             }
 
-        for item in self._detect_guardrail_conflicts(
+        for finding in self._detect_guardrail_conflicts(
             target_results=target_results,
             reference_results=reference_results,
         ):
-            deduped[(item["target_question_id"], item["conflicting_question_id"])] = item
+            deduped[(finding["target_question_id"], finding["conflicting_question_id"])] = (
+                finding
+            )
 
         validated = list(deduped.values())
         debug_log(
@@ -195,6 +198,15 @@ class NoopConflictReviewService:
         reference_results: list[TenderQuestionResponse],
     ) -> list[dict[str, str]]:
         return []
+
+
+class ConflictReviewer(Protocol):
+    async def review_conflicts(
+        self,
+        *,
+        target_results: list[TenderQuestionResponse],
+        reference_results: list[TenderQuestionResponse],
+    ) -> list[dict[str, str]]: ...
 
 
 class _ConflictFindingPayload(BaseModel):

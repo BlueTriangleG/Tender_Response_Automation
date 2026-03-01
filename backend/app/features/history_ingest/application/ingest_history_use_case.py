@@ -1,6 +1,7 @@
 """Application service for importing historical QA CSV files."""
 
 import csv
+from collections.abc import Sequence
 from io import StringIO
 from typing import Any
 
@@ -61,7 +62,7 @@ class IngestHistoryUseCase:
 
     async def process_files(
         self,
-        files: list[UploadFile],
+        files: Sequence[UploadFile],
         request_options: HistoryIngestRequestOptions | None = None,
     ) -> HistoryIngestResponse:
         """Process each uploaded file and aggregate per-file ingest outcomes."""
@@ -301,7 +302,7 @@ class IngestHistoryUseCase:
     def _filter_new_records(self, records):
         """Deduplicate within the batch, then skip ids already stored in LanceDB."""
 
-        unique_records_by_id = {}
+        unique_records_by_id: dict[str, Any] = {}
         for record in records:
             # setdefault preserves the first normalized instance for a stable id.
             unique_records_by_id.setdefault(record.id, record)
@@ -315,7 +316,7 @@ class IngestHistoryUseCase:
     def _filter_new_document_chunks(self, records):
         """Deduplicate document chunks within the batch and against LanceDB."""
 
-        unique_records_by_id = {}
+        unique_records_by_id: dict[str, Any] = {}
         for record in records:
             unique_records_by_id.setdefault(record.id, record)
 

@@ -1,5 +1,7 @@
 """Embedding adapter for normalized QA text."""
 
+from typing import cast
+
 from openai import AsyncOpenAI
 
 from app.integrations.openai.embeddings_client import OpenAIEmbeddingsClient
@@ -13,10 +15,11 @@ class QaEmbeddingService:
         client: AsyncOpenAI | OpenAIEmbeddingsClient | None = None,
         model: str | None = None,
     ) -> None:
+        self._client: OpenAIEmbeddingsClient
         if client is None:
             self._client = OpenAIEmbeddingsClient(model=model)
         elif hasattr(client, "embed_texts"):
-            self._client = client
+            self._client = cast(OpenAIEmbeddingsClient, client)
         else:
             self._client = OpenAIEmbeddingsClient(client=client, model=model)
 

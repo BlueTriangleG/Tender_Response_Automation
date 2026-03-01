@@ -2,7 +2,7 @@
 
 import asyncio
 from time import perf_counter
-from typing import Literal
+from typing import Any, Literal
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
@@ -110,10 +110,11 @@ class ReferenceAssessmentService:
                     f"refs={len(references)} attempt={attempt} timeout_s={timeout_seconds:.2f}"
                 )
                 try:
-                    payload = await asyncio.wait_for(
+                    raw_payload = await asyncio.wait_for(
                         structured_model.ainvoke(messages),
                         timeout=timeout_seconds,
                     )
+                    payload = _ReferenceAssessmentPayload.model_validate(raw_payload)
                     duration_ms = (perf_counter() - started_at) * 1000
                     debug_log(
                         f"question={question.question_id} reference_assessment_service request end "
@@ -232,6 +233,10 @@ class _ReferenceAssessmentPayload(BaseModel):
     supported_coverage_percent: int
     usable_reference_ids: list[str]
     reason: str
+
+
+def _normalize_structured_payload(payload: Any) -> _ReferenceAssessmentPayload:
+    return _ReferenceAssessmentPayload.model_validate(payload)
 
 
 def _normalize(text: str | None) -> str:

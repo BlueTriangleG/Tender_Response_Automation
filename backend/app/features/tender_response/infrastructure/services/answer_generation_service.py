@@ -111,10 +111,11 @@ class AnswerGenerationService:
             f"phase={phase} attempt={attempt_number} timeout_s={timeout_seconds:.2f}"
         )
         try:
-            payload = await asyncio.wait_for(
+            raw_payload = await asyncio.wait_for(
                 structured_model.ainvoke(messages),
                 timeout=timeout_seconds,
             )
+            payload = _GroundedAnswerPayload.model_validate(raw_payload)
         except TimeoutError as exc:
             duration_ms = (perf_counter() - started_at) * 1000
             debug_log(

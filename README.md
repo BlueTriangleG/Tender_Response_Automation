@@ -171,6 +171,8 @@ Full repository verification:
 npm run verify
 ```
 
+This runs the same basic engineering checks the repo is organized around: tests, linting, type-checking, and the frontend production build.
+
 Backend unit/integration tests:
 
 ```bash

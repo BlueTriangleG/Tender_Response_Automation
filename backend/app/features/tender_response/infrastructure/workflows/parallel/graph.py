@@ -8,7 +8,7 @@ from app.features.tender_response.infrastructure.services.answer_generation_serv
     AnswerGenerationService,
 )
 from app.features.tender_response.infrastructure.services.conflict_review_service import (
-    ConflictReviewService,
+    ConflictReviewer,
     NoopConflictReviewService,
 )
 from app.features.tender_response.infrastructure.services.domain_tagging_service import (
@@ -45,7 +45,7 @@ def create_parallel_tender_response_graph(
     answer_generation_service: AnswerGenerationService | None = None,
     reference_assessment_service: ReferenceAssessmentService | None = None,
     domain_tagging_service: DomainTaggingService | None = None,
-    conflict_review_service: ConflictReviewService | None = None,
+    conflict_review_service: ConflictReviewer | None = None,
 ) -> CompiledStateGraph:
     """Create the batch graph that fans out tender questions and summarizes the run."""
 
