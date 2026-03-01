@@ -7,6 +7,9 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.features.tender_response.domain.conflict_rules import (
+    detect_statement_conflict,
+)
 from app.features.tender_response.domain.models import (
     HistoricalReference,
     ReferenceAssessmentResult,
@@ -151,23 +154,37 @@ def _detect_material_reference_conflict(
     """Return a human-review reason when retrieved references materially disagree."""
 
     normalized_question = _normalize(question.original_question)
-    if (
-        "legacy ssl" not in normalized_question
-        or "production" not in normalized_question
-        or "fully disabled" not in normalized_question
-    ):
-        return None
 
-    has_absolute_disable = any(
-        _is_absolute_ssl_disable_reference(reference.answer) for reference in references
-    )
-    has_exception_enable = any(
-        _is_ssl_exception_reference(reference.answer) for reference in references
-    )
-    if has_absolute_disable and has_exception_enable:
-        return (
-            "Conflicting historical references disagree on whether legacy SSL is fully "
-            "disabled for production traffic or can remain enabled during approved "
-            "migration scenarios. Human review is required before answering."
+    if (
+        "legacy ssl" in normalized_question
+        and "production" in normalized_question
+        and "fully disabled" in normalized_question
+    ):
+        has_absolute_disable = any(
+            _is_absolute_ssl_disable_reference(reference.answer) for reference in references
         )
+        has_exception_enable = any(
+            _is_ssl_exception_reference(reference.answer) for reference in references
+        )
+        if has_absolute_disable and has_exception_enable:
+            return (
+                "Conflicting historical references disagree on whether legacy SSL is fully "
+                "disabled for production traffic or can remain enabled during approved "
+                "migration scenarios. Human review is required before answering."
+            )
+
+    for index, left_reference in enumerate(references):
+        for right_reference in references[index + 1 :]:
+            if not detect_statement_conflict(
+                left_question=left_reference.question,
+                left_answer=left_reference.answer,
+                right_question=right_reference.question,
+                right_answer=right_reference.answer,
+            ):
+                continue
+            return (
+                "Conflicting historical references provide opposing statements about the "
+                "same capability or certification. Human review is required before "
+                "answering."
+            )
     return None

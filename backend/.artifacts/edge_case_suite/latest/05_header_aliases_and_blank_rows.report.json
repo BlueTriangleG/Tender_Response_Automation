@@ -8,9 +8,7 @@
   },
   "evaluation": {
     "case_id": "05_header_aliases_and_blank_rows",
-    "passed": false,
-    "errors": [
-      "overall_completion_status mismatch: expected one of ['completed'], got completed_with_flags"
-    ]
+    "passed": true,
+    "errors": []
   }
 }

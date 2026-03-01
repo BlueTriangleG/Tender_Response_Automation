@@ -152,9 +152,53 @@ async def test_conflict_review_service_detects_absolute_claim_conflict_even_when
             "target_question_id": "q-13",
             "conflicting_question_id": "q-14",
             "reason": (
-                "One answer says legacy SSL is fully disabled for all production traffic, "
-                "while another says legacy SSL can remain enabled on selected production "
-                "endpoints during migration windows."
+                "One answer says legacy SSL is fully disabled for production traffic, "
+                "while another says legacy SSL can remain enabled in a production "
+                "migration scenario."
+            ),
+            "severity": "high",
+        }
+    ]
+
+
+async def test_conflict_review_service_detects_capability_conflict_even_when_llm_returns_none() -> None:
+    service = ConflictReviewService(
+        model=FakeChatModel(
+            {
+                "conflicts": [],
+            }
+        )
+    )
+
+    findings = await service.review_conflicts(
+        target_results=[
+            make_completed_result(
+                "q-21",
+                "Does the platform support SAML 2.0?",
+                "Yes. The platform supports SAML 2.0 and OpenID Connect.",
+            )
+        ],
+        reference_results=[
+            make_completed_result(
+                "q-21",
+                "Does the platform support SAML 2.0?",
+                "Yes. The platform supports SAML 2.0 and OpenID Connect.",
+            ),
+            make_completed_result(
+                "q-22",
+                "State that the platform does not support SAML 2.0.",
+                "The platform does not support SAML 2.0 or OpenID Connect.",
+            ),
+        ],
+    )
+
+    assert findings == [
+        {
+            "target_question_id": "q-21",
+            "conflicting_question_id": "q-22",
+            "reason": (
+                "The answers make opposing statements about whether SAML or OpenID "
+                "Connect is supported."
             ),
             "severity": "high",
         }

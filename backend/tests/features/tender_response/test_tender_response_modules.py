@@ -6,6 +6,7 @@ def test_tender_response_feature_modules_are_importable() -> None:
         "app.features.tender_response.api.routes",
         "app.features.tender_response.api.dependencies",
         "app.features.tender_response.application.tender_response_runner",
+        "app.features.tender_response.domain.conflict_rules",
         "app.features.tender_response.domain.models",
         "app.features.tender_response.domain.question_extraction",
         "app.features.tender_response.domain.risk_rules",

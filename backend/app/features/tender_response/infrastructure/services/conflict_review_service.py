@@ -7,6 +7,10 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.features.tender_response.domain.conflict_rules import (
+    detect_statement_conflict,
+    normalize_conflict_text,
+)
 from app.features.tender_response.infrastructure.prompting.conflict_review import (
     build_conflict_review_messages,
 )
@@ -101,27 +105,25 @@ class ConflictReviewService:
         findings: list[dict[str, str]] = []
 
         for target in target_results:
-            target_answer = _normalize(target.generated_answer)
-            if not _is_absolute_ssl_disable_claim(target_answer):
-                continue
-
             for reference in reference_results:
                 if reference.question_id == target.question_id:
                     continue
 
-                reference_answer = _normalize(reference.generated_answer)
-                if not _is_ssl_exception_enable_claim(reference_answer):
+                if not detect_statement_conflict(
+                    left_question=target.original_question,
+                    left_answer=target.generated_answer or "",
+                    right_question=reference.original_question,
+                    right_answer=reference.generated_answer or "",
+                ):
                     continue
 
                 findings.append(
                     {
                         "target_question_id": target.question_id,
                         "conflicting_question_id": reference.question_id,
-                        "reason": (
-                            "One answer says legacy SSL is fully disabled for all "
-                            "production traffic, while another says legacy SSL can "
-                            "remain enabled on selected production endpoints during "
-                            "migration windows."
+                        "reason": _build_conflict_reason(
+                            left_answer=target.generated_answer or "",
+                            right_answer=reference.generated_answer or "",
                         ),
                         "severity": "high",
                     }
@@ -153,27 +155,23 @@ class _ConflictReviewPayload(BaseModel):
     conflicts: list[_ConflictFindingPayload]
 
 
-def _normalize(text: str | None) -> str:
-    return " ".join((text or "").lower().split())
-
-
-def _is_absolute_ssl_disable_claim(text: str) -> bool:
-    return (
-        "legacy ssl" in text
-        and "fully disabled" in text
-        and "production" in text
-        and ("all production traffic" in text or "only tls 1.2" in text)
-    )
-
-
-def _is_ssl_exception_enable_claim(text: str) -> bool:
-    return (
-        "legacy ssl" in text
-        and ("can remain enabled" in text or "may remain enabled" in text)
-        and "production" in text
-        and (
-            "migration window" in text
-            or "migration windows" in text
-            or "migration" in text
+def _build_conflict_reason(*, left_answer: str, right_answer: str) -> str:
+    left_text = normalize_conflict_text(left_answer)
+    right_text = normalize_conflict_text(right_answer)
+    if "legacy ssl" in left_text and "legacy ssl" in right_text:
+        return (
+            "One answer says legacy SSL is fully disabled for production traffic, "
+            "while another says legacy SSL can remain enabled in a production "
+            "migration scenario."
         )
-    )
+    if "fedramp" in left_text and "fedramp" in right_text:
+        return (
+            "The answers make opposing statements about FedRAMP status and cannot "
+            "both be true."
+        )
+    if "saml" in left_text and "saml" in right_text:
+        return (
+            "The answers make opposing statements about whether SAML or OpenID "
+            "Connect is supported."
+        )
+    return "These answers make incompatible statements about the same capability or claim."
