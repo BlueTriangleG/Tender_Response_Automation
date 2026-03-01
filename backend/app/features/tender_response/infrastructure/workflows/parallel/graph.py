@@ -4,8 +4,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.features.tender_response.infrastructure.repositories.qa_alignment_repository import (
-    QaAlignmentRepository,
+from app.features.tender_response.infrastructure.services.historical_evidence_service import (
+    HistoricalEvidenceService,
 )
 from app.features.tender_response.infrastructure.services.conflict_review_service import (
     ConflictReviewService,
@@ -41,7 +41,7 @@ from app.features.tender_response.infrastructure.workflows.parallel.routing impo
 
 def create_parallel_tender_response_graph(
     *,
-    alignment_repository: QaAlignmentRepository | None = None,
+    alignment_repository: HistoricalEvidenceService | None = None,
     answer_generation_service: AnswerGenerationService | None = None,
     reference_assessment_service: ReferenceAssessmentService | None = None,
     domain_tagging_service: DomainTaggingService | None = None,
@@ -49,7 +49,7 @@ def create_parallel_tender_response_graph(
 ) -> CompiledStateGraph:
     """Create the batch graph that fans out tender questions and summarizes the run."""
 
-    resolved_alignment_repository = alignment_repository or QaAlignmentRepository()
+    resolved_alignment_repository = alignment_repository or HistoricalEvidenceService()
     resolved_answer_generation_service = answer_generation_service or AnswerGenerationService()
     resolved_reference_assessment_service = (
         reference_assessment_service or ReferenceAssessmentService()

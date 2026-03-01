@@ -1,22 +1,19 @@
-"""JSON parser used by the history-ingest upload flow."""
-
-import json
+"""Plain-text parser for history-ingest uploads."""
 
 from app.features.history_ingest.infrastructure.parsers.models import FileContent
 from app.features.history_ingest.schemas.responses import ParsedFilePayload
 
 
-class JsonParser:
-    """Parse JSON uploads while preserving the original text payload."""
+class TextParser:
+    """Pass plain-text uploads through as unstructured evidence."""
 
-    extension = ".json"
-    parsed_kind = "json"
+    extension = ".txt"
+    parsed_kind = "text"
 
     def parse(self, content: FileContent) -> ParsedFilePayload:
-        """Return the decoded JSON object as structured data."""
+        """Return raw text without attempting structured extraction."""
 
         raw_text = content.raw_text or ""
-        structured_data = json.loads(raw_text)
         return ParsedFilePayload(
             file_name=content.file_name,
             extension=content.extension,
@@ -24,7 +21,7 @@ class JsonParser:
             size_bytes=content.size_bytes,
             parsed_kind=self.parsed_kind,
             raw_text=raw_text,
-            structured_data=structured_data,
-            row_count=1,
+            structured_data=None,
+            row_count=None,
             warnings=[],
         )

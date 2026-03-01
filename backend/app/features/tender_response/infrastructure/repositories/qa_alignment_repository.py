@@ -24,51 +24,29 @@ class QaAlignmentRepository:
         self._embeddings_client = embeddings_client or OpenAIEmbeddingsClient()
         self._table_name = settings.lancedb_qa_table_name
 
-    async def find_best_match(
+    async def find_best_matches(
         self,
         question: TenderQuestion,
         *,
         threshold: float,
-    ) -> HistoricalAlignmentResult:
-        """Search LanceDB and keep only references whose score clears the threshold."""
+        limit: int = 3,
+    ) -> list[HistoricalReference]:
+        """Return qualified QA references, or near-misses when none clear the threshold."""
 
         table = self._connection.open_table(self._table_name)
         rows = table.to_arrow().to_pylist()
-        # LanceDB search fails conceptually when the table is empty, so short-circuit
-        # early and return a structured "no match" result.
         if not rows:
-            return HistoricalAlignmentResult(
-                matched=False,
-                record_id=None,
-                question=None,
-                answer=None,
-                domain=None,
-                source_doc=None,
-                alignment_score=None,
-                references=[],
-            )
+            return []
 
-        # Embed the incoming tender question into the same vector space as the
-        # historical QA records before running nearest-neighbour search.
         [query_vector] = await self._embeddings_client.embed_texts([question.original_question])
-        matches = table.search(query_vector).limit(3).to_list()
+        matches = table.search(query_vector).limit(limit).to_list()
         if not matches:
-            return HistoricalAlignmentResult(
-                matched=False,
-                record_id=None,
-                question=None,
-                answer=None,
-                domain=None,
-                source_doc=None,
-                alignment_score=None,
-                references=[],
-            )
+            return []
 
-        # Convert LanceDB distance into a bounded score so the rest of the workflow
-        # can apply a consistent threshold regardless of backend-specific distance semantics.
         candidate_references = [
             HistoricalReference(
                 record_id=str(match["id"]),
+                reference_type="qa",
                 question=str(match["question"]),
                 answer=str(match["answer"]),
                 domain=match.get("domain"),
@@ -77,16 +55,40 @@ class QaAlignmentRepository:
             )
             for match in matches
         ]
-        best_reference = candidate_references[0]
         qualified_references = [
             reference
             for reference in candidate_references
             if reference.alignment_score >= threshold
         ]
+        return qualified_references or candidate_references
 
-        # Preserve candidate_references even on a miss so downstream services can still
-        # inspect near-matches when deciding why grounding failed.
-        if not qualified_references:
+    async def find_best_match(
+        self,
+        question: TenderQuestion,
+        *,
+        threshold: float,
+    ) -> HistoricalAlignmentResult:
+        """Search LanceDB and keep only references whose score clears the threshold."""
+
+        references = await self.find_best_matches(
+            question,
+            threshold=threshold,
+            limit=3,
+        )
+        if not references:
+            return HistoricalAlignmentResult(
+                matched=False,
+                record_id=None,
+                question=None,
+                answer=None,
+                domain=None,
+                source_doc=None,
+                alignment_score=None,
+                references=[],
+            )
+
+        best_reference = references[0]
+        if best_reference.alignment_score < threshold:
             return HistoricalAlignmentResult(
                 matched=False,
                 record_id=None,
@@ -95,10 +97,10 @@ class QaAlignmentRepository:
                 domain=None,
                 source_doc=None,
                 alignment_score=best_reference.alignment_score,
-                references=candidate_references,
+                references=references,
             )
 
-        selected_reference = qualified_references[0]
+        selected_reference = best_reference
         return HistoricalAlignmentResult(
             matched=True,
             record_id=selected_reference.record_id,
@@ -107,5 +109,5 @@ class QaAlignmentRepository:
             domain=selected_reference.domain,
             source_doc=selected_reference.source_doc,
             alignment_score=selected_reference.alignment_score,
-            references=qualified_references,
+            references=references,
         )

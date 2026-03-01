@@ -10,7 +10,8 @@
     "total_questions_processed": 4,
     "allowed_overall_completion_statuses": [
       "completed",
-      "completed_with_flags"
+      "completed_with_flags",
+      "conflict"
     ],
     "completed_min": 2,
     "unanswered_min": 2,

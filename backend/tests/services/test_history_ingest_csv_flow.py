@@ -74,6 +74,18 @@ class FakeQaRepository:
         return self.existing_ids.intersection(record_ids)
 
 
+class FakeDocumentRepository:
+    def __init__(self, existing_ids: set[str] | None = None) -> None:
+        self.records: list[dict] = []
+        self.existing_ids = existing_ids or set()
+
+    def upsert_records(self, records: list[dict]) -> None:
+        self.records.extend(records)
+
+    def get_existing_record_ids(self, record_ids: list[str]) -> set[str]:
+        return self.existing_ids.intersection(record_ids)
+
+
 async def test_process_files_runs_csv_parse_detect_normalize_embed_and_upsert() -> None:
     file_processing_service = FakeFileProcessingService(
         [
@@ -149,7 +161,7 @@ async def test_process_files_runs_csv_parse_detect_normalize_embed_and_upsert() 
     assert repository.records[0]["vector"] == [0.1, 0.2, 0.3]
 
 
-async def test_process_files_marks_non_csv_files_as_unsupported_for_persistence() -> None:
+async def test_process_files_persists_non_tabular_files_into_document_records() -> None:
     file_processing_service = FakeFileProcessingService(
         [
             ProcessedHistoryFileResult(
@@ -168,14 +180,22 @@ async def test_process_files_marks_non_csv_files_as_unsupported_for_persistence(
             )
         ]
     )
+    embedding_service = FakeEmbeddingService([[0.1, 0.2, 0.3]])
+    document_repository = FakeDocumentRepository()
 
-    service = IngestHistoryUseCase(file_processing_service=file_processing_service)
+    service = IngestHistoryUseCase(
+        file_processing_service=file_processing_service,
+        qa_embedding_service=embedding_service,
+        document_repository=document_repository,
+    )
 
     response = await service.process_files([DummyUploadFile("notes.md")])
 
-    assert response.processed_file_count == 0
-    assert response.failed_file_count == 1
-    assert response.files[0].error_code == "unsupported_ingest_type"
+    assert response.processed_file_count == 1
+    assert response.failed_file_count == 0
+    assert response.files[0].storage_target == "document_records"
+    assert response.files[0].ingested_row_count == 1
+    assert document_repository.records[0]["source_doc"] == "notes.md"
 
 
 async def test_process_files_continues_when_csv_column_detection_fails() -> None:

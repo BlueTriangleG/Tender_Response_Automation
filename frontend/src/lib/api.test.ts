@@ -337,4 +337,85 @@ describe("processTenderWorkbook", () => {
     });
     expect(response.summary.conflictCount).toBe(1);
   });
+
+  test("normalizes document chunk references from the tender response payload", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        request_id: "req-tender-45",
+        session_id: "session-45",
+        source_file_name: "tender.csv",
+        total_questions_processed: 1,
+        questions: [
+          {
+            question_id: "q-020",
+            original_question: "How often do you test disaster recovery?",
+            generated_answer: "Recovery exercises are run quarterly.",
+            domain_tag: "operations",
+            confidence_level: "medium",
+            confidence_reason: "The answer is grounded by the retrieved operations excerpt.",
+            historical_alignment_indicator: true,
+            status: "completed",
+            grounding_status: "grounded",
+            flags: {
+              high_risk: false,
+              inconsistent_response: false,
+              has_conflict: false,
+            },
+            metadata: {
+              source_row_index: 0,
+              alignment_record_id: "doc-1#0",
+              alignment_score: 0.87,
+            },
+            risk: {
+              level: "low",
+              reason: "Low risk.",
+            },
+            references: [
+              {
+                alignment_record_id: "doc-1#0",
+                reference_type: "document_chunk",
+                alignment_score: 0.87,
+                source_doc: "operations_playbook.txt",
+                matched_question: "",
+                matched_answer: "",
+                excerpt: "Quarterly recovery exercises are documented and reviewed.",
+                chunk_index: 0,
+                used_for_answer: true,
+              },
+            ],
+            error_message: null,
+            extensions: {},
+          },
+        ],
+        summary: {
+          total_questions_processed: 1,
+          flagged_high_risk_or_inconsistent_responses: 0,
+          overall_completion_status: "completed",
+          completed_questions: 1,
+          unanswered_questions: 0,
+          failed_questions: 0,
+          conflict_count: 0,
+        },
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const file = new File(["question\nDR"], "tender.csv", { type: "text/csv" });
+
+    const response = await processTenderWorkbook(file, {
+      alignmentThreshold: 0.84,
+    });
+
+    expect(response.questions[0].references[0]).toEqual({
+      referenceType: "document_chunk",
+      sourceDoc: "operations_playbook.txt",
+      matchedQuestion: "",
+      matchedAnswer: "",
+      excerpt: "Quarterly recovery exercises are documented and reviewed.",
+      chunkIndex: 0,
+      usedForAnswer: true,
+    });
+  });
 });

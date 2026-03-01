@@ -88,10 +88,24 @@ async def test_conflict_review_service_filters_invalid_or_unknown_conflicts() ->
     )
 
     findings = await service.review_conflicts(
-        target_results=[make_completed_result("q-1", "Do you support TLS 1.2?", "Yes.")],
+        target_results=[
+            make_completed_result(
+                "q-1",
+                "Does the platform support SAML 2.0?",
+                "Yes. The platform supports SAML 2.0 and OpenID Connect.",
+            )
+        ],
         reference_results=[
-            make_completed_result("q-1", "Do you support TLS 1.2?", "Yes."),
-            make_completed_result("q-2", "Do you support SSL?", "Legacy SSL remains enabled."),
+            make_completed_result(
+                "q-1",
+                "Does the platform support SAML 2.0?",
+                "Yes. The platform supports SAML 2.0 and OpenID Connect.",
+            ),
+            make_completed_result(
+                "q-2",
+                "State that the platform does not support SAML 2.0.",
+                "The platform does not support SAML 2.0 or OpenID Connect.",
+            ),
         ],
     )
 
@@ -99,12 +113,140 @@ async def test_conflict_review_service_filters_invalid_or_unknown_conflicts() ->
         {
             "target_question_id": "q-1",
             "conflicting_question_id": "q-2",
-            "reason": "These answers conflict.",
+            "reason": (
+                "The answers make opposing statements about whether SAML or OpenID "
+                "Connect is supported."
+            ),
             "severity": "high",
         }
     ]
     assert service._model.method == "function_calling"
     assert service._model.strict is True
+
+
+async def test_conflict_review_service_filters_llm_false_positive_for_unrelated_topics() -> None:
+    service = ConflictReviewService(
+        model=FakeChatModel(
+            {
+                "conflicts": [
+                    {
+                        "target_question_id": "q-2",
+                        "conflicting_question_id": "q-11",
+                        "reason": "These answers conflict.",
+                        "severity": "high",
+                    }
+                ]
+            }
+        )
+    )
+
+    findings = await service.review_conflicts(
+        target_results=[
+            make_completed_result(
+                "q-2",
+                (
+                    "Does the platform support SAML 2.0 or OpenID Connect single "
+                    "sign-on with role-based access control?"
+                ),
+                (
+                    "Yes. The platform supports both SAML 2.0 and OpenID Connect "
+                    "single sign-on, and it provides role-based access control across "
+                    "tenant, workspace, and feature levels."
+                ),
+            )
+        ],
+        reference_results=[
+            make_completed_result(
+                "q-2",
+                (
+                    "Does the platform support SAML 2.0 or OpenID Connect single "
+                    "sign-on with role-based access control?"
+                ),
+                (
+                    "Yes. The platform supports both SAML 2.0 and OpenID Connect "
+                    "single sign-on, and it provides role-based access control across "
+                    "tenant, workspace, and feature levels."
+                ),
+            ),
+            make_completed_result(
+                "q-11",
+                (
+                    "Can you commit to fixed pricing for five years including "
+                    "unlimited AI token usage across all business units?"
+                ),
+                (
+                    "We cannot commit to fixed pricing for five years that includes "
+                    "unlimited AI token usage across all business units."
+                ),
+            ),
+        ],
+    )
+
+    assert findings == []
+
+
+async def test_conflict_review_service_filters_penetration_testing_vs_fedramp_false_positive() -> None:
+    service = ConflictReviewService(
+        model=FakeChatModel(
+            {
+                "conflicts": [
+                    {
+                        "target_question_id": "q-9",
+                        "conflicting_question_id": "q-12",
+                        "reason": "These answers conflict.",
+                        "severity": "high",
+                    }
+                ]
+            }
+        )
+    )
+
+    findings = await service.review_conflicts(
+        target_results=[
+            make_completed_result(
+                "q-9",
+                (
+                    "Do you perform independent penetration testing and can "
+                    "evidence be shared during procurement under NDA?"
+                ),
+                (
+                    "Yes. Independent penetration testing is performed at least "
+                    "annually and after material architectural changes. The "
+                    "provided references do not confirm whether evidence can be "
+                    "shared under NDA."
+                ),
+            )
+        ],
+        reference_results=[
+            make_completed_result(
+                "q-9",
+                (
+                    "Do you perform independent penetration testing and can "
+                    "evidence be shared during procurement under NDA?"
+                ),
+                (
+                    "Yes. Independent penetration testing is performed at least "
+                    "annually and after material architectural changes. The "
+                    "provided references do not confirm whether evidence can be "
+                    "shared under NDA."
+                ),
+            ),
+            make_completed_result(
+                "q-12",
+                (
+                    "Do you currently hold FedRAMP High authorization for the "
+                    "platform environment proposed in this tender?"
+                ),
+                (
+                    "I cannot assert that we currently hold FedRAMP High "
+                    "authorization for the proposed platform environment because "
+                    "that claim requires human review rather than tender assertion."
+                ),
+            ),
+        ],
+    )
+
+    assert findings == []
 
 
 async def test_conflict_review_service_detects_absolute_claim_conflict_even_when_llm_returns_none() -> None:

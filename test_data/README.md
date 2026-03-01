@@ -10,9 +10,10 @@ It gives you a realistic local demo pack with:
 ## Contents
 
 - `historical_repository/`
-  - Mixed Markdown, TXT, and JSON prior tender responses
+  - Mixed Markdown, TXT, and JSON prior tender responses used as document-evidence ingest inputs
   - Includes overlapping answers, tone variations, and one deliberate commercial conflict
-  - Also includes `historical_repository_qa.csv`, a flat question-answer-domain repository for simple ingestion flows
+  - Also includes `historical_repository_qa.csv` and `historical_repository_qa.xlsx`, flat question-answer-domain repositories for simple QA-table ingestion flows
+  - Includes `operations_playbook.txt` as a plain-text document-ingest sample for manual smoke testing
 - `edge_case_suite/`
   - A regression-oriented CSV/JSON suite for the current backend contract
   - Includes ingest negatives, retrieval edge cases, safety-sensitive tender wording, and oracle files
@@ -44,10 +45,11 @@ It intentionally includes:
 
 ## Recommended Demo Flow
 
-1. Load the files in `historical_repository/` into your retrieval or memory layer.
-2. Upload `input/tender_questionnaire_sample.xlsx`.
-3. Run the LangGraph workflow per question.
-4. Compare generated output with `expected_output/tender_response_expected.json`.
+1. Load the tabular QA files in `historical_repository/` into `qa_records`.
+2. Load the non-tabular history files in `historical_repository/` into `document_records`.
+3. Upload `input/tender_questionnaire_sample.xlsx`.
+4. Run the LangGraph workflow per question.
+5. Compare generated output with `expected_output/tender_response_expected.json`.
 
 ## Regression-Oriented Suite
 

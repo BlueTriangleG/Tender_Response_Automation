@@ -1,6 +1,7 @@
 """Core domain models for tender-question processing."""
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 
 @dataclass(slots=True)
@@ -28,7 +29,7 @@ TenderCsvParseResult = TenderTabularParseResult
 
 @dataclass(slots=True)
 class HistoricalReference:
-    """A historical QA record retrieved as supporting evidence."""
+    """A historical QA row or document chunk retrieved as supporting evidence."""
 
     record_id: str
     question: str
@@ -36,6 +37,9 @@ class HistoricalReference:
     domain: str | None
     source_doc: str | None
     alignment_score: float
+    reference_type: Literal["qa", "document_chunk"] = "qa"
+    excerpt: str | None = None
+    chunk_index: int | None = None
 
 
 @dataclass(slots=True)

@@ -6,10 +6,10 @@
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/02_header_aliases.csv",
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/06_dirty_rows_and_quoting.csv"
     ],
-    "recorded_at": "2026-03-01T05:50:45.472748+00:00"
+    "recorded_at": "2026-03-01T06:54:13.010559+00:00"
   },
   "response": {
-    "request_id": "5cc70853-a71e-4911-8525-e802668c221c",
+    "request_id": "cd98eeb8-d8dc-42db-a88c-2b9ddfcfee93",
     "session_id": "edge-case-02_no_reference_vs_insufficient",
     "source_file_name": "02_no_reference_vs_insufficient.csv",
     "total_questions_processed": 4,
@@ -17,10 +17,10 @@
       {
         "question_id": "q-101",
         "original_question": "Do you support a fully air-gapped on-premises deployment with zero cloud dependency?",
-        "generated_answer": "I cannot confirm support for a fully air-gapped, on‑premises deployment with zero cloud dependency. The available reference only states that a single-tenant virtual private cloud deployment is available for customers requiring stronger isolation. (The reference does not state support for an on‑premises, air‑gapped deployment or zero cloud dependency.)",
+        "generated_answer": "The platform can be deployed as a single-tenant virtual private cloud for stronger isolation. (The provided reference does not confirm support for a fully air‑gapped, on‑premises deployment with zero cloud dependency.)",
         "domain_tag": "infrastructure",
         "confidence_level": "medium",
-        "confidence_reason": "The reference explicitly supports a single-tenant virtual private cloud deployment (which addresses isolation), but it does not mention on‑premises installations, air‑gapped configurations, or elimination of cloud dependencies, so the question cannot be fully answered from the provided material.",
+        "confidence_reason": "The reference explicitly confirms a single-tenant virtual private cloud deployment but does not mention fully air-gapped or on-premises, cloudless installations, so the response is partial and missing that evidence.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "partial_reference",
@@ -30,8 +30,8 @@
           "has_conflict": false
         },
         "risk": {
-          "level": "medium",
-          "reason": "There is a risk that the platform may rely on cloud infrastructure (the reference mentions a virtual private cloud) and therefore may not meet a strict zero‑cloud, air‑gapped requirement; the provided material gives no explicit assurance otherwise."
+          "level": "low",
+          "reason": "The answer strictly reflects the referenced statement and explicitly notes the missing scope, minimizing risk of unsupported claims."
         },
         "metadata": {
           "source_row_index": 0,
@@ -50,8 +50,8 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The single reference confirms a single-tenant virtual private cloud deployment (stronger isolation), which partially relates to isolation needs. It does not state support for a fully air-gapped, on-premises deployment with zero cloud dependency, so it cannot fully answer the question.",
-          "confidence_review_reason": "The reference explicitly supports a single-tenant virtual private cloud deployment (which addresses isolation), but it does not mention on‑premises installations, air‑gapped configurations, or elimination of cloud dependencies, so the question cannot be fully answered from the provided material.",
+          "reference_assessment_reason": "The provided reference confirms a single-tenant virtual private cloud deployment for stronger isolation, but does not state support for a fully air-gapped on-premises deployment with zero cloud dependency. Therefore it supports only part of the question (isolation options) but lacks material information about air-gapped, cloudless on-prem installations.",
+          "confidence_review_reason": "The reference explicitly confirms a single-tenant virtual private cloud deployment but does not mention fully air-gapped or on-premises, cloudless installations, so the response is partial and missing that evidence.",
           "conflicts": []
         }
       },
@@ -107,7 +107,7 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "None of the provided references mention audit logging, WORM (write-once-read-many) storage, immutability, or tamper-proof audit trails. The three references cover right-to-erasure requests, penetration test evidence handling, and role-based access control, which do not support or confirm a commitment to tamper-proof immutable WORM audit storage for administrator actions.",
+          "reference_assessment_reason": "None of the provided references mention audit log storage, immutability, WORM, or tamper-proof mechanisms. They cover right-to-erasure, penetration-test evidence sharing, and RBAC, which do not support answering whether tamper-proof immutable WORM audit storage for all administrator actions is provided.",
           "requires_human_review": false,
           "conflicts": []
         }
@@ -164,7 +164,7 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "None of the provided references mention IRAP or an Australian IRAP PROTECTED certification. The references discuss FedRAMP (noted as not an approved claim), penetration testing, and right-to-erasure — none materially support confirming IRAP PROTECTED certification.",
+          "reference_assessment_reason": "None of the provided references mention IRAP or IRAP PROTECTED. They reference FedRAMP (and advise escalation), penetration testing, and right-to-erasure — unrelated to IRAP certification. Therefore they are insufficient to support any claim about IRAP PROTECTED certification.",
           "requires_human_review": false,
           "conflicts": []
         }
@@ -172,10 +172,10 @@
       {
         "question_id": "q-104",
         "original_question": "Can you contractually guarantee a 15-minute RTO for every single-tenant and customer-managed deployment?",
-        "generated_answer": "No. You cannot contractually guarantee a 15-minute RTO for every single-tenant and customer-managed deployment. The references state the managed production service has RPO = 15 minutes and RTO = 4 hours (so a 15-minute RTO is not the documented managed-service commitment), and customer-managed deployment is not generally available and requires separate scoping through professional services. (Missing/unsupported: the references do not provide contractual RTO commitments for single-tenant deployments or any blanket 15-minute RTO guarantee for customer-managed deployments—those would need separate scoping/negotiation.)",
+        "generated_answer": "No. You cannot contractually guarantee a 15-minute RTO for every single-tenant and customer-managed deployment. The managed production service explicitly documents a recovery time objective of 4 hours (and a 15-minute RPO), and the managed service availability target is 99.9% monthly subject to the contracted service definition. Customer-managed (single-tenant) deployment is not the default delivery model and requires separate scoping through professional services. (The provided references do not state whether a separately scoped professional-services engagement for a customer-managed or single-tenant deployment could be contracted to deliver a 15-minute RTO, so that possibility is not supported by these documents.)",
         "domain_tag": "infrastructure",
         "confidence_level": "medium",
-        "confidence_reason": "The documents explicitly state the managed production service RPO (15 minutes) and RTO (4 hours) and that customer-managed deployments are not generally available and require separate scoping. However, they do not provide any contractual commitments for single-tenant deployments or an explicit contractual 15-minute RTO guarantee for customer-managed deployments, so the scope is not fully supported.",
+        "confidence_reason": "References explicitly state managed-production RTO = 4 hours (contradicting a universal 15-minute RTO) and that customer-managed deployments require separate scoping; however, the documents do not say whether a scoped professional-services contract could achieve or guarantee a 15-minute RTO for single-tenant/customer-managed deployments, so the answer is partially constrained by missing contractual detail.",
         "historical_alignment_indicator": false,
         "status": "completed",
         "grounding_status": "partial_reference",
@@ -186,7 +186,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "All factual claims map directly to the provided references; no unsupported certifications or guarantees are asserted."
+          "reason": "Answer is directly grounded in the cited references and avoids extrapolating about scoped professional-services outcomes or unsupported contractual promises."
         },
         "metadata": {
           "source_row_index": 3,
@@ -200,7 +200,7 @@
             "source_doc": "06_dirty_rows_and_quoting.csv",
             "matched_question": "What availability target do you provide?",
             "matched_answer": "The managed service target is 99.9 percent monthly availability, subject to the contracted service definition.",
-            "used_for_answer": false
+            "used_for_answer": true
           },
           {
             "alignment_record_id": "a2118cb7268f761de80251e31dd58f1c321bc0c5fe71c2efcd83293f47f1325f",
@@ -221,8 +221,8 @@
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "References show the managed production service has RPO=15 minutes but RTO=4 hours (so a 15-minute RTO is not the documented managed-service commitment), and customer-managed deployments are not generally available and require separate scoping. They therefore do not support a blanket contractual guarantee of 15-minute RTO for every single-tenant/customer-managed deployment, but do allow a partial answer explaining the gap and next steps.",
-          "confidence_review_reason": "The documents explicitly state the managed production service RPO (15 minutes) and RTO (4 hours) and that customer-managed deployments are not generally available and require separate scoping. However, they do not provide any contractual commitments for single-tenant deployments or an explicit contractual 15-minute RTO guarantee for customer-managed deployments, so the scope is not fully supported.",
+          "reference_assessment_reason": "One reference states managed production RPO=15 minutes and RTO=4 hours, which contradicts a 15-minute RTO commitment for managed services. Another indicates managed-service availability targets (99.9%) but not 15-minute RTO. The third notes customer-managed deployments are not default and require separate scoping. Together these support saying you cannot unilaterally guarantee a 15-minute RTO for every single-tenant or customer-managed deployment, but they do not provide exhaustive detail about single-tenant contractual options or whether a scoped/paid professional-services engagement might achieve a 15-minute RTO, so a partial answer is appropriate.",
+          "confidence_review_reason": "References explicitly state managed-production RTO = 4 hours (contradicting a universal 15-minute RTO) and that customer-managed deployments require separate scoping; however, the documents do not say whether a scoped professional-services contract could achieve or guarantee a 15-minute RTO for single-tenant/customer-managed deployments, so the answer is partially constrained by missing contractual detail.",
           "conflicts": []
         }
       }

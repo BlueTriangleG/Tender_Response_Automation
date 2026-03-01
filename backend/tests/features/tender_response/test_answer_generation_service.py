@@ -177,6 +177,52 @@ async def test_generate_grounded_response_prompts_for_explicit_partial_gap_and_c
     assert "reference assessment reason" in rendered_messages[1].content.lower()
 
 
+async def test_generate_grounded_response_renders_document_chunk_as_excerpt_context() -> None:
+    model = FakeChatModel(
+        {
+            "generated_answer": "Recovery exercises are run quarterly.",
+            "confidence_level": "medium",
+            "confidence_reason": "The retrieved excerpt directly supports the answer.",
+            "risk_level": "low",
+            "risk_reason": "Low risk.",
+            "inconsistent_response": False,
+        }
+    )
+    service = AnswerGenerationService(model=model)
+
+    result = await service.generate_grounded_response(
+        question=TenderQuestion(
+            question_id="q-010",
+            original_question="How often do you test disaster recovery?",
+            declared_domain="Operations",
+            source_file_name="tender.csv",
+            source_row_index=9,
+        ),
+        usable_references=[
+            HistoricalReference(
+                record_id="doc-1#0",
+                reference_type="document_chunk",
+                question="",
+                answer="",
+                excerpt="Quarterly recovery exercises are documented and reviewed.",
+                chunk_index=0,
+                domain="Operations",
+                source_doc="operations_playbook.txt",
+                alignment_score=0.84,
+            )
+        ],
+    )
+
+    rendered_messages = model.calls[0]
+
+    assert result.generated_answer == "Recovery exercises are run quarterly."
+    assert "Reference 1 excerpt" in rendered_messages[1].content
+    assert "Quarterly recovery exercises are documented and reviewed." in (
+        rendered_messages[1].content
+    )
+    assert "Reference 1 answer" not in rendered_messages[1].content
+
+
 async def test_generate_grounded_response_rewrites_invalid_structured_answer_output() -> None:
     model = FakeChatModel(
         [

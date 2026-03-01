@@ -269,6 +269,65 @@ const partialAndUnansweredTenderResponse = {
   },
 };
 
+const documentReferenceTenderResponse = {
+  request_id: "req-tender-125",
+  session_id: "session-125",
+  source_file_name: "tender.csv",
+  total_questions_processed: 1,
+  questions: [
+    {
+      question_id: "q-020",
+      original_question: "How often do you test disaster recovery?",
+      generated_answer: "Recovery exercises are run quarterly.",
+      domain_tag: "operations",
+      confidence_level: "medium",
+      confidence_reason:
+        "The answer is grounded by the retrieved operations excerpt.",
+      historical_alignment_indicator: true,
+      status: "completed",
+      grounding_status: "grounded",
+      flags: {
+        high_risk: false,
+        inconsistent_response: false,
+        has_conflict: false,
+      },
+      risk: {
+        level: "low",
+        reason: "Low risk.",
+      },
+      metadata: {
+        source_row_index: 0,
+        alignment_record_id: "doc-1#0",
+        alignment_score: 0.87,
+      },
+      references: [
+        {
+          alignment_record_id: "doc-1#0",
+          reference_type: "document_chunk",
+          alignment_score: 0.87,
+          source_doc: "operations_playbook.txt",
+          matched_question: "",
+          matched_answer: "",
+          excerpt: "Quarterly recovery exercises are documented and reviewed.",
+          chunk_index: 0,
+          used_for_answer: true,
+        },
+      ],
+      error_message: null,
+      extensions: {},
+    },
+  ],
+  summary: {
+    total_questions_processed: 1,
+    flagged_high_risk_or_inconsistent_responses: 0,
+    overall_completion_status: "completed",
+    completed_questions: 1,
+    unanswered_questions: 0,
+    failed_questions: 0,
+    conflict_count: 0,
+  },
+};
+
 const failedIngestResponse = {
   request_id: "req-999",
   total_file_count: 2,
@@ -621,6 +680,81 @@ describe("App", () => {
     expect(within(dialog).getByText(/Partial Reference/i)).toBeInTheDocument();
   });
 
+  test("renders document chunk references with excerpt-focused cards", async () => {
+    const user = userEvent.setup();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/health")) {
+          return {
+            ok: true,
+            json: async () => mockHealthResponse,
+          };
+        }
+
+        if (url.endsWith("/api/tender/respond") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => documentReferenceTenderResponse,
+          };
+        }
+
+        if (url.endsWith("/api/ingest/history") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => successfulIngestResponse,
+          };
+        }
+
+        throw new Error(`Unhandled fetch for ${url}`);
+      }),
+    );
+
+    render(<App />);
+
+    await user.click(screen.getByRole("tab", { name: /Tender Response/i }));
+
+    const input = screen.getByLabelText(/Upload tender workbook/i);
+    const file = new File(["question\nDR"], "tender.csv", { type: "text/csv" });
+
+    await user.upload(input, file);
+    await user.click(screen.getByRole("button", { name: /Autofill Tender/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/1 questions analyzed for tender\.csv\./i),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /Open details for How often do you test disaster recovery\?/i,
+      }),
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /Autofill details/i });
+
+    expect(
+      within(dialog).getAllByText(/operations_playbook\.txt/i).length,
+    ).toBeGreaterThan(0);
+    expect(within(dialog).getByText(/Document Excerpt/i)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        /Quarterly recovery exercises are documented and reviewed\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/Chunk 1/i)).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText(/No matched question available\./i),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByText(/No matched answer available\./i),
+    ).not.toBeInTheDocument();
+  });
+
   test("surfaces conflict status and conflict details for flagged answers", async () => {
     const user = userEvent.setup();
 
@@ -787,13 +921,13 @@ describe("App", () => {
       screen.getByRole("button", { name: /Browse files/i }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText(/0.50/i)).toBeInTheDocument();
+    expect(screen.getByText(/0.60/i)).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: /Increase alignment threshold/i }),
     );
 
-    expect(screen.getByText(/0.51/i)).toBeInTheDocument();
+    expect(screen.getByText(/0.61/i)).toBeInTheDocument();
   });
 
   test("uploads multiple knowledge files through the standalone ingest module", async () => {
@@ -830,6 +964,50 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/history-a\.json/i)).toBeInTheDocument();
     expect(screen.getByText(/history-b\.md/i)).toBeInTheDocument();
+  });
+
+  test("accepts xlsx uploads in the knowledge base repository tab", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const input = screen.getByLabelText(/Upload knowledge base files/i);
+    const files = [
+      new File(["fake workbook"], "historical-library.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+    ];
+
+    await user.upload(input, files);
+
+    expect(screen.getByText("historical-library.xlsx")).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 files staged for knowledge base ingest\./i),
+    ).toBeInTheDocument();
+  });
+
+  test("accepts txt uploads in the knowledge base repository tab and advertises the full support list", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(
+      screen.getByText(/Supports \.json, \.md, \.txt, \.csv, and \.xlsx/i),
+    ).toBeInTheDocument();
+
+    const input = screen.getByLabelText(/Upload knowledge base files/i);
+    const files = [
+      new File(["Escalate incidents within 30 minutes."], "operations.txt", {
+        type: "text/plain",
+      }),
+    ];
+
+    await user.upload(input, files);
+
+    expect(screen.getByText("operations.txt")).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 files staged for knowledge base ingest\./i),
+    ).toBeInTheDocument();
   });
 
   test("appends newly added knowledge files to the queued batch before ingest", async () => {

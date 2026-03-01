@@ -30,13 +30,16 @@ class QuestionMetadata(BaseModel):
 
 
 class QuestionReference(BaseModel):
-    """Historical QA reference returned to explain grounding decisions."""
+    """Historical QA or document-chunk reference returned to explain grounding decisions."""
 
     alignment_record_id: str
+    reference_type: Literal["qa", "document_chunk"] = "qa"
     alignment_score: float | None = None
     source_doc: str | None = None
     matched_question: str
     matched_answer: str
+    excerpt: str | None = None
+    chunk_index: int | None = None
     used_for_answer: bool = False
 
 

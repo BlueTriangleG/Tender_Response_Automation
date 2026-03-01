@@ -35,6 +35,73 @@ _STOPWORDS = {
     "private",
     "proposed",
     "please",
+    "can",
+    "cannot",
+    "not",
+    "you",
+    "all",
+    "across",
+    "platform",
+    "service",
+    "services",
+    "customer",
+    "customers",
+    "standard",
+    "business",
+    "support",
+    "supports",
+    "supported",
+    "provide",
+    "provides",
+    "provided",
+    "available",
+    "approved",
+    "claim",
+    "claims",
+    "confirm",
+    "current",
+    "currently",
+    "included",
+    "disabled",
+    "enabled",
+    "human",
+    "reference",
+    "references",
+    "response",
+    "responses",
+    "review",
+    "state",
+    "tender",
+    "whether",
+    "authorized",
+    "authorised",
+    "certified",
+    "compliant",
+}
+
+_HIGH_SIGNAL_TOPIC_TOKENS = {
+    "ssl",
+    "tls",
+    "saml",
+    "openid",
+    "fedramp",
+    "hipaa",
+    "irap",
+    "australia",
+    "hosting",
+    "sovereign",
+    "audit",
+    "siem",
+    "worm",
+    "erasure",
+    "pricing",
+    "token",
+    "tokens",
+    "rbac",
+    "rpo",
+    "rto",
+    "penetration",
+    "nda",
 }
 
 _CONTRADICTION_PAIRS = [
@@ -78,6 +145,27 @@ def shared_topic_tokens(*, left_question: str, left_answer: str, right_question:
     return left_tokens & right_tokens
 
 
+def has_meaningful_topic_overlap(
+    *,
+    left_question: str,
+    left_answer: str,
+    right_question: str,
+    right_answer: str,
+) -> bool:
+    overlap = shared_topic_tokens(
+        left_question=left_question,
+        left_answer=left_answer,
+        right_question=right_question,
+        right_answer=right_answer,
+    )
+    if not overlap:
+        return False
+    if overlap & _HIGH_SIGNAL_TOPIC_TOKENS:
+        return True
+    substantive_overlap = {token for token in overlap if len(token) >= 5}
+    return len(substantive_overlap) >= 2
+
+
 def detect_statement_conflict(
     *,
     left_question: str,
@@ -89,13 +177,12 @@ def detect_statement_conflict(
 
     left_text = normalize_conflict_text(f"{left_question} {left_answer}")
     right_text = normalize_conflict_text(f"{right_question} {right_answer}")
-    overlap = shared_topic_tokens(
+    if not has_meaningful_topic_overlap(
         left_question=left_question,
         left_answer=left_answer,
         right_question=right_question,
         right_answer=right_answer,
-    )
-    if len(overlap) < 2:
+    ):
         return False
 
     for positive_terms, negative_terms in _CONTRADICTION_PAIRS:

@@ -176,9 +176,17 @@ function normalizeTenderAutofillResponse(
               const value = (reference ?? {}) as Record<string, unknown>;
 
               return {
+                referenceType:
+                  value.reference_type === "document_chunk"
+                    ? "document_chunk"
+                    : "qa",
                 sourceDoc: String(value.source_doc ?? ""),
                 matchedQuestion: String(value.matched_question ?? ""),
                 matchedAnswer: String(value.matched_answer ?? ""),
+                excerpt:
+                  value.excerpt == null ? null : String(value.excerpt),
+                chunkIndex:
+                  value.chunk_index == null ? null : Number(value.chunk_index),
                 usedForAnswer: Boolean(value.used_for_answer),
               };
             }),

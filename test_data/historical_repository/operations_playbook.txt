@@ -1,0 +1,9 @@
+Operational Readiness Playbook
+
+Production changes require peer review before deployment and must be logged in the release register with rollback steps captured in advance.
+
+Customer-impacting incidents are triaged through the on-call process immediately, with severity-one incidents escalated to the incident commander within 30 minutes.
+
+Credential rotation for privileged operational accounts is performed on a scheduled basis and accelerated when compromise is suspected or access scope changes.
+
+Post-incident reviews capture root cause, corrective actions, and committed follow-up owners so the approved tender response library stays aligned with current operating practice.

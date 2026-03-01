@@ -3,8 +3,8 @@
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.features.tender_response.infrastructure.repositories.qa_alignment_repository import (
-    QaAlignmentRepository,
+from app.features.tender_response.infrastructure.services.historical_evidence_service import (
+    HistoricalEvidenceService,
 )
 from app.features.tender_response.infrastructure.services.answer_generation_service import (
     AnswerGenerationService,
@@ -34,7 +34,7 @@ from app.features.tender_response.infrastructure.workflows.parallel.routing impo
 
 def create_question_processing_graph(
     *,
-    alignment_repository: QaAlignmentRepository,
+    alignment_repository: HistoricalEvidenceService,
     answer_generation_service: AnswerGenerationService,
     reference_assessment_service: ReferenceAssessmentService,
     domain_tagging_service: DomainTaggingService,

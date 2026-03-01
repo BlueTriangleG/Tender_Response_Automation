@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from app.core.config import settings
 from app.features.tender_response.domain.conflict_rules import (
     detect_statement_conflict,
+    has_meaningful_topic_overlap,
     normalize_conflict_text,
 )
 from app.features.tender_response.infrastructure.prompting.conflict_review import (
@@ -58,6 +59,9 @@ class ConflictReviewService:
         )
         target_ids = {item.question_id for item in target_results}
         reference_ids = {item.question_id for item in reference_results}
+        results_by_id = {
+            item.question_id: item for item in [*target_results, *reference_results]
+        }
         deduped: dict[tuple[str, str], dict[str, str]] = {}
 
         for item in payload.conflicts:
@@ -73,6 +77,16 @@ class ConflictReviewService:
                 or target_question_id not in target_ids
                 or conflicting_question_id not in reference_ids
                 or target_question_id == conflicting_question_id
+            ):
+                continue
+
+            target = results_by_id[target_question_id]
+            reference = results_by_id[conflicting_question_id]
+            if not has_meaningful_topic_overlap(
+                left_question=target.original_question,
+                left_answer=target.generated_answer or "",
+                right_question=reference.original_question,
+                right_answer=reference.generated_answer or "",
             ):
                 continue
 

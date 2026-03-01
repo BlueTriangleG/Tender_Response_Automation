@@ -85,10 +85,25 @@ def _build_user_prompt(
 ) -> str:
     reference_lines: list[str] = []
     for index, reference in enumerate(usable_references, start=1):
+        if reference.reference_type == "document_chunk":
+            reference_lines.append(
+                "\n".join(
+                    [
+                        f"Reference {index} id: {reference.record_id}",
+                        f"Reference {index} type: {reference.reference_type}",
+                        f"Reference {index} excerpt: {reference.excerpt or ''}",
+                        f"Reference {index} chunk_index: {reference.chunk_index if reference.chunk_index is not None else ''}",
+                        f"Reference {index} source_doc: {reference.source_doc or ''}",
+                    ]
+                )
+            )
+            continue
+
         reference_lines.append(
             "\n".join(
                 [
                     f"Reference {index} id: {reference.record_id}",
+                    f"Reference {index} type: {reference.reference_type}",
                     f"Reference {index} question: {reference.question}",
                     f"Reference {index} answer: {reference.answer}",
                     f"Reference {index} source_doc: {reference.source_doc or ''}",

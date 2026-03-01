@@ -24,7 +24,7 @@ const defaultKnowledgeBaseOptions: HistoryIngestOptions = {
   outputFormat: "json",
   similarityThreshold: 0.72,
 };
-const defaultAlignmentThreshold = 0.5;
+const defaultAlignmentThreshold = 0.6;
 
 function mergeKnowledgeBaseFiles(currentFiles: File[], incomingFiles: File[]) {
   const fileMap = new Map<string, File>();
@@ -121,6 +121,24 @@ function formatStatusLabel(value: string) {
 
 function formatGroundingStatus(value: string) {
   return formatStatusLabel(value || "unknown");
+}
+
+function referenceLabel(reference: TenderAutofillQuestion["references"][number]) {
+  if (reference.referenceType === "document_chunk") {
+    return "Document Excerpt";
+  }
+
+  return "Matched question";
+}
+
+function referenceSecondaryLabel(
+  reference: TenderAutofillQuestion["references"][number],
+) {
+  if (reference.referenceType === "document_chunk") {
+    return "Source segment";
+  }
+
+  return "Matched answer";
 }
 
 function summarizeAnswer(answer: string) {
@@ -1157,10 +1175,28 @@ function App() {
                       {activeQuestion.references.map((reference, index) => (
                         <article
                           className="reference-card"
-                          key={`${reference.sourceDoc}-${reference.matchedQuestion}-${index}`}
+                          key={`${reference.sourceDoc}-${reference.matchedQuestion}-${reference.excerpt ?? ""}-${index}`}
                         >
                           <div className="reference-card__header">
-                            <strong>{reference.sourceDoc || "Unknown source"}</strong>
+                            <div className="details-card__stack">
+                              <strong>{reference.sourceDoc || "Unknown source"}</strong>
+                              <div className="reference-card__meta">
+                                <StatusBadge
+                                  label={
+                                    reference.referenceType === "document_chunk"
+                                      ? "Document Chunk"
+                                      : "Historical QA"
+                                  }
+                                  tone="neutral"
+                                />
+                                {reference.referenceType === "document_chunk" &&
+                                reference.chunkIndex != null ? (
+                                  <span className="reference-card__meta-label">
+                                    {`Chunk ${reference.chunkIndex + 1}`}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
                             <StatusBadge
                               label={
                                 reference.usedForAnswer
@@ -1173,17 +1209,21 @@ function App() {
 
                           <div className="reference-card__body">
                             <div>
-                              <h4>Matched question</h4>
+                              <h4>{referenceLabel(reference)}</h4>
                               <p>
-                                {reference.matchedQuestion ||
-                                  "No matched question available."}
+                                {reference.referenceType === "document_chunk"
+                                  ? reference.excerpt || "No excerpt available."
+                                  : reference.matchedQuestion ||
+                                    "No matched question available."}
                               </p>
                             </div>
                             <div>
-                              <h4>Matched answer</h4>
+                              <h4>{referenceSecondaryLabel(reference)}</h4>
                               <p>
-                                {reference.matchedAnswer ||
-                                  "No matched answer available."}
+                                {reference.referenceType === "document_chunk"
+                                  ? reference.sourceDoc || "No source segment available."
+                                  : reference.matchedAnswer ||
+                                    "No matched answer available."}
                               </p>
                             </div>
                           </div>

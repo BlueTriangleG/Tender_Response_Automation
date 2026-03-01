@@ -80,9 +80,12 @@ export type TenderAutofillQuestionRisk = {
 };
 
 export type TenderAutofillQuestionReference = {
+  referenceType: "qa" | "document_chunk";
   sourceDoc: string;
   matchedQuestion: string;
   matchedAnswer: string;
+  excerpt: string | null;
+  chunkIndex: number | null;
   usedForAnswer: boolean;
 };
 

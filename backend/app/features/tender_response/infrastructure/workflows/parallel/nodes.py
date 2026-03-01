@@ -7,8 +7,8 @@ from app.features.tender_response.domain.risk_rules import (
     detect_inconsistent_response,
     find_generation_validation_error,
 )
-from app.features.tender_response.infrastructure.repositories.qa_alignment_repository import (
-    QaAlignmentRepository,
+from app.features.tender_response.infrastructure.services.historical_evidence_service import (
+    HistoricalEvidenceService,
 )
 from app.features.tender_response.infrastructure.services.conflict_review_service import (
     ConflictReviewService,
@@ -174,17 +174,23 @@ def _set_retry_feedback(
     }
 
 
-def make_retrieve_alignment_node(alignment_repository: QaAlignmentRepository):
-    """Create the node that retrieves historical QA matches."""
+def make_retrieve_alignment_node(alignment_repository):
+    """Create the node that retrieves historical evidence for one question."""
 
     async def retrieve_alignment(state: QuestionProcessingState) -> dict:
         started_at = perf_counter()
         question_id = state["current_question"].question_id
         debug_log(f"question={question_id} retrieve_alignment start")
-        alignment = await alignment_repository.find_best_match(
-            state["current_question"],
-            threshold=state["alignment_threshold"],
-        )
+        if hasattr(alignment_repository, "find_historical_evidence"):
+            alignment = await alignment_repository.find_historical_evidence(
+                state["current_question"],
+                threshold=state["alignment_threshold"],
+            )
+        else:
+            alignment = await alignment_repository.find_best_match(
+                state["current_question"],
+                threshold=state["alignment_threshold"],
+            )
         duration_ms = (perf_counter() - started_at) * 1000
         debug_log(
             f"question={question_id} retrieve_alignment end "

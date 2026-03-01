@@ -11,4 +11,5 @@ class FileContent:
     extension: str
     content_type: str | None
     size_bytes: int
-    raw_text: str
+    raw_bytes: bytes
+    raw_text: str | None

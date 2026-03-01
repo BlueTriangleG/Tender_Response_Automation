@@ -937,6 +937,19 @@ button {
   margin-bottom: 0.9rem;
 }
 
+.reference-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.reference-card__meta-label {
+  font-size: 0.82rem;
+  color: rgba(23, 23, 23, 0.68);
+  letter-spacing: 0.02em;
+}
+
 .reference-card__body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

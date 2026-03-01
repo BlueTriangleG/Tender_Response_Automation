@@ -35,3 +35,87 @@ def test_detect_statement_conflict_ignores_unrelated_topics() -> None:
         )
         is False
     )
+
+
+def test_detect_statement_conflict_ignores_pricing_vs_identity_false_positive() -> None:
+    assert (
+        detect_statement_conflict(
+            left_question=(
+                "Does the platform support SAML 2.0 or OpenID Connect single sign-on "
+                "with role-based access control?"
+            ),
+            left_answer=(
+                "Yes. The platform supports both SAML 2.0 and OpenID Connect single "
+                "sign-on, and it provides role-based access control across tenant, "
+                "workspace, and feature levels."
+            ),
+            right_question=(
+                "Can you commit to fixed pricing for five years including unlimited "
+                "AI token usage across all business units?"
+            ),
+            right_answer=(
+                "We cannot commit to fixed pricing for five years that includes "
+                "unlimited AI token usage across all business units."
+            ),
+        )
+        is False
+    )
+
+
+def test_detect_statement_conflict_ignores_penetration_testing_vs_fedramp_false_positive() -> None:
+    assert (
+        detect_statement_conflict(
+            left_question=(
+                "Do you perform independent penetration testing and can evidence "
+                "be shared during procurement under NDA?"
+            ),
+            left_answer=(
+                "Yes. Independent penetration testing is performed at least annually "
+                "and after material architectural changes. The provided references "
+                "do not state whether penetration-test reports or other evidence can "
+                "be shared under NDA, so this cannot be confirmed."
+            ),
+            right_question=(
+                "Do you currently hold FedRAMP High authorization for the platform "
+                "environment proposed in this tender?"
+            ),
+            right_answer=(
+                "FedRAMP High authorization is not an approved claim in the current "
+                "response library and should be referred for human review rather than "
+                "asserted in a tender response."
+            ),
+        )
+        is False
+    )
+
+
+def test_detect_statement_conflict_ignores_sample_pen_test_vs_fedramp_false_positive() -> None:
+    assert (
+        detect_statement_conflict(
+            left_question=(
+                "Do you perform independent penetration testing and can evidence "
+                "be shared during procurement under NDA?"
+            ),
+            left_answer=(
+                "Yes — independent penetration testing is performed at least "
+                "annually and after material architectural changes; critical "
+                "findings have tracked remediation. (The provided references do not "
+                "state whether penetration-test reports or other test evidence can "
+                "be shared during procurement under an NDA, so I cannot confirm "
+                "evidence-sharing under NDA from these sources.)"
+            ),
+            right_question=(
+                "Do you currently hold FedRAMP High authorization for the platform "
+                "environment proposed in this tender?"
+            ),
+            right_answer=(
+                "I cannot assert that we currently hold FedRAMP High authorization "
+                "for the proposed platform environment. The provided references "
+                "state that FedRAMP High authorization is not an approved claim in "
+                "the current response library and should be referred for human "
+                "review rather than asserted in a tender response (the references "
+                "do not confirm whether an authorization actually exists)."
+            ),
+        )
+        is False
+    )

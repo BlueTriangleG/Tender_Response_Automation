@@ -18,6 +18,7 @@ from app.features.tender_response.infrastructure.services.domain_tagging_service
     DomainTaggingService,
 )
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
+    ReferenceAssessmentService,
     ReferenceAssessmentResult,
 )
 from app.features.tender_response.infrastructure.workflows.parallel.graph import (
@@ -230,6 +231,24 @@ class SequentialFakeAnswerGenerationService:
         return response
 
 
+class FailIfCalledAnswerGenerationService:
+    async def generate_grounded_response(
+        self,
+        *,
+        question: TenderQuestion,
+        usable_references,
+        attempt_number: int = 1,
+        validation_error: str | None = None,
+        last_invalid_answer: str | None = None,
+        last_invalid_confidence_level: str | None = None,
+        last_invalid_confidence_reason: str | None = None,
+        assessment_reason: str | None = None,
+    ) -> GroundedAnswerResult:
+        raise AssertionError(
+            f"answer generation should not run for conflicting references: {question.question_id}"
+        )
+
+
 class FakeReferenceAssessmentService:
     async def assess(self, *, question: TenderQuestion, references):
         if question.question_id == "q-001":
@@ -251,6 +270,117 @@ class FakeReferenceAssessmentService:
             grounding_status="no_reference",
             usable_reference_ids=[],
             reason="No qualified historical references.",
+        )
+
+
+class ConflictFakeAlignmentRepository:
+    async def find_best_match(
+        self,
+        question: TenderQuestion,
+        *,
+        threshold: float,
+    ) -> HistoricalAlignmentResult:
+        if question.question_id != "q-013":
+            return HistoricalAlignmentResult(
+                matched=False,
+                record_id=None,
+                question=None,
+                answer=None,
+                domain=None,
+                source_doc=None,
+                alignment_score=0.35,
+                references=[],
+            )
+        return HistoricalAlignmentResult(
+            matched=True,
+            record_id="qa-18",
+            question="Is legacy SSL fully disabled for all production traffic?",
+            answer=(
+                "Yes. Legacy SSL is fully disabled for all public and private "
+                "production traffic, and only TLS 1.2 or higher is permitted in "
+                "production environments."
+            ),
+            domain="Security",
+            source_doc="historical_repository_qa.csv",
+            alignment_score=0.69,
+            references=[
+                HistoricalReference(
+                    record_id="qa-18",
+                    question="Is legacy SSL fully disabled for all production traffic?",
+                    answer=(
+                        "Yes. Legacy SSL is fully disabled for all public and private "
+                        "production traffic, and only TLS 1.2 or higher is permitted "
+                        "in production environments."
+                    ),
+                    domain="Security",
+                    source_doc="historical_repository_qa.csv",
+                    alignment_score=0.69,
+                ),
+                HistoricalReference(
+                    record_id="qa-19",
+                    question=(
+                        "Can legacy SSL remain enabled on selected public production "
+                        "endpoints during migration windows?"
+                    ),
+                    answer=(
+                        "Yes. Legacy SSL can remain enabled on selected public "
+                        "production endpoints during managed migration windows where "
+                        "a customer transition plan has been explicitly approved."
+                    ),
+                    domain="Security",
+                    source_doc="historical_repository_qa.csv",
+                    alignment_score=0.68,
+                ),
+            ],
+        )
+
+
+class FakeHistoricalEvidenceService:
+    async def find_historical_evidence(
+        self,
+        question: TenderQuestion,
+        *,
+        threshold: float,
+    ) -> HistoricalAlignmentResult:
+        if question.question_id != "q-020":
+            return HistoricalAlignmentResult(
+                matched=False,
+                record_id=None,
+                question=None,
+                answer=None,
+                domain=None,
+                source_doc=None,
+                alignment_score=0.35,
+                references=[],
+            )
+        return HistoricalAlignmentResult(
+            matched=True,
+            record_id="doc-1#0",
+            question=None,
+            answer=None,
+            domain="Operations",
+            source_doc="operations_playbook.txt",
+            alignment_score=0.87,
+            references=[
+                HistoricalReference(
+                    record_id="doc-1#0",
+                    reference_type="document_chunk",
+                    question="",
+                    answer="",
+                    excerpt="Quarterly recovery exercises are documented and reviewed.",
+                    chunk_index=0,
+                    domain="Operations",
+                    source_doc="operations_playbook.txt",
+                    alignment_score=0.87,
+                )
+            ],
+        )
+
+
+class UnexpectedReferenceAssessmentModel:
+    def with_structured_output(self, *args, **kwargs):
+        raise AssertionError(
+            "structured LLM assessment should not run when conflict is detected first"
         )
 
 
@@ -397,6 +527,96 @@ def test_tender_response_route_returns_partial_answers_when_only_part_of_scope_i
     assert ")" in payload["questions"][0]["generated_answer"]
     assert "Confidence is reduced because" in payload["questions"][0]["confidence_reason"]
     assert "sovereign hosting guarantees" in payload["questions"][0]["confidence_reason"]
+
+
+def test_tender_response_route_exposes_document_chunk_reference_metadata() -> None:
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeHistoricalEvidenceService(),
+        answer_generation_service=FakeAnswerGenerationService(),
+        reference_assessment_service=FakeReferenceAssessmentService(),
+        domain_tagging_service=DomainTaggingService(),
+    )
+    runner = TenderResponseRunner()
+    runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
+    client = TestClient(app)
+
+    app.dependency_overrides[get_tender_response_runner] = lambda: runner
+    try:
+        response = client.post(
+            "/api/tender/respond",
+            files={
+                "file": (
+                    "tender.csv",
+                    (
+                        b"question_id,domain,question\n"
+                        b'q-020,Operations,"How often do you test disaster recovery?"\n'
+                    ),
+                    "text/csv",
+                )
+            },
+            data={"sessionId": "session-doc-route"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    reference = payload["questions"][0]["references"][0]
+    assert reference["reference_type"] == "document_chunk"
+    assert reference["excerpt"] == "Quarterly recovery exercises are documented and reviewed."
+    assert reference["chunk_index"] == 0
+    assert reference["matched_question"] == ""
+    assert reference["matched_answer"] == ""
+    assert reference["source_doc"] == "operations_playbook.txt"
+
+
+def test_tender_response_route_returns_conflict_without_generating_answer() -> None:
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=ConflictFakeAlignmentRepository(),
+        answer_generation_service=FailIfCalledAnswerGenerationService(),
+        reference_assessment_service=ReferenceAssessmentService(
+            model=UnexpectedReferenceAssessmentModel()
+        ),
+        domain_tagging_service=DomainTaggingService(),
+    )
+    runner = TenderResponseRunner()
+    runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
+    client = TestClient(app)
+
+    app.dependency_overrides[get_tender_response_runner] = lambda: runner
+    try:
+        response = client.post(
+            "/api/tender/respond",
+            files={
+                "file": (
+                    "tender.csv",
+                    (
+                        b"question_id,domain,question\n"
+                        b'q-013,Security,"Please confirm that legacy SSL is fully disabled for all production traffic in the proposed environment."\n'
+                    ),
+                    "text/csv",
+                )
+            },
+            data={"sessionId": "session-conflict-route"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    conflict = payload["questions"][0]
+    assert conflict["status"] == "unanswered"
+    assert conflict["grounding_status"] == "conflict"
+    assert conflict["generated_answer"] is None
+    assert conflict["confidence_level"] is None
+    assert conflict["confidence_reason"] is None
+    assert conflict["flags"]["has_conflict"] is True
+    assert conflict["risk"]["level"] == "medium"
+    assert "human review" in conflict["error_message"].lower()
+    assert conflict["extensions"]["requires_human_review"] is True
+    assert payload["summary"]["overall_completion_status"] == "conflict"
+    assert payload["summary"]["unanswered_questions"] == 1
+    assert payload["summary"]["conflict_count"] == 1
 
 
 def test_tender_response_route_retries_invalid_partial_answer_until_second_attempt_succeeds() -> None:

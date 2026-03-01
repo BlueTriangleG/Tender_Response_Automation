@@ -12,6 +12,7 @@
     "allowed_overall_completion_statuses": [
       "completed",
       "completed_with_flags",
+      "conflict",
       "unanswered"
     ],
     "failed_max": 0

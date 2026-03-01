@@ -136,6 +136,48 @@ async def test_assess_returns_partial_reference_when_llm_marks_references_partia
     assert "deployment controls" in result.reason
 
 
+async def test_assess_renders_document_chunk_references_as_excerpts() -> None:
+    model = FakeChatModel(
+        {
+            "answerability": "grounded",
+            "usable_reference_ids": ["doc-1#0"],
+            "reason": "The excerpt directly supports the answer.",
+        }
+    )
+    service = ReferenceAssessmentService(model=model)
+
+    result = await service.assess(
+        question=TenderQuestion(
+            question_id="q-009",
+            original_question="How often do you test disaster recovery?",
+            declared_domain="Operations",
+            source_file_name="tender.csv",
+            source_row_index=8,
+        ),
+        references=[
+            HistoricalReference(
+                record_id="doc-1#0",
+                reference_type="document_chunk",
+                question="",
+                answer="",
+                excerpt="Quarterly recovery exercises are documented and reviewed.",
+                chunk_index=0,
+                domain="Operations",
+                source_doc="operations_playbook.txt",
+                alignment_score=0.86,
+            )
+        ],
+    )
+
+    assert result.can_answer is True
+    rendered_prompt = model.runnable.calls[0][1].content
+    assert '"reference_type": "document_chunk"' in rendered_prompt
+    assert '"excerpt": "Quarterly recovery exercises are documented and reviewed."' in (
+        rendered_prompt
+    )
+    assert '"matched_answer": ""' in rendered_prompt
+
+
 async def test_assess_returns_insufficient_reference_when_llm_fails() -> None:
     model = FakeChatModel({}, should_raise=True)
     service = ReferenceAssessmentService(model=model)

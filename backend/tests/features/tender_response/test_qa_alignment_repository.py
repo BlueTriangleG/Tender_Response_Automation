@@ -65,6 +65,7 @@ async def test_find_best_match_returns_alignment_when_score_is_above_threshold(
     assert result.answer.startswith("Yes.")
     assert result.source_doc == "history.csv"
     assert result.alignment_score == 1.0
+    assert result.references[0].reference_type == "qa"
 
 
 async def test_find_best_match_returns_no_match_when_score_is_below_threshold(
@@ -115,6 +116,7 @@ async def test_find_best_match_returns_no_match_when_score_is_below_threshold(
     assert result.answer is None
     assert [reference.record_id for reference in result.references] == ["qa-1"]
     assert result.references[0].source_doc == "history.csv"
+    assert result.references[0].reference_type == "qa"
 
 
 async def test_find_best_match_returns_no_match_when_table_is_empty(tmp_path: Path) -> None:

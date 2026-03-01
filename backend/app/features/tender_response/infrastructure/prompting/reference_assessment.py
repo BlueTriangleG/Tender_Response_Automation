@@ -17,8 +17,11 @@ def build_reference_assessment_messages(
     reference_payload = [
         {
             "alignment_record_id": reference.record_id,
+            "reference_type": reference.reference_type,
             "alignment_score": reference.alignment_score,
             "source_doc": reference.source_doc,
+            "excerpt": reference.excerpt,
+            "chunk_index": reference.chunk_index,
             "matched_question": reference.question,
             "matched_answer": reference.answer,
         }

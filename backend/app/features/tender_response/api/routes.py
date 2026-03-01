@@ -19,7 +19,7 @@ router = APIRouter(prefix=settings.api_prefix)
 async def tender_respond(
     file: Annotated[UploadFile, File()],
     session_id: Annotated[str | None, Form(alias="sessionId")] = None,
-    alignment_threshold: Annotated[float, Form(alias="alignmentThreshold")] = 0.5,
+    alignment_threshold: Annotated[float, Form(alias="alignmentThreshold")] = 0.6,
     runner: Annotated[TenderResponseRunner, Depends(get_tender_response_runner)] = None,
 ) -> TenderResponseWorkflowResponse:
     """Generate tender answers for the uploaded CSV and return workflow results."""

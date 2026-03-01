@@ -29,10 +29,13 @@ def build_reference_payload(
     return [
         QuestionReference(
             alignment_record_id=reference.record_id,
+            reference_type=reference.reference_type,
             alignment_score=reference.alignment_score,
             source_doc=reference.source_doc,
             matched_question=reference.question,
             matched_answer=reference.answer,
+            excerpt=reference.excerpt,
+            chunk_index=reference.chunk_index,
             used_for_answer=reference.record_id in used_ids,
         )
         for reference in references

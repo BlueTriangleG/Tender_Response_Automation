@@ -9,7 +9,7 @@ The backend is now organized as a **feature-first modular monolith**. The curren
 - FastAPI backend bootstrap and composition root
 - Health feature vertical slice
 - Agent chat feature slice
-- History ingest feature slice for batch file upload and CSV QA ingestion
+- History ingest feature slice for batch file upload, CSV/XLSX QA ingestion, and MD/JSON/TXT document ingest
 - Tender response feature slice for LangGraph-based CSV answer generation
 - Local LanceDB embedded storage under `./data/lancedb/`
 - uv-based Python project management
@@ -182,6 +182,12 @@ History ingest endpoint:
 ```text
 POST /api/ingest/history
 ```
+
+Current history-ingest behavior:
+
+- `.csv` and `.xlsx` uploads normalize into `qa_records`
+- `.md`, `.json`, and `.txt` uploads are chunked and persisted into `document_records`
+- unsupported types still fail at parse or ingest-type validation
 
 Tender response endpoint:
 

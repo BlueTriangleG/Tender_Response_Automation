@@ -79,7 +79,7 @@ export function BatchUploadDropzone({
         >
           Browse files
         </button>
-        <span className="dropzone__meta">Supports .json, .md, and .csv</span>
+        <span className="dropzone__meta">Supports .json, .md, .txt, .csv, and .xlsx</span>
       </div>
 
       <input
@@ -89,7 +89,7 @@ export function BatchUploadDropzone({
         className="sr-only"
         type="file"
         multiple
-        accept=".json,.md,.csv"
+        accept=".json,.md,.txt,.csv,.xlsx"
         onChange={(event) => applyFiles(event.target.files)}
       />
 
