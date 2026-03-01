@@ -9,9 +9,7 @@
   },
   "evaluation": {
     "case_id": "02_no_reference_vs_insufficient",
-    "passed": false,
-    "errors": [
-      "q-103: expected grounding_status in ['no_reference'], got insufficient_reference"
-    ]
+    "passed": true,
+    "errors": []
   }
 }

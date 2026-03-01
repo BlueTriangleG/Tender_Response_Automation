@@ -207,6 +207,10 @@ Expected tender response JSON always includes:
 - `summary.flagged_high_risk_or_inconsistent_responses`
 - `summary.overall_completion_status`
 
+Tender response architecture references:
+
+- Agent responsibility matrix: `docs/architecture/tender-response-agent-definition-table.md`
+
 Current tender reference behavior:
 
 - The backend does not persist uploaded source files as local blobs for tender response viewing.

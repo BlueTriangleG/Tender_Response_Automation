@@ -65,14 +65,31 @@ class TenderResponseRunner:
             f"request={request_id} parsed questions={len(parsed_csv.questions)} file={filename}"
         )
         workflow = self._workflow_registry.get(workflow_name)
+        workflow_config = self._build_workflow_config(
+            session_id=options.session_id,
+            request_id=request_id,
+        )
+        debug_log(
+            f"request={request_id} workflow config thread_id="
+            f"{workflow_config['configurable']['thread_id']}"
+        )
+        session_completed_results = await self._load_session_completed_results(
+            workflow=workflow,
+            config=workflow_config,
+        )
+        debug_log(
+            f"request={request_id} loaded session memory "
+            f"completed_results={len(session_completed_results)}"
+        )
         result = await workflow.ainvoke(
             self._build_initial_state(
                 request_id=request_id,
                 filename=filename,
                 options=options,
                 parsed_questions=parsed_csv.questions,
+                session_completed_results=session_completed_results,
             ),
-            config={"configurable": {"thread_id": request_id}},
+            config=workflow_config,
         )
         total_duration_ms = (perf_counter() - started_at) * 1000
         debug_log(
@@ -83,7 +100,7 @@ class TenderResponseRunner:
 
         return TenderResponseWorkflowResponse(
             request_id=request_id,
-            session_id=options.session_id,
+            session_id=options.session_id or request_id,
             source_file_name=filename,
             total_questions_processed=result["summary"].total_questions_processed,
             questions=result["question_results"],
@@ -112,6 +129,7 @@ class TenderResponseRunner:
         filename: str,
         options: TenderResponseRequestOptions,
         parsed_questions: list,
+        session_completed_results: list,
     ) -> dict:
         """Seed every workflow field explicitly so graph state starts from a stable shape."""
 
@@ -122,7 +140,34 @@ class TenderResponseRunner:
             "alignment_threshold": options.alignment_threshold,
             "questions": parsed_questions,
             "question_results": [],
+            "session_completed_results": session_completed_results,
+            "conflict_findings": [],
+            "conflict_review_errors": [],
             "run_errors": [],
             "summary": None,
             "current_question": None,
+            "current_conflict_job": None,
         }
+
+    def _build_workflow_config(
+        self,
+        *,
+        session_id: str | None,
+        request_id: str,
+    ) -> dict:
+        thread_id = session_id or request_id
+        return {"configurable": {"thread_id": thread_id}}
+
+    async def _load_session_completed_results(
+        self,
+        *,
+        workflow,
+        config: dict,
+    ) -> list:
+        if not hasattr(workflow, "aget_state"):
+            return []
+
+        snapshot = await workflow.aget_state(config)
+        values = getattr(snapshot, "values", {}) or {}
+        session_completed_results = values.get("session_completed_results", [])
+        return list(session_completed_results)

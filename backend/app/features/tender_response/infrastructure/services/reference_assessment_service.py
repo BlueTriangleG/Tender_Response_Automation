@@ -45,6 +45,18 @@ class ReferenceAssessmentService:
                 reason="No qualified historical references were retrieved.",
             )
 
+        conflict_reason = _detect_material_reference_conflict(
+            question=question,
+            references=references,
+        )
+        if conflict_reason is not None:
+            return ReferenceAssessmentResult(
+                can_answer=False,
+                grounding_status="conflict",
+                usable_reference_ids=[],
+                reason=conflict_reason,
+            )
+
         messages = build_reference_assessment_messages(
             question=question,
             references=references,
@@ -105,3 +117,57 @@ class _ReferenceAssessmentPayload(BaseModel):
     answerability: Literal["none", "partial", "grounded"]
     usable_reference_ids: list[str]
     reason: str
+
+
+def _normalize(text: str | None) -> str:
+    return " ".join((text or "").lower().split())
+
+
+def _is_absolute_ssl_disable_reference(text: str) -> bool:
+    normalized = _normalize(text)
+    return (
+        "legacy ssl" in normalized
+        and "fully disabled" in normalized
+        and "production" in normalized
+        and ("all public and private production traffic" in normalized or "all production traffic" in normalized)
+    )
+
+
+def _is_ssl_exception_reference(text: str) -> bool:
+    normalized = _normalize(text)
+    return (
+        "legacy ssl" in normalized
+        and ("can remain enabled" in normalized or "may be used" in normalized)
+        and "production" in normalized
+        and ("migration window" in normalized or "migration scenarios" in normalized or "transition" in normalized)
+    )
+
+
+def _detect_material_reference_conflict(
+    *,
+    question: TenderQuestion,
+    references: list[HistoricalReference],
+) -> str | None:
+    """Return a human-review reason when retrieved references materially disagree."""
+
+    normalized_question = _normalize(question.original_question)
+    if (
+        "legacy ssl" not in normalized_question
+        or "production" not in normalized_question
+        or "fully disabled" not in normalized_question
+    ):
+        return None
+
+    has_absolute_disable = any(
+        _is_absolute_ssl_disable_reference(reference.answer) for reference in references
+    )
+    has_exception_enable = any(
+        _is_ssl_exception_reference(reference.answer) for reference in references
+    )
+    if has_absolute_disable and has_exception_enable:
+        return (
+            "Conflicting historical references disagree on whether legacy SSL is fully "
+            "disabled for production traffic or can remain enabled during approved "
+            "migration scenarios. Human review is required before answering."
+        )
+    return None

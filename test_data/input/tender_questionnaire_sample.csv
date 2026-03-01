@@ -11,3 +11,5 @@ q-009,Security,"Do you perform independent penetration testing and can evidence 
 q-010,Infrastructure,"Can the platform be deployed as a single-tenant environment or customer-managed installation for agencies with isolation requirements?",Medium,High
 q-011,Pricing,"Can you commit to fixed pricing for five years including unlimited AI token usage across all business units?",High,High
 q-012,Compliance,"Do you currently hold FedRAMP High authorization for the platform environment proposed in this tender?",High,High
+q-013,Security,"Please confirm that legacy SSL is fully disabled for all production traffic in the proposed environment.",High,High
+q-014,Security,"Can legacy SSL remain enabled on selected public production endpoints during approved migration windows for this tender?",High,High

@@ -90,6 +90,7 @@ const successfulTenderResponse = {
       flags: {
         high_risk: false,
         inconsistent_response: false,
+        has_conflict: false,
       },
       risk: {
         level: "low",
@@ -127,6 +128,7 @@ const successfulTenderResponse = {
       flags: {
         high_risk: true,
         inconsistent_response: true,
+        has_conflict: false,
       },
       risk: {
         level: "high",
@@ -168,6 +170,7 @@ const successfulTenderResponse = {
     completed_questions: 1,
     unanswered_questions: 1,
     failed_questions: 1,
+    conflict_count: 0,
   },
 };
 
@@ -190,6 +193,7 @@ const partialAndUnansweredTenderResponse = {
       flags: {
         high_risk: false,
         inconsistent_response: false,
+        has_conflict: false,
       },
       risk: {
         level: "low",
@@ -219,6 +223,7 @@ const partialAndUnansweredTenderResponse = {
       flags: {
         high_risk: false,
         inconsistent_response: false,
+        has_conflict: true,
       },
       risk: {
         level: "medium",
@@ -240,7 +245,17 @@ const partialAndUnansweredTenderResponse = {
         },
       ],
       error_message: null,
-      extensions: {},
+      extensions: {
+        conflicts: [
+          {
+            conflicting_question_id: "q-099",
+            conflicting_question: "Do you support sovereign hosting guarantees?",
+            reason:
+              "This answer conflicts with a prior session answer that denied sovereign hosting guarantees.",
+            severity: "high",
+          },
+        ],
+      },
     },
   ],
   summary: {
@@ -250,6 +265,7 @@ const partialAndUnansweredTenderResponse = {
     completed_questions: 1,
     unanswered_questions: 1,
     failed_questions: 0,
+    conflict_count: 1,
   },
 };
 
@@ -603,6 +619,86 @@ describe("App", () => {
       ),
     ).toBeInTheDocument();
     expect(within(dialog).getByText(/Partial Reference/i)).toBeInTheDocument();
+  });
+
+  test("surfaces conflict status and conflict details for flagged answers", async () => {
+    const user = userEvent.setup();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/health")) {
+          return {
+            ok: true,
+            json: async () => mockHealthResponse,
+          };
+        }
+
+        if (url.endsWith("/api/tender/respond") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => partialAndUnansweredTenderResponse,
+          };
+        }
+
+        if (url.endsWith("/api/ingest/history") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => successfulIngestResponse,
+          };
+        }
+
+        throw new Error(`Unhandled fetch for ${url}`);
+      }),
+    );
+
+    render(<App />);
+
+    await user.click(screen.getByRole("tab", { name: /Tender Response/i }));
+
+    const input = screen.getByLabelText(/Upload tender workbook/i);
+    const file = new File(["question\nHosting"], "tender.csv", { type: "text/csv" });
+
+    await user.upload(input, file);
+    await user.click(screen.getByRole("button", { name: /Autofill Tender/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/2 questions analyzed for tender\.csv\./i),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText(/^Conflict$/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Conflict questions: 1/i)).toBeInTheDocument();
+
+    const conflictRow = screen
+      .getByText(/Describe your sovereign hosting guarantees\./i)
+      .closest("tr");
+
+    expect(conflictRow).not.toBeNull();
+    expect(conflictRow?.className).toContain("result-row--conflict");
+    expect(within(conflictRow!).getByText(/^Conflict$/i)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /Open details for Describe your sovereign hosting guarantees\./i,
+      }),
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /Autofill details/i });
+
+    expect(within(dialog).getByText(/^Conflict$/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: /Conflict review/i })).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        /prior session answer that denied sovereign hosting guarantees/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/Do you support sovereign hosting guarantees\?/i),
+    ).toBeInTheDocument();
   });
 
   test("hides backend health while the service is healthy", async () => {

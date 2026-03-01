@@ -752,6 +752,14 @@ button {
   background: #fbf7f1;
 }
 
+.result-row--conflict td {
+  background: #fff5f2;
+}
+
+.result-row--conflict:hover td {
+  background: #ffe9e1;
+}
+
 .result-row__question {
   width: 34%;
 }
@@ -861,6 +869,13 @@ button {
   gap: 0.75rem;
 }
 
+.conflict-card {
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(161, 38, 38, 0.16);
+  background: #fffdfb;
+}
+
 .details-card p,
 .details-card pre,
 .details-card dd,
@@ -968,7 +983,7 @@ button {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.detail-list li span {
+.detail-list--dark li span {
   color: rgba(255, 244, 224, 0.72);
 }
 

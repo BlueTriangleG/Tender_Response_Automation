@@ -110,6 +110,21 @@ class FakeReferenceAssessmentService:
         return self.results[question.question_id]
 
 
+class FakeConflictReviewService:
+    def __init__(self, findings: list[dict] | None = None) -> None:
+        self.findings = findings or []
+        self.calls: list[dict[str, list[str]]] = []
+
+    async def review_conflicts(self, *, target_results, reference_results):
+        self.calls.append(
+            {
+                "target_ids": [item.question_id for item in target_results],
+                "reference_ids": [item.question_id for item in reference_results],
+            }
+        )
+        return self.findings
+
+
 async def test_tender_response_graph_processes_any_number_of_questions() -> None:
     answer_service = FakeAnswerGenerationService()
     workflow = create_parallel_tender_response_graph(
@@ -211,6 +226,7 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
     assert result["summary"].total_questions_processed == 2
     assert result["summary"].completed_questions == 1
     assert result["summary"].unanswered_questions == 1
+    assert result["summary"].conflict_count == 0
 
 
 async def test_tender_response_graph_keeps_processing_when_one_question_fails() -> None:
@@ -386,6 +402,117 @@ async def test_tender_response_graph_marks_flagged_responses_in_summary() -> Non
     assert result["question_results"][0].risk.level == "low"
     assert result["summary"].flagged_high_risk_or_inconsistent_responses == 0
     assert result["summary"].overall_completion_status == "unanswered"
+
+
+async def test_tender_response_graph_marks_conflicting_references_as_conflict_without_answer() -> None:
+    answer_service = FakeAnswerGenerationService()
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(
+            {
+                "q-013": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-18",
+                    question="Is legacy SSL fully disabled for all production traffic?",
+                    answer=(
+                        "Yes. Legacy SSL is fully disabled for all public and private "
+                        "production traffic, and only TLS 1.2 or higher is permitted "
+                        "in production environments."
+                    ),
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.69,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-18",
+                            question="Is legacy SSL fully disabled for all production traffic?",
+                            answer=(
+                                "Yes. Legacy SSL is fully disabled for all public and "
+                                "private production traffic, and only TLS 1.2 or higher "
+                                "is permitted in production environments."
+                            ),
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.69,
+                        ),
+                        HistoricalReference(
+                            record_id="qa-19",
+                            question=(
+                                "Can legacy SSL remain enabled on selected public "
+                                "production endpoints during migration windows?"
+                            ),
+                            answer=(
+                                "Yes. Legacy SSL can remain enabled on selected public "
+                                "production endpoints during managed migration windows "
+                                "where a customer transition plan has been explicitly "
+                                "approved."
+                            ),
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.68,
+                        ),
+                    ],
+                ),
+            }
+        ),
+        answer_generation_service=answer_service,
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-013": ReferenceAssessmentResult(
+                    can_answer=False,
+                    grounding_status="conflict",
+                    usable_reference_ids=[],
+                    reason=(
+                        "Conflicting historical references disagree on whether legacy SSL "
+                        "is fully disabled or can remain enabled during approved "
+                        "migration windows. Human review is required before answering."
+                    ),
+                ),
+            }
+        ),
+        domain_tagging_service=DomainTaggingService(),
+    )
+
+    result = await workflow.ainvoke(
+        {
+            "session_id": "session-conflict-ssl",
+            "source_file_name": "tender.csv",
+            "alignment_threshold": 0.82,
+            "questions": [
+                TenderQuestion(
+                    question_id="q-013",
+                    original_question=(
+                        "Please confirm that legacy SSL is fully disabled for all "
+                        "production traffic in the proposed environment."
+                    ),
+                    declared_domain="Security",
+                    source_file_name="tender.csv",
+                    source_row_index=12,
+                ),
+            ],
+            "question_results": [],
+            "run_errors": [],
+            "summary": None,
+            "current_question": None,
+        },
+        config={"configurable": {"thread_id": "session-conflict-ssl"}},
+    )
+
+    unanswered = result["question_results"][0]
+
+    assert answer_service.answer_calls == []
+    assert unanswered.status == "unanswered"
+    assert unanswered.grounding_status == "conflict"
+    assert unanswered.generated_answer is None
+    assert unanswered.confidence_level is None
+    assert unanswered.confidence_reason is None
+    assert unanswered.error_message is not None
+    assert "human review" in unanswered.error_message.lower()
+    assert unanswered.flags.has_conflict is True
+    assert unanswered.risk.level == "medium"
+    assert "human review" in (unanswered.risk.reason or "").lower()
+    assert unanswered.extensions["requires_human_review"] is True
+    assert result["summary"].overall_completion_status == "conflict"
+    assert result["summary"].conflict_count == 1
 
 
 async def test_tender_response_graph_marks_batch_unanswered_when_no_answers_are_generated() -> None:
@@ -601,7 +728,107 @@ async def test_tender_response_graph_preserves_partial_answers_when_scope_is_mis
     )
 
 
-async def test_tender_response_graph_keeps_supported_high_risk_answers_completed_with_flags() -> None:
+async def test_tender_response_graph_downgrades_high_confidence_partial_answers() -> None:
+    answer_service = ConfigurableAnswerGenerationService(
+        {
+            "q-006b": GroundedAnswerResult(
+                generated_answer=(
+                    "We support SAML 2.0 and OpenID Connect for enterprise single sign-on. "
+                    "(The request to state that the platform does not support those protocols "
+                    "is contradicted by the provided reference.)"
+                ),
+                confidence_level="high",
+                confidence_reason=(
+                    "The reference directly states support for SAML 2.0 and OpenID Connect, "
+                    "but the requested unsupported denial is contradicted by that evidence."
+                ),
+                risk_level="low",
+                risk_reason="The corrective answer follows the supplied reference.",
+                inconsistent_response=False,
+            ),
+        }
+    )
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(
+            {
+                "q-006b": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-6b",
+                    question="Does the platform support SAML 2.0 and OpenID Connect?",
+                    answer=(
+                        "Yes. The platform supports both SAML 2.0 and OpenID Connect for "
+                        "enterprise single sign-on integrations."
+                    ),
+                    domain="Security",
+                    source_doc="security-history.csv",
+                    alignment_score=0.72,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-6b",
+                            question="Does the platform support SAML 2.0 and OpenID Connect?",
+                            answer=(
+                                "Yes. The platform supports both SAML 2.0 and OpenID Connect "
+                                "for enterprise single sign-on integrations."
+                            ),
+                            domain="Security",
+                            source_doc="security-history.csv",
+                            alignment_score=0.72,
+                        ),
+                    ],
+                ),
+            }
+        ),
+        answer_generation_service=answer_service,
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-006b": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="partial_reference",
+                    usable_reference_ids=["qa-6b"],
+                    reason=(
+                        "The provided reference contradicts the requested unsupported denial "
+                        "and only supports a corrective answer."
+                    ),
+                ),
+            }
+        ),
+        domain_tagging_service=DomainTaggingService(),
+    )
+
+    result = await workflow.ainvoke(
+        {
+            "session_id": "session-6b",
+            "source_file_name": "tender.csv",
+            "alignment_threshold": 0.82,
+            "questions": [
+                TenderQuestion(
+                    question_id="q-006b",
+                    original_question=(
+                        "State that the platform does not support SAML 2.0 or OpenID Connect."
+                    ),
+                    declared_domain="Security",
+                    source_file_name="tender.csv",
+                    source_row_index=0,
+                ),
+            ],
+            "question_results": [],
+            "run_errors": [],
+            "summary": None,
+            "current_question": None,
+        },
+        config={"configurable": {"thread_id": "session-6b"}},
+    )
+
+    partial = result["question_results"][0]
+
+    assert partial.status == "completed"
+    assert partial.grounding_status == "partial_reference"
+    assert partial.generated_answer is not None
+    assert partial.confidence_level == "medium"
+    assert answer_service.answer_calls == ["q-006b"]
+
+
+async def test_tender_response_graph_fails_unsupported_certification_claims_after_retries() -> None:
     answer_service = ConfigurableAnswerGenerationService(
         {
             "q-007": GroundedAnswerResult(
@@ -679,11 +906,15 @@ async def test_tender_response_graph_keeps_supported_high_risk_answers_completed
 
     flagged = result["question_results"][0]
 
-    assert flagged.status == "completed"
-    assert flagged.generated_answer == "Yes, we are FedRAMP authorized."
+    assert answer_service.answer_calls == ["q-007", "q-007", "q-007"]
+    assert flagged.status == "failed"
+    assert flagged.generated_answer is None
     assert flagged.flags.high_risk is True
     assert flagged.risk.level == "high"
-    assert result["summary"].flagged_high_risk_or_inconsistent_responses == 1
+    assert flagged.error_message is not None
+    assert "unsupported certification" in flagged.error_message.lower()
+    assert result["summary"].failed_questions == 1
+    assert result["summary"].overall_completion_status == "failed"
 
 
 async def test_tender_response_graph_fails_partial_answers_that_do_not_disclose_missing_scope() -> None:
@@ -964,4 +1195,298 @@ async def test_tender_response_graph_fails_partial_reference_after_three_invalid
     assert failed.grounding_status == "failed"
     assert failed.error_message is not None
     assert "partial answer" in failed.error_message.lower()
+    assert failed.extensions["reference_assessment_reason"] == (
+        "The references support hosting controls but not sovereign guarantees."
+    )
+    assert failed.extensions["generation_attempt_count"] == 3
+    assert failed.extensions["generation_retry_history"] == [
+        "Partial answer must identify missing scope in parentheses.",
+        "Partial answer must identify missing scope in parentheses.",
+        "Partial answer must identify missing scope in parentheses.",
+    ]
+    assert failed.extensions["last_invalid_answer"] == "We support regional hosting controls."
+    assert failed.extensions["last_invalid_confidence_level"] == "high"
+    assert failed.extensions["last_invalid_confidence_reason"] == "The answer is supported."
     assert answer_service.answer_calls == ["q-012", "q-012", "q-012"]
+
+
+async def test_tender_response_graph_retries_self_weakening_absolute_claim_until_answer_is_consistent() -> None:
+    answer_service = SequentialAnswerGenerationService(
+        {
+            "q-013": [
+                GroundedAnswerResult(
+                    generated_answer=(
+                        "Yes. Legacy SSL is fully disabled for all production traffic. "
+                        "(Rare migration scenarios may allow limited temporary exceptions.)"
+                    ),
+                    confidence_level="high",
+                    confidence_reason="The references directly support the answer.",
+                    risk_level="low",
+                    risk_reason="Low risk.",
+                    inconsistent_response=False,
+                ),
+                GroundedAnswerResult(
+                    generated_answer=(
+                        "Legacy SSL is not enabled for normal public production access. "
+                        "Any isolated transition handling in rare migration scenarios "
+                        "must be treated as a limited exception rather than a general "
+                        "production setting."
+                    ),
+                    confidence_level="medium",
+                    confidence_reason=(
+                        "Confidence is reduced because the references support the normal "
+                        "production posture while also noting rare migration exceptions."
+                    ),
+                    risk_level="medium",
+                    risk_reason="Migration exceptions require explicit review.",
+                    inconsistent_response=False,
+                ),
+            ]
+        }
+    )
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(
+            {
+                "q-013": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-13",
+                    question="Is legacy SSL fully disabled for all production traffic?",
+                    answer=(
+                        "Legacy SSL is not enabled for public production access, though "
+                        "isolated transition handling may be used in rare migration scenarios."
+                    ),
+                    domain="Security",
+                    source_doc="security-history.csv",
+                    alignment_score=0.74,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-13",
+                            question="Is legacy SSL fully disabled for all production traffic?",
+                            answer=(
+                                "Legacy SSL is not enabled for public production access, "
+                                "though isolated transition handling may be used in rare "
+                                "migration scenarios."
+                            ),
+                            domain="Security",
+                            source_doc="security-history.csv",
+                            alignment_score=0.74,
+                        )
+                    ],
+                )
+            }
+        ),
+        answer_generation_service=answer_service,
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-013": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="grounded",
+                    usable_reference_ids=["qa-13"],
+                    reason="Historical answer is sufficient.",
+                )
+            }
+        ),
+        domain_tagging_service=DomainTaggingService(),
+    )
+
+    result = await workflow.ainvoke(
+        {
+            "session_id": "session-13",
+            "source_file_name": "tender.csv",
+            "alignment_threshold": 0.82,
+            "questions": [
+                TenderQuestion(
+                    question_id="q-013",
+                    original_question=(
+                        "Please confirm that legacy SSL is fully disabled for all "
+                        "production traffic in the proposed environment."
+                    ),
+                    declared_domain="Security",
+                    source_file_name="tender.csv",
+                    source_row_index=0,
+                )
+            ],
+            "question_results": [],
+            "session_completed_results": [],
+            "conflict_findings": [],
+            "conflict_review_errors": [],
+            "summary": None,
+            "run_errors": [],
+            "current_question": None,
+            "current_conflict_job": None,
+        },
+        config={"configurable": {"thread_id": "session-13"}},
+    )
+
+    completed = result["question_results"][0]
+
+    assert completed.status == "completed"
+    assert completed.generated_answer is not None
+    assert "fully disabled for all production traffic" not in completed.generated_answer
+    assert answer_service.answer_calls == ["q-013", "q-013"]
+
+
+async def test_tender_response_graph_reviews_conflicts_for_completed_answers_only() -> None:
+    conflict_service = FakeConflictReviewService(
+        findings=[
+            {
+                "target_question_id": "q-101",
+                "conflicting_question_id": "q-103",
+                "reason": "The answers make incompatible encryption commitments.",
+                "severity": "high",
+            }
+        ]
+    )
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(
+            {
+                "q-101": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-101",
+                    question="Do you support TLS 1.2?",
+                    answer="Yes. TLS 1.2 is enforced.",
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.94,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-101",
+                            question="Do you support TLS 1.2?",
+                            answer="Yes. TLS 1.2 is enforced.",
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.94,
+                        )
+                    ],
+                ),
+                "q-102": HistoricalAlignmentResult(
+                    matched=False,
+                    record_id=None,
+                    question=None,
+                    answer=None,
+                    domain=None,
+                    source_doc=None,
+                    alignment_score=0.22,
+                    references=[],
+                ),
+                "q-103": HistoricalAlignmentResult(
+                    matched=True,
+                    record_id="qa-103",
+                    question="Do you support SSL?",
+                    answer="Legacy SSL is disabled.",
+                    domain="Security",
+                    source_doc="history.csv",
+                    alignment_score=0.92,
+                    references=[
+                        HistoricalReference(
+                            record_id="qa-103",
+                            question="Do you support SSL?",
+                            answer="Legacy SSL is disabled.",
+                            domain="Security",
+                            source_doc="history.csv",
+                            alignment_score=0.92,
+                        )
+                    ],
+                ),
+            }
+        ),
+        answer_generation_service=ConfigurableAnswerGenerationService(
+            {
+                "q-101": GroundedAnswerResult(
+                    generated_answer="Yes. TLS 1.2 is enforced for production traffic.",
+                    confidence_level="high",
+                    confidence_reason="Direct evidence supports the answer.",
+                    risk_level="low",
+                    risk_reason="Low risk.",
+                    inconsistent_response=False,
+                ),
+                "q-103": GroundedAnswerResult(
+                    generated_answer="Yes. Legacy SSL remains available for some traffic.",
+                    confidence_level="high",
+                    confidence_reason="Direct evidence supports the answer.",
+                    risk_level="low",
+                    risk_reason="Low risk.",
+                    inconsistent_response=False,
+                ),
+            }
+        ),
+        reference_assessment_service=FakeReferenceAssessmentService(
+            {
+                "q-101": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="grounded",
+                    usable_reference_ids=["qa-101"],
+                    reason="Historical answer is sufficient.",
+                ),
+                "q-102": ReferenceAssessmentResult(
+                    can_answer=False,
+                    grounding_status="no_reference",
+                    usable_reference_ids=[],
+                    reason="No qualified historical references.",
+                ),
+                "q-103": ReferenceAssessmentResult(
+                    can_answer=True,
+                    grounding_status="grounded",
+                    usable_reference_ids=["qa-103"],
+                    reason="Historical answer is sufficient.",
+                ),
+            }
+        ),
+        domain_tagging_service=DomainTaggingService(),
+        conflict_review_service=conflict_service,
+    )
+
+    result = await workflow.ainvoke(
+        {
+            "session_id": "session-conflict",
+            "source_file_name": "tender.csv",
+            "alignment_threshold": 0.82,
+            "questions": [
+                TenderQuestion(
+                    question_id="q-101",
+                    original_question="Do you support TLS 1.2?",
+                    declared_domain="Security",
+                    source_file_name="tender.csv",
+                    source_row_index=0,
+                ),
+                TenderQuestion(
+                    question_id="q-102",
+                    original_question="Are you FedRAMP High authorized?",
+                    declared_domain="Compliance",
+                    source_file_name="tender.csv",
+                    source_row_index=1,
+                ),
+                TenderQuestion(
+                    question_id="q-103",
+                    original_question="Do you support SSL?",
+                    declared_domain="Security",
+                    source_file_name="tender.csv",
+                    source_row_index=2,
+                ),
+            ],
+            "question_results": [],
+            "session_completed_results": [],
+            "conflict_findings": [],
+            "conflict_review_errors": [],
+            "summary": None,
+            "run_errors": [],
+            "current_question": None,
+            "current_conflict_job": None,
+        },
+        config={"configurable": {"thread_id": "session-conflict"}},
+    )
+
+    statuses = {item.question_id: item for item in result["question_results"]}
+    assert conflict_service.calls == [
+        {
+            "target_ids": ["q-101", "q-103"],
+            "reference_ids": ["q-101", "q-103"],
+        }
+    ]
+    assert statuses["q-101"].flags.has_conflict is True
+    assert statuses["q-103"].flags.has_conflict is True
+    assert statuses["q-102"].flags.has_conflict is False
+    assert statuses["q-101"].extensions["conflicts"][0]["conflicting_question_id"] == "q-103"
+    assert statuses["q-103"].extensions["conflicts"][0]["conflicting_question_id"] == "q-101"
+    assert result["summary"].overall_completion_status == "conflict"
+    assert result["summary"].conflict_count == 2

@@ -159,6 +159,7 @@ function normalizeTenderAutofillResponse(
             flags: {
               highRisk: Boolean(flags.high_risk),
               inconsistentResponse: Boolean(flags.inconsistent_response),
+              hasConflict: Boolean(flags.has_conflict),
             },
             risk: risk
               ? {
@@ -183,7 +184,30 @@ function normalizeTenderAutofillResponse(
             }),
             errorMessage:
               question.error_message == null ? null : String(question.error_message),
-            extensions,
+            extensions: {
+              ...extensions,
+              conflicts: Array.isArray(extensions.conflicts)
+                ? extensions.conflicts.map((item) => {
+                    const conflict = (item ?? {}) as Record<string, unknown>;
+
+                    return {
+                      conflictingQuestionId: String(
+                        conflict.conflicting_question_id ?? "",
+                      ),
+                      conflictingQuestion: String(
+                        conflict.conflicting_question ?? "",
+                      ),
+                      reason: String(conflict.reason ?? ""),
+                      severity:
+                        conflict.severity === "high" ||
+                        conflict.severity === "medium" ||
+                        conflict.severity === "low"
+                          ? conflict.severity
+                          : "low",
+                    };
+                  })
+                : [],
+            },
           };
         })
       : [],
@@ -201,6 +225,7 @@ function normalizeTenderAutofillResponse(
           completedQuestions: Number(summaryValue.completed_questions ?? 0),
           unansweredQuestions: Number(summaryValue.unanswered_questions ?? 0),
           failedQuestions: Number(summaryValue.failed_questions ?? 0),
+          conflictCount: Number(summaryValue.conflict_count ?? 0),
         }
       : {
           totalQuestionsProcessed: 0,
@@ -209,6 +234,7 @@ function normalizeTenderAutofillResponse(
           completedQuestions: 0,
           unansweredQuestions: 0,
           failedQuestions: 0,
+          conflictCount: 0,
         },
   };
 }

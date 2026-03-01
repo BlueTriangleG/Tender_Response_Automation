@@ -52,3 +52,37 @@ def dispatch_questions(state: BatchTenderResponseState) -> list[Send] | str:
         )
         for question in state["questions"]
     ]
+
+
+def dispatch_conflict_review_jobs(state: BatchTenderResponseState) -> list[Send] | str:
+    """Fan out session conflict review across groups of up to ten target questions."""
+
+    current_completed_ids = [
+        result.question_id
+        for result in state["question_results"]
+        if result.status == "completed" and (result.generated_answer or "").strip()
+    ]
+    if not current_completed_ids:
+        return "apply_conflicts"
+
+    reference_ids = {
+        result.question_id
+        for result in [*state.get("session_completed_results", []), *state["question_results"]]
+        if result.status == "completed" and (result.generated_answer or "").strip()
+    }
+    if len(reference_ids) < 2:
+        return "apply_conflicts"
+
+    return [
+        Send(
+            "review_conflict_group",
+            {
+                "question_results": state["question_results"],
+                "session_completed_results": state.get("session_completed_results", []),
+                "current_conflict_job": {
+                    "target_question_ids": current_completed_ids[index : index + 10]
+                },
+            },
+        )
+        for index in range(0, len(current_completed_ids), 10)
+    ]

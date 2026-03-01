@@ -31,7 +31,9 @@ def build_reference_assessment_messages(
                 f"Question: {question.original_question}\n"
                 f"Candidate references: {json.dumps(reference_payload, ensure_ascii=True)}\n"
                 "Classify answerability as none, partial, or grounded.\n"
-                "- none: the references are unrelated or too weak to support any safe answer.\n"
+                "- none: the references are unrelated, too weak to support any safe answer, "
+                "or materially conflict with each other on the same capability/commitment so "
+                "human review is required.\n"
                 "- partial: the references support part of the answer, but material scope is missing.\n"
                 "- grounded: the references are sufficient on their own for the full answer.\n"
                 "Only return reference ids that materially support the selected answerability.\n"
@@ -44,6 +46,8 @@ def build_reference_assessment_messages(
 _SYSTEM_PROMPT = (
     "Decide whether the provided historical references are sufficient to answer "
     "the tender question without fabricating certifications or unsupported claims. "
-    "Reserve 'none' for references that are not materially relevant or cannot support "
-    "any safe answer at all."
+    "Reserve 'none' for references that are not materially relevant, materially "
+    "conflict with each other, or cannot support any safe answer at all. When "
+    "references conflict on a material fact or commitment, require human review "
+    "instead of synthesizing an answer."
 )

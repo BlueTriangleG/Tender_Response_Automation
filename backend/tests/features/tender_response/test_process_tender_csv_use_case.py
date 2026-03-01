@@ -118,6 +118,16 @@ class FakeWorkflow:
     def __init__(self) -> None:
         self.calls: list[dict] = []
         self.configs: list[dict] = []
+        self.state_values: dict = {}
+
+    async def aget_state(self, config: dict):
+        self.configs.append({"state_lookup": config})
+
+        class Snapshot:
+            def __init__(self, values: dict) -> None:
+                self.values = values
+
+        return Snapshot(self.state_values)
 
     async def ainvoke(self, state: dict, config: dict) -> dict:
         self.calls.append(state)
@@ -171,6 +181,28 @@ class FakeWorkflow:
 
 async def test_process_upload_parses_csv_and_invokes_workflow() -> None:
     workflow = FakeWorkflow()
+    previous_completed = TenderQuestionResponse(
+        question_id="q-000",
+        original_question="Do you support SAML SSO?",
+        generated_answer="Yes. SAML SSO is supported.",
+        domain_tag="architecture",
+        confidence_level="high",
+        confidence_reason="Historical references directly support the response.",
+        historical_alignment_indicator=True,
+        status="completed",
+        grounding_status="grounded",
+        flags=QuestionFlags(high_risk=False, inconsistent_response=False),
+        risk=QuestionRisk(level="low", reason="Low risk."),
+        metadata=QuestionMetadata(
+            source_row_index=0,
+            alignment_record_id="qa-0",
+            alignment_score=0.93,
+        ),
+        references=[],
+        error_message=None,
+        extensions={},
+    )
+    workflow.state_values = {"session_completed_results": [previous_completed]}
     runner = TenderResponseRunner()
     runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
 
@@ -188,8 +220,10 @@ async def test_process_upload_parses_csv_and_invokes_workflow() -> None:
     assert result.total_questions_processed == 1
     assert result.questions[0].generated_answer == "Yes."
     assert workflow.calls[0]["questions"][0].question_id == "q-001"
+    assert workflow.calls[0]["session_completed_results"] == [previous_completed]
     assert workflow.calls[0]["request_id"] == result.request_id
-    assert workflow.configs[0] == {"configurable": {"thread_id": result.request_id}}
+    assert workflow.configs[0] == {"state_lookup": {"configurable": {"thread_id": "session-123"}}}
+    assert workflow.configs[1] == {"configurable": {"thread_id": "session-123"}}
 
 
 async def test_process_upload_accepts_xlsx_and_invokes_workflow() -> None:
@@ -217,7 +251,29 @@ async def test_process_upload_accepts_xlsx_and_invokes_workflow() -> None:
     assert result.questions[0].generated_answer == "Yes."
     assert workflow.calls[0]["questions"][0].question_id == "q-001"
     assert workflow.calls[0]["request_id"] == result.request_id
-    assert workflow.configs[0] == {"configurable": {"thread_id": result.request_id}}
+    assert workflow.configs[1] == {"configurable": {"thread_id": "session-123"}}
+
+
+async def test_process_upload_falls_back_to_request_id_when_session_id_is_missing() -> None:
+    workflow = FakeWorkflow()
+    runner = TenderResponseRunner()
+    runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
+
+    result = await runner.process_upload(
+        make_upload_file(
+            "tender.csv",
+            b"question_id,question\nq-001,\"Do you support TLS 1.2 or above?\"\n",
+            "text/csv",
+        ),
+        TenderResponseRequestOptions(alignment_threshold=0.84),
+        workflow_name="parallel",
+    )
+
+    assert workflow.calls[0]["session_completed_results"] == []
+    assert workflow.configs[0] == {
+        "state_lookup": {"configurable": {"thread_id": result.request_id}}
+    }
+    assert workflow.configs[1] == {"configurable": {"thread_id": result.request_id}}
 
 
 async def test_process_upload_rejects_non_csv_files() -> None:

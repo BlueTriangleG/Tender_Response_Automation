@@ -64,6 +64,14 @@ export type HistoryIngestResponse = {
 export type TenderAutofillQuestionFlags = {
   highRisk: boolean;
   inconsistentResponse: boolean;
+  hasConflict: boolean;
+};
+
+export type TenderAutofillQuestionConflict = {
+  conflictingQuestionId: string;
+  conflictingQuestion: string;
+  reason: string;
+  severity: "high" | "medium" | "low";
 };
 
 export type TenderAutofillQuestionRisk = {
@@ -93,7 +101,9 @@ export type TenderAutofillQuestion = {
   risk: TenderAutofillQuestionRisk | null;
   references: TenderAutofillQuestionReference[];
   errorMessage: string | null;
-  extensions: Record<string, unknown>;
+  extensions: Record<string, unknown> & {
+    conflicts?: TenderAutofillQuestionConflict[];
+  };
 };
 
 export type TenderAutofillSummary = {
@@ -103,6 +113,7 @@ export type TenderAutofillSummary = {
   completedQuestions: number;
   unansweredQuestions: number;
   failedQuestions: number;
+  conflictCount: number;
 };
 
 export type TenderAutofillResponse = {

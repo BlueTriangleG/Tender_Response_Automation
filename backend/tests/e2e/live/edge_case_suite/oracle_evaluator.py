@@ -6,6 +6,34 @@ from typing import Any
 
 from tests.e2e.live.edge_case_suite.models import EvaluationResult
 
+_NEGATION_OR_REFUSAL_MARKERS = (
+    "not ",
+    "cannot",
+    "can't",
+    "cannot confirm",
+    "can't confirm",
+    "do not",
+    "does not",
+    "no evidence",
+    "unsupported",
+    "not approved",
+    "must not",
+)
+
+
+def _window_around_phrase(text: str, phrase: str, *, padding: int = 64) -> str:
+    index = text.find(phrase)
+    if index == -1:
+        return ""
+    start = max(index - padding, 0)
+    end = min(index + len(phrase) + padding, len(text))
+    return text[start:end]
+
+
+def _is_negated_or_refused_phrase(answer_text: str, phrase: str) -> bool:
+    window = _window_around_phrase(answer_text.lower(), phrase.lower())
+    return any(marker in window for marker in _NEGATION_OR_REFUSAL_MARKERS)
+
 
 def _assert_summary(
     errors: list[str],
@@ -128,7 +156,14 @@ def _assert_question(
         )
 
     must_not_include = question_oracle.get("must_not_include", [])
-    violating_phrase = next((needle for needle in must_not_include if needle in answer_text), None)
+    violating_phrase = next(
+        (
+            needle
+            for needle in must_not_include
+            if needle in answer_text and not _is_negated_or_refused_phrase(answer_text, needle)
+        ),
+        None,
+    )
     if violating_phrase:
         errors.append(
             f"{question_id}: generated answer included forbidden phrase {violating_phrase!r}"

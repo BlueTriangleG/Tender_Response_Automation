@@ -8,6 +8,9 @@ from langgraph.graph.state import CompiledStateGraph
 from app.features.tender_response.infrastructure.workflows.parallel.graph import (
     create_parallel_tender_response_graph,
 )
+from app.features.tender_response.infrastructure.services.conflict_review_service import (
+    ConflictReviewService,
+)
 from app.features.tender_response.infrastructure.workflows.sequential.graph import (
     create_sequential_tender_response_graph,
 )
@@ -30,10 +33,11 @@ class TenderWorkflowRegistry:
     @staticmethod
     @lru_cache
     def _parallel_graph() -> CompiledStateGraph:
-        return create_parallel_tender_response_graph()
+        return create_parallel_tender_response_graph(
+            conflict_review_service=ConflictReviewService()
+        )
 
     @staticmethod
     @lru_cache
     def _sequential_graph() -> CompiledStateGraph:
         return create_sequential_tender_response_graph()
-

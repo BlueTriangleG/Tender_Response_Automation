@@ -14,8 +14,8 @@
       "completed",
       "completed_with_flags"
     ],
-    "completed_min": 7,
-    "unanswered_min": 2,
+    "completed_min": 11,
+    "unanswered_max": 1,
     "failed_max": 0
   },
   "questions": [
@@ -31,20 +31,14 @@
     },
     {
       "question_id": "q-308",
-      "allowed_statuses": [
-        "unanswered"
-      ],
-      "allowed_grounding_statuses": [
-        "insufficient_reference"
-      ],
-      "generated_answer_should_be_null": true
+      "expected_status": "completed",
+      "expected_grounding_status": "partial_reference",
+      "generated_answer_should_be_null": false
     },
     {
       "question_id": "q-309",
-      "allowed_statuses": [
-        "unanswered",
-        "completed"
-      ],
+      "expected_status": "completed",
+      "expected_grounding_status": "partial_reference",
       "must_not_include": [
         "FedRAMP High authorized"
       ]
@@ -61,10 +55,9 @@
     },
     {
       "question_id": "q-311",
-      "allowed_statuses": [
-        "unanswered"
-      ],
-      "generated_answer_should_be_null": true
+      "expected_status": "completed",
+      "expected_grounding_status": "partial_reference",
+      "generated_answer_should_be_null": false
     }
   ]
 }

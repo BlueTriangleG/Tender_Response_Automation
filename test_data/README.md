@@ -37,6 +37,7 @@ The dataset covers these domains:
 It intentionally includes:
 
 - Strong historical matches for encryption, SSO, audit logging, data residency, and AI governance
+- A deliberate pair of contradictory SSL positioning records plus matching tender questions to demo session conflict detection
 - A partial-match deployment question that should be answered carefully
 - A pricing question with conflicting historical assumptions
 - A certification question that must not be answered with an unsupported claim

@@ -98,6 +98,7 @@ describe("processTenderWorkbook", () => {
             flags: {
               high_risk: false,
               inconsistent_response: false,
+              has_conflict: false,
             },
             metadata: {
               source_row_index: 0,
@@ -129,6 +130,7 @@ describe("processTenderWorkbook", () => {
           completed_questions: 1,
           unanswered_questions: 0,
           failed_questions: 0,
+          conflict_count: 0,
         },
       }),
     });
@@ -153,7 +155,9 @@ describe("processTenderWorkbook", () => {
     });
     expect(response.questions[0].references[0].sourceDoc).toBe("security-history.csv");
     expect(response.questions[0].references[0].usedForAnswer).toBe(true);
+    expect(response.questions[0].flags.hasConflict).toBe(false);
     expect(response.summary.unansweredQuestions).toBe(0);
+    expect(response.summary.conflictCount).toBe(0);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -184,6 +188,7 @@ describe("processTenderWorkbook", () => {
           completed_questions: 0,
           unanswered_questions: 0,
           failed_questions: 0,
+          conflict_count: 0,
         },
       }),
     });
@@ -227,6 +232,7 @@ describe("processTenderWorkbook", () => {
             flags: {
               high_risk: false,
               inconsistent_response: false,
+              has_conflict: false,
             },
             metadata: {
               source_row_index: 0,
@@ -258,6 +264,7 @@ describe("processTenderWorkbook", () => {
             flags: {
               high_risk: false,
               inconsistent_response: false,
+              has_conflict: true,
             },
             metadata: {
               source_row_index: 1,
@@ -279,7 +286,17 @@ describe("processTenderWorkbook", () => {
               },
             ],
             error_message: null,
-            extensions: {},
+            extensions: {
+              conflicts: [
+                {
+                  conflicting_question_id: "q-099",
+                  conflicting_question:
+                    "Do you support sovereign hosting guarantees?",
+                  reason: "This answer conflicts with a prior session answer.",
+                  severity: "high",
+                },
+              ],
+            },
           },
         ],
         summary: {
@@ -289,6 +306,7 @@ describe("processTenderWorkbook", () => {
           completed_questions: 1,
           unanswered_questions: 1,
           failed_questions: 0,
+          conflict_count: 1,
         },
       }),
     });
@@ -310,5 +328,13 @@ describe("processTenderWorkbook", () => {
     expect(response.questions[1].status).toBe("completed");
     expect(response.questions[1].groundingStatus).toBe("partial_reference");
     expect(response.questions[1].confidenceLevel).toBe("medium");
+    expect(response.questions[1].flags.hasConflict).toBe(true);
+    expect(response.questions[1].extensions.conflicts?.[0]).toEqual({
+      conflictingQuestionId: "q-099",
+      conflictingQuestion: "Do you support sovereign hosting guarantees?",
+      reason: "This answer conflicts with a prior session answer.",
+      severity: "high",
+    });
+    expect(response.summary.conflictCount).toBe(1);
   });
 });

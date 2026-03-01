@@ -165,6 +165,66 @@ async def test_assess_returns_insufficient_reference_when_llm_fails() -> None:
     assert result.usable_reference_ids == []
 
 
+async def test_assess_returns_conflict_for_conflicting_ssl_history() -> None:
+    model = FakeChatModel(
+        {
+            "answerability": "grounded",
+            "usable_reference_ids": ["qa-1", "qa-2"],
+            "reason": "unused",
+        }
+    )
+    service = ReferenceAssessmentService(model=model)
+
+    result = await service.assess(
+        question=TenderQuestion(
+            question_id="q-013",
+            original_question=(
+                "Please confirm that legacy SSL is fully disabled for all production "
+                "traffic in the proposed environment."
+            ),
+            declared_domain="Security",
+            source_file_name="tender.csv",
+            source_row_index=12,
+        ),
+        references=[
+            HistoricalReference(
+                record_id="qa-1",
+                question="Is legacy SSL fully disabled for all production traffic?",
+                answer=(
+                    "Yes. Legacy SSL is fully disabled for all public and private "
+                    "production traffic, and only TLS 1.2 or higher is permitted in "
+                    "production environments."
+                ),
+                domain="Security",
+                source_doc="history.csv",
+                alignment_score=0.91,
+            ),
+            HistoricalReference(
+                record_id="qa-2",
+                question=(
+                    "Can legacy SSL remain enabled on selected public production "
+                    "endpoints during migration windows?"
+                ),
+                answer=(
+                    "Yes. Legacy SSL can remain enabled on selected public production "
+                    "endpoints during managed migration windows where a customer "
+                    "transition plan has been explicitly approved."
+                ),
+                domain="Security",
+                source_doc="history.csv",
+                alignment_score=0.89,
+            ),
+        ],
+    )
+
+    assert result.can_answer is False
+    assert result.grounding_status == "conflict"
+    assert result.usable_reference_ids == []
+    assert "conflicting historical references" in result.reason.lower()
+    assert "human review" in result.reason.lower()
+    assert model.runnable is None
+
+
 def test_reference_assessment_payload_marks_all_properties_as_required_for_strict_function_calling() -> None:
     schema = _ReferenceAssessmentPayload.model_json_schema()
 

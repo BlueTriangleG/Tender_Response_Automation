@@ -465,3 +465,83 @@ def test_tender_response_route_retries_invalid_partial_answer_until_second_attem
     assert "(" in payload["questions"][0]["generated_answer"]
     assert ")" in payload["questions"][0]["generated_answer"]
     assert answer_service.calls == 2
+
+
+def test_tender_response_route_failed_partial_answer_exposes_retry_diagnostics() -> None:
+    answer_service = SequentialFakeAnswerGenerationService(
+        [
+            GroundedAnswerResult(
+                generated_answer="We support regional hosting controls.",
+                confidence_level="high",
+                confidence_reason="The answer is supported.",
+                risk_level="medium",
+                risk_reason="Human review is required before making hosting commitments.",
+                inconsistent_response=False,
+            ),
+            GroundedAnswerResult(
+                generated_answer="We support regional hosting controls.",
+                confidence_level="high",
+                confidence_reason="The answer is supported.",
+                risk_level="medium",
+                risk_reason="Human review is required before making hosting commitments.",
+                inconsistent_response=False,
+            ),
+            GroundedAnswerResult(
+                generated_answer="We support regional hosting controls.",
+                confidence_level="high",
+                confidence_reason="The answer is supported.",
+                risk_level="medium",
+                risk_reason="Human review is required before making hosting commitments.",
+                inconsistent_response=False,
+            ),
+        ]
+    )
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(),
+        answer_generation_service=answer_service,
+        reference_assessment_service=FakeReferenceAssessmentService(),
+        domain_tagging_service=DomainTaggingService(),
+    )
+    runner = TenderResponseRunner()
+    runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
+    client = TestClient(app)
+
+    app.dependency_overrides[get_tender_response_runner] = lambda: runner
+    try:
+        response = client.post(
+            "/api/tender/respond",
+            files={
+                "file": (
+                    "tender.csv",
+                    (
+                        b"question_id,domain,question\n"
+                        b'q-003,Compliance,"Describe your sovereign hosting guarantees."\n'
+                    ),
+                    "text/csv",
+                )
+            },
+            data={"sessionId": "session-791"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    failed = payload["questions"][0]
+    assert failed["status"] == "failed"
+    assert failed["grounding_status"] == "failed"
+    assert failed["error_message"] == "Partial answer must identify missing scope in parentheses."
+    assert (
+        failed["extensions"]["reference_assessment_reason"]
+        == "The retrieved references support hosting controls but not sovereign guarantees."
+    )
+    assert failed["extensions"]["generation_attempt_count"] == 3
+    assert failed["extensions"]["generation_retry_history"] == [
+        "Partial answer must identify missing scope in parentheses.",
+        "Partial answer must identify missing scope in parentheses.",
+        "Partial answer must identify missing scope in parentheses.",
+    ]
+    assert failed["extensions"]["last_invalid_answer"] == "We support regional hosting controls."
+    assert failed["extensions"]["last_invalid_confidence_level"] == "high"
+    assert failed["extensions"]["last_invalid_confidence_reason"] == "The answer is supported."
+    assert answer_service.calls == 3

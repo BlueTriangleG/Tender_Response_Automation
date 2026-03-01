@@ -58,6 +58,10 @@ function shouldShowConfidence(question: TenderAutofillQuestion) {
 }
 
 function questionStatusTone(question: TenderAutofillQuestion) {
+  if (question.flags.hasConflict) {
+    return "danger" as const;
+  }
+
   if (question.status === "completed") {
     return "success" as const;
   }
@@ -67,6 +71,22 @@ function questionStatusTone(question: TenderAutofillQuestion) {
   }
 
   return "warning" as const;
+}
+
+function summaryStatusTone(status: string) {
+  if (status === "conflict") {
+    return "danger" as const;
+  }
+
+  if (status === "failed" || status === "partial_failure") {
+    return "danger" as const;
+  }
+
+  if (status === "completed_with_flags" || status === "unanswered") {
+    return "warning" as const;
+  }
+
+  return "success" as const;
 }
 
 function riskTone(level: "high" | "medium" | "low") {
@@ -128,6 +148,10 @@ function formatWorkflowDuration(durationMs: number | null) {
 function reviewSignalSummary(question: TenderAutofillQuestion) {
   const signals: string[] = [];
 
+  if (question.flags.hasConflict) {
+    signals.push("Conflicts with another answer in this session");
+  }
+
   if (question.flags.highRisk) {
     signals.push("High-risk wording");
   }
@@ -145,6 +169,16 @@ function reviewSignalSummary(question: TenderAutofillQuestion) {
   }
 
   return signals.join(". ") + ".";
+}
+
+function conflictTone(severity: "high" | "medium" | "low") {
+  return riskTone(severity);
+}
+
+function questionConflicts(question: TenderAutofillQuestion) {
+  return Array.isArray(question.extensions.conflicts)
+    ? question.extensions.conflicts
+    : [];
 }
 
 function App() {
@@ -762,7 +796,11 @@ function App() {
                     </div>
                     <StatusBadge
                       label={formatStatusLabel(summarySnapshot.overallStatus)}
-                      tone={processState === "error" ? "danger" : "warning"}
+                      tone={
+                        processState === "error"
+                          ? "danger"
+                          : summaryStatusTone(summarySnapshot.overallStatus)
+                      }
                     />
                   </div>
 
@@ -786,6 +824,11 @@ function App() {
                       eyebrow="Flagged"
                       value={String(summarySnapshot.flaggedCount)}
                       detail="Questions that need extra human review."
+                    />
+                    <MetricCard
+                      eyebrow="Conflicts"
+                      value={String(session?.summary.conflictCount ?? 0)}
+                      detail="Questions that conflict with another answer in this session."
                     />
                     <MetricCard
                       eyebrow="Workflow duration"
@@ -831,7 +874,14 @@ function App() {
                         </thead>
                         <tbody>
                           {session.questions.map((question) => (
-                            <tr className="result-row" key={question.questionId}>
+                            <tr
+                              className={
+                                question.flags.hasConflict
+                                  ? "result-row result-row--conflict"
+                                  : "result-row"
+                              }
+                              key={question.questionId}
+                            >
                               <td className="result-row__question">
                                 <p className="result-row__primary">
                                   {question.originalQuestion}
@@ -841,6 +891,9 @@ function App() {
                                     label={formatStatusLabel(question.status)}
                                     tone={questionStatusTone(question)}
                                   />
+                                  {question.flags.hasConflict ? (
+                                    <StatusBadge label="Conflict" tone="danger" />
+                                  ) : null}
                                   {shouldShowConfidence(question) ? (
                                     <StatusBadge
                                       label={formatStatusLabel(question.confidenceLevel ?? "")}
@@ -884,7 +937,7 @@ function App() {
                       </div>
                       <StatusBadge
                         label={formatStatusLabel(session.summary.overallCompletionStatus)}
-                        tone="warning"
+                        tone={summaryStatusTone(session.summary.overallCompletionStatus)}
                       />
                     </div>
 
@@ -905,6 +958,7 @@ function App() {
                       <p>
                         Unanswered questions: {session.summary.unansweredQuestions}
                       </p>
+                      <p>Conflict questions: {session.summary.conflictCount}</p>
                       <p>
                         Workflow duration: {formatWorkflowDuration(workflowDurationMs)}
                       </p>
@@ -969,6 +1023,9 @@ function App() {
                   label={formatStatusLabel(activeQuestion.status)}
                   tone={questionStatusTone(activeQuestion)}
                 />
+                {activeQuestion.flags.hasConflict ? (
+                  <StatusBadge label="Conflict" tone="danger" />
+                ) : null}
                 {shouldShowConfidence(activeQuestion) ? (
                   <StatusBadge
                     label={formatStatusLabel(activeQuestion.confidenceLevel ?? "")}
@@ -1072,6 +1129,26 @@ function App() {
                     <p>{reviewSignalSummary(activeQuestion)}</p>
                   </div>
                 </section>
+
+                {questionConflicts(activeQuestion).length > 0 ? (
+                  <section className="details-card details-card--wide details-card--alert">
+                    <h3>Conflict review</h3>
+                    <div className="details-card__stack">
+                      {questionConflicts(activeQuestion).map((conflict, index) => (
+                        <article className="conflict-card" key={`${conflict.conflictingQuestionId}-${index}`}>
+                          <div className="details-card__header">
+                            <StatusBadge
+                              label={formatStatusLabel(conflict.severity)}
+                              tone={conflictTone(conflict.severity)}
+                            />
+                            <strong>{conflict.conflictingQuestion || conflict.conflictingQuestionId}</strong>
+                          </div>
+                          <p>{conflict.reason}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
 
                 {activeQuestion.references.length > 0 ? (
                   <section className="details-card details-card--wide">

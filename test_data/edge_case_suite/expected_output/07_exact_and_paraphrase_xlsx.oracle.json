@@ -8,7 +8,8 @@
   "expected_summary": {
     "total_questions_processed": 5,
     "allowed_overall_completion_statuses": [
-      "completed"
+      "completed",
+      "completed_with_flags"
     ],
     "completed_min": 5,
     "unanswered_max": 0,

@@ -11,6 +11,7 @@ class QuestionFlags(BaseModel):
 
     high_risk: bool = False
     inconsistent_response: bool = False
+    has_conflict: bool = False
 
 
 class QuestionRisk(BaseModel):
@@ -53,6 +54,7 @@ class TenderQuestionResponse(BaseModel):
     grounding_status: Literal[
         "grounded",
         "partial_reference",
+        "conflict",
         "insufficient_reference",
         "no_reference",
         "failed",
@@ -86,6 +88,7 @@ class TenderResponseSummary(BaseModel):
     overall_completion_status: Literal[
         "completed",
         "completed_with_flags",
+        "conflict",
         "unanswered",
         "partial_failure",
         "failed",
@@ -93,6 +96,7 @@ class TenderResponseSummary(BaseModel):
     completed_questions: int
     unanswered_questions: int
     failed_questions: int
+    conflict_count: int = 0
 
 
 class TenderResponseWorkflowResponse(BaseModel):
