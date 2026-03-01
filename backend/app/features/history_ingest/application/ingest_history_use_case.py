@@ -52,13 +52,34 @@ class IngestHistoryUseCase:
         document_chunking_service: DocumentChunkingService | None = None,
         document_repository: DocumentLanceDbRepository | None = None,
     ) -> None:
-        self._file_processing_service = file_processing_service if file_processing_service is not None else FileProcessingService()
-        self._csv_column_detection_service = csv_column_detection_service if csv_column_detection_service is not None else CsvColumnDetectionService()
-        self._csv_qa_normalization_service = csv_qa_normalization_service if csv_qa_normalization_service is not None else CsvQaNormalizationService()
-        self._qa_embedding_service = qa_embedding_service if qa_embedding_service is not None else QaEmbeddingService()
-        self._qa_repository = qa_repository if qa_repository is not None else QaLanceDbRepository()
-        self._document_chunking_service = document_chunking_service if document_chunking_service is not None else DocumentChunkingService()
-        self._document_repository = document_repository if document_repository is not None else DocumentLanceDbRepository()
+        self._file_processing_service = (
+            file_processing_service if file_processing_service is not None
+            else FileProcessingService()
+        )
+        self._csv_column_detection_service = (
+            csv_column_detection_service if csv_column_detection_service is not None
+            else CsvColumnDetectionService()
+        )
+        self._csv_qa_normalization_service = (
+            csv_qa_normalization_service if csv_qa_normalization_service is not None
+            else CsvQaNormalizationService()
+        )
+        self._qa_embedding_service = (
+            qa_embedding_service if qa_embedding_service is not None
+            else QaEmbeddingService()
+        )
+        self._qa_repository = (
+            qa_repository if qa_repository is not None
+            else QaLanceDbRepository()
+        )
+        self._document_chunking_service = (
+            document_chunking_service if document_chunking_service is not None
+            else DocumentChunkingService()
+        )
+        self._document_repository = (
+            document_repository if document_repository is not None
+            else DocumentLanceDbRepository()
+        )
 
     async def process_files(
         self,
