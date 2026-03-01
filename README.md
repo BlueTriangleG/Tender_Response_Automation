@@ -172,4 +172,6 @@ The design decisions above are expanded in the delivery docs:
 
 ## Known Limitations
 
-Session memory uses an in-process checkpoint store, so state doesn't survive a server restart. For a production version this would be replaced with a persistent backend. The rest of the architecture is designed to be storage-agnostic so that swap is contained to a single wiring point.
+The long-term memory store is append-only. There's no editing or deduplication at the service layer: uploading similar content repeatedly can produce near-duplicate records, and uploading conflicting content won't trigger any consistency check. Addressing this would mean adding richer service-layer logic and additional API endpoints — a reasonable next step, but outside the scope of the current use case.
+
+Accuracy hasn't been tested at scale and no formal report has been produced. Current testing suggests above 90% correctness on the covered scenarios. Higher accuracy is achievable, the pipeline has clear tuning points in prompt constraints, grounding thresholds, and retrieval scoring, but time didn't allow for the additional iteration needed to push those numbers further.
