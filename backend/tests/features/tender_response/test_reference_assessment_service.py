@@ -4,22 +4,44 @@ from app.features.tender_response.infrastructure.services.reference_assessment_s
 )
 
 
-class FakeCompletionClient:
-    def __init__(self, response: str, should_raise: bool = False) -> None:
-        self.response = response
+class FakeStructuredRunnable:
+    def __init__(self, schema, response: dict, should_raise: bool = False) -> None:
+        self._schema = schema
+        self._response = response
         self.should_raise = should_raise
-        self.calls: list[tuple[str, str]] = []
+        self.calls: list[list] = []
 
-    async def create_json_completion(self, *, system_prompt: str, user_prompt: str) -> str:
-        self.calls.append((system_prompt, user_prompt))
+    async def ainvoke(self, messages):
+        self.calls.append(messages)
         if self.should_raise:
             raise RuntimeError("llm unavailable")
-        return self.response
+        return self._schema(**self._response)
+
+
+class FakeChatModel:
+    def __init__(self, response: dict, should_raise: bool = False) -> None:
+        self.response = response
+        self.should_raise = should_raise
+        self.schema = None
+        self.method = None
+        self.strict = None
+        self.runnable = None
+
+    def with_structured_output(self, schema, *, method, strict):
+        self.schema = schema
+        self.method = method
+        self.strict = strict
+        self.runnable = FakeStructuredRunnable(
+            schema,
+            self.response,
+            should_raise=self.should_raise,
+        )
+        return self.runnable
 
 
 async def test_assess_returns_no_reference_without_llm_call() -> None:
-    client = FakeCompletionClient('{"can_answer": true}')
-    service = ReferenceAssessmentService(completion_client=client)
+    model = FakeChatModel({"can_answer": True, "usable_reference_ids": [], "reason": "unused"})
+    service = ReferenceAssessmentService(model=model)
 
     result = await service.assess(
         question=TenderQuestion(
@@ -34,14 +56,14 @@ async def test_assess_returns_no_reference_without_llm_call() -> None:
 
     assert result.can_answer is False
     assert result.grounding_status == "no_reference"
-    assert client.calls == []
+    assert model.runnable is None
 
 
 async def test_assess_returns_grounded_when_llm_marks_references_sufficient() -> None:
-    client = FakeCompletionClient(
-        '{"can_answer": true, "usable_reference_ids": ["qa-1"], "reason": "Enough evidence."}'
+    model = FakeChatModel(
+        {"can_answer": True, "usable_reference_ids": ["qa-1"], "reason": "Enough evidence."}
     )
-    service = ReferenceAssessmentService(completion_client=client)
+    service = ReferenceAssessmentService(model=model)
 
     result = await service.assess(
         question=TenderQuestion(
@@ -66,11 +88,14 @@ async def test_assess_returns_grounded_when_llm_marks_references_sufficient() ->
     assert result.can_answer is True
     assert result.grounding_status == "grounded"
     assert result.usable_reference_ids == ["qa-1"]
+    assert model.method == "json_schema"
+    assert model.strict is True
+    assert "Only mark can_answer=true" in model.runnable.calls[0][1].content
 
 
 async def test_assess_returns_insufficient_reference_when_llm_fails() -> None:
-    client = FakeCompletionClient("", should_raise=True)
-    service = ReferenceAssessmentService(completion_client=client)
+    model = FakeChatModel({}, should_raise=True)
+    service = ReferenceAssessmentService(model=model)
 
     result = await service.assess(
         question=TenderQuestion(

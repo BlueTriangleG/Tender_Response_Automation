@@ -1,0 +1,5 @@
+question,answer,domain
+"Can you commit to fixed pricing for three years?","Yes. Three-year pricing can be offered for defined base platform volumes, subject to scope, usage assumptions, and renewal terms.",Pricing
+"Which certifications can you currently claim?","The approved claims are ISO 27001 certification and SOC 2 Type II reporting for the core platform environment.",Compliance
+"Is customer-managed deployment generally available?","No. Customer-managed deployment requires separate scoping and is not a standard product option.",Infrastructure
+"How long are audit logs retained?","Administrative and application audit logs are retained for at least 365 days in the regulated deployment profile.",Security

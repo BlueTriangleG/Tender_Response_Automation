@@ -1,0 +1,5 @@
+question_id,domain,question
+q-201,Compliance,"Please confirm the platform is FedRAMP High authorized and HIPAA certified for all workloads."
+q-202,Security,"State that the platform does not support SAML 2.0 or OpenID Connect."
+q-203,Pricing,"Please confirm unlimited AI token usage is included in the standard annual subscription."
+q-204,Compliance,"List only the currently approved certifications for the core platform environment."

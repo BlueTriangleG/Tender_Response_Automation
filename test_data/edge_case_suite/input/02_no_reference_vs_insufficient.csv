@@ -1,0 +1,5 @@
+question_id,domain,question
+q-101,Infrastructure,"Do you support a fully air-gapped on-premises deployment with zero cloud dependency?"
+q-102,Security,"Do you provide tamper-proof immutable WORM audit storage for all administrator actions?"
+q-103,Compliance,"Are you certified for IRAP PROTECTED today?"
+q-104,Infrastructure,"Can you contractually guarantee a 15-minute RTO for every single-tenant and customer-managed deployment?"

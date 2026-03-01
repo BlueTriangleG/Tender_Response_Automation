@@ -1,0 +1,9 @@
+question,answer,domain
+"Do you support TLS 1.2 or higher for production traffic?","Yes. External production endpoints enforce TLS 1.2 or higher. Legacy SSL is not enabled for public production traffic.",Security
+"Does the platform support SAML 2.0 and OpenID Connect single sign-on?","Yes. The platform supports both SAML 2.0 and OpenID Connect for enterprise single sign-on integrations.",Security
+"Do you provide role-based access control?","Yes. Role-based access control is available across tenant, workspace, and feature scopes.",Architecture
+"Are customer prompts or uploaded documents used to train shared AI models by default?","No. Customer prompts, uploaded documents, and outputs are not used to train shared models by default. Opt-in is required for any model-improvement workflow.",AI
+"Can customer data be hosted in Australia?","Yes. Supported Australian regions are available for customers with local data residency requirements.",Compliance
+"What are the managed service disaster recovery objectives?","For the managed production service, the recovery point objective is 15 minutes and the recovery time objective is 4 hours.",Infrastructure
+"Do you currently hold FedRAMP High authorization?","FedRAMP High authorization is not an approved claim and should be escalated for human review rather than asserted.",Compliance
+"How is pricing typically structured?","Pricing is typically structured as an annual subscription with implementation scoped separately and AI usage handled through agreed volume bands.",Pricing

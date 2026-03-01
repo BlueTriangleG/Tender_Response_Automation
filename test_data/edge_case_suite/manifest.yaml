@@ -1,0 +1,76 @@
+suite: edge_case_suite
+version: 2026-03-01
+format_contract:
+  historical_ingest: csv
+  tender_input: csv
+  output_expectations: oracle_json
+
+historical_repository:
+  - file: historical_repository/01_clean_security_architecture.csv
+    purpose:
+      - baseline_ingest
+      - exact_match_retrieval
+      - paraphrase_retrieval
+  - file: historical_repository/02_header_aliases.csv
+    purpose:
+      - header_alias_ingest
+      - domain_coverage_expansion
+  - file: historical_repository/03_ambiguous_headers.csv
+    purpose:
+      - ambiguous_header_detection
+      - llm_fallback_or_ingest_failure
+    expected_ingest_result: failure_or_manual_resolution
+  - file: historical_repository/04_duplicates_and_conflicts_a.csv
+    purpose:
+      - approved_baseline_for_conflict_cases
+      - duplicate_reference_setup
+  - file: historical_repository/05_duplicates_and_conflicts_b.csv
+    purpose:
+      - cross_file_exact_duplicate
+      - conflicting_answer_variant
+  - file: historical_repository/06_dirty_rows_and_quoting.csv
+    purpose:
+      - blank_required_fields
+      - quoted_multiline_cells
+      - whitespace_normalization
+
+tender_inputs:
+  - file: input/01_exact_and_paraphrase.csv
+    oracle: expected_output/01_exact_and_paraphrase.oracle.json
+    recommended_history:
+      - historical_repository/01_clean_security_architecture.csv
+      - historical_repository/02_header_aliases.csv
+  - file: input/02_no_reference_vs_insufficient.csv
+    oracle: expected_output/02_no_reference_vs_insufficient.oracle.json
+    recommended_history:
+      - historical_repository/01_clean_security_architecture.csv
+      - historical_repository/02_header_aliases.csv
+      - historical_repository/06_dirty_rows_and_quoting.csv
+  - file: input/03_risk_and_contradictions.csv
+    oracle: expected_output/03_risk_and_contradictions.oracle.json
+    recommended_history:
+      - historical_repository/01_clean_security_architecture.csv
+      - historical_repository/02_header_aliases.csv
+      - historical_repository/04_duplicates_and_conflicts_a.csv
+      - historical_repository/05_duplicates_and_conflicts_b.csv
+  - file: input/04_mixed_batch_12_questions.csv
+    oracle: expected_output/04_mixed_batch_12_questions.oracle.json
+    recommended_history:
+      - historical_repository/01_clean_security_architecture.csv
+      - historical_repository/02_header_aliases.csv
+      - historical_repository/04_duplicates_and_conflicts_a.csv
+      - historical_repository/05_duplicates_and_conflicts_b.csv
+      - historical_repository/06_dirty_rows_and_quoting.csv
+  - file: input/05_header_aliases_and_blank_rows.csv
+    oracle: expected_output/05_header_aliases_and_blank_rows.oracle.json
+    recommended_history:
+      - historical_repository/01_clean_security_architecture.csv
+      - historical_repository/02_header_aliases.csv
+  - file: input/06_blank_rows_only.csv
+    oracle: expected_output/06_blank_rows_only.oracle.json
+    recommended_history:
+      - historical_repository/01_clean_security_architecture.csv
+
+validation_notes:
+  - Oracle JSON files capture behavioral expectations instead of exact generated prose.
+  - Some files are intentionally negative and should not be expected to ingest or answer successfully.

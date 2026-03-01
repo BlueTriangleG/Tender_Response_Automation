@@ -10,8 +10,8 @@ from app.features.tender_response.infrastructure.services.domain_tagging_service
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
     ReferenceAssessmentResult,
 )
-from app.features.tender_response.infrastructure.workflows.tender_response_graph import (
-    create_tender_response_graph,
+from app.features.tender_response.infrastructure.workflows.parallel.graph import (
+    create_parallel_tender_response_graph,
 )
 
 
@@ -61,7 +61,7 @@ class FakeReferenceAssessmentService:
 
 async def test_tender_response_graph_processes_any_number_of_questions() -> None:
     answer_service = FakeAnswerGenerationService()
-    workflow = create_tender_response_graph(
+    workflow = create_parallel_tender_response_graph(
         alignment_repository=FakeAlignmentRepository(
             {
                 "q-001": HistoricalAlignmentResult(
@@ -140,9 +140,6 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
             "run_errors": [],
             "summary": None,
             "current_question": None,
-            "current_alignment": None,
-            "current_answer": None,
-            "current_result": None,
         },
         config={"configurable": {"thread_id": "session-1"}},
     )
@@ -168,7 +165,7 @@ async def test_tender_response_graph_processes_any_number_of_questions() -> None
 
 
 async def test_tender_response_graph_keeps_processing_when_one_question_fails() -> None:
-    workflow = create_tender_response_graph(
+    workflow = create_parallel_tender_response_graph(
         alignment_repository=FakeAlignmentRepository(
             {
                 "q-001": HistoricalAlignmentResult(
@@ -256,9 +253,6 @@ async def test_tender_response_graph_keeps_processing_when_one_question_fails() 
             "run_errors": [],
             "summary": None,
             "current_question": None,
-            "current_alignment": None,
-            "current_answer": None,
-            "current_result": None,
         },
         config={"configurable": {"thread_id": "session-2"}},
     )
@@ -270,7 +264,7 @@ async def test_tender_response_graph_keeps_processing_when_one_question_fails() 
 
 
 async def test_tender_response_graph_marks_flagged_responses_in_summary() -> None:
-    workflow = create_tender_response_graph(
+    workflow = create_parallel_tender_response_graph(
         alignment_repository=FakeAlignmentRepository(
             {
                 "q-004": HistoricalAlignmentResult(
@@ -326,9 +320,6 @@ async def test_tender_response_graph_marks_flagged_responses_in_summary() -> Non
             "run_errors": [],
             "summary": None,
             "current_question": None,
-            "current_alignment": None,
-            "current_answer": None,
-            "current_result": None,
         },
         config={"configurable": {"thread_id": "session-3"}},
     )
@@ -351,7 +342,7 @@ async def test_tender_response_graph_marks_flagged_responses_in_summary() -> Non
 
 
 async def test_tender_response_graph_marks_batch_unanswered_when_no_answers_are_generated() -> None:
-    workflow = create_tender_response_graph(
+    workflow = create_parallel_tender_response_graph(
         alignment_repository=FakeAlignmentRepository(
             {
                 "q-010": HistoricalAlignmentResult(
@@ -398,9 +389,6 @@ async def test_tender_response_graph_marks_batch_unanswered_when_no_answers_are_
             "run_errors": [],
             "summary": None,
             "current_question": None,
-            "current_alignment": None,
-            "current_answer": None,
-            "current_result": None,
         },
         config={"configurable": {"thread_id": "session-3"}},
     )

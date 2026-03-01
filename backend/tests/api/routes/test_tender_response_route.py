@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
 
-from app.features.tender_response.api.dependencies import get_process_tender_csv_use_case
+from app.features.tender_response.api.dependencies import get_tender_response_runner
 from app.features.tender_response.schemas.responses import (
     QuestionFlags,
     QuestionMetadata,
@@ -17,8 +17,8 @@ from app.main import app
 
 def test_tender_response_route_accepts_csv_upload_and_returns_json() -> None:
     client = TestClient(app)
-    mock_use_case = MagicMock()
-    mock_use_case.process_upload = AsyncMock(
+    mock_runner = MagicMock()
+    mock_runner.process_upload = AsyncMock(
         return_value=TenderResponseWorkflowResponse(
             request_id="req-123",
             session_id="session-123",
@@ -70,7 +70,7 @@ def test_tender_response_route_accepts_csv_upload_and_returns_json() -> None:
         )
     )
 
-    app.dependency_overrides[get_process_tender_csv_use_case] = lambda: mock_use_case
+    app.dependency_overrides[get_tender_response_runner] = lambda: mock_runner
     try:
         response = client.post(
             "/api/tender/respond",

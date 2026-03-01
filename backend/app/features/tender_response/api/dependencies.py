@@ -2,13 +2,13 @@
 
 from functools import lru_cache
 
-from app.features.tender_response.application.process_tender_csv_use_case import (
-    ProcessTenderCsvUseCase,
+from app.features.tender_response.application.tender_response_runner import (
+    TenderResponseRunner,
 )
 
 
 @lru_cache
-def get_process_tender_csv_use_case() -> ProcessTenderCsvUseCase:
-    """Cache the tender-response use case and its underlying workflow graph."""
+def get_tender_response_runner() -> TenderResponseRunner:
+    """Cache the tender-response runner and its workflow registry."""
 
-    return ProcessTenderCsvUseCase()
+    return TenderResponseRunner()

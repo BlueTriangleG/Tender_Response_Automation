@@ -4,34 +4,60 @@ from app.features.tender_response.infrastructure.services.answer_generation_serv
 )
 
 
-class FakeCompletionClient:
-    def __init__(self, response: str | list[str]) -> None:
-        self.responses = response if isinstance(response, list) else [response]
-        self.calls: list[tuple[str, str]] = []
+class FakeStructuredRunnable:
+    def __init__(self, schema, responses: dict | list[dict], all_calls: list[list]) -> None:
+        self._schema = schema
+        self._responses = responses if isinstance(responses, list) else [responses]
+        self._all_calls = all_calls
 
-    async def create_json_completion(self, *, system_prompt: str, user_prompt: str) -> str:
-        self.calls.append((system_prompt, user_prompt))
-        if len(self.responses) == 1:
-            return self.responses[0]
-        return self.responses.pop(0)
+    async def ainvoke(self, messages):
+        self._all_calls.append(messages)
+        payload = self._responses[0] if len(self._responses) == 1 else self._responses.pop(0)
+        return self._schema(**payload)
 
 
-class FakeCompletionClientFactory:
+class FakeChatModel:
+    def __init__(self, responses: dict | list[dict]) -> None:
+        self.responses = responses
+        self.schema = None
+        self.method = None
+        self.strict = None
+        self.calls: list[list] = []
+
+    def with_structured_output(self, schema, *, method, strict):
+        self.schema = schema
+        self.method = method
+        self.strict = strict
+        return FakeStructuredRunnable(schema, self.responses, self.calls)
+
+
+class FakeChatModelFactory:
     def __init__(self) -> None:
         self.model: str | None = None
+        self.temperature: float | None = None
 
-    def __call__(self, *, model: str):
+    def __call__(self, *, model: str, temperature: float):
         self.model = model
-        return FakeCompletionClient("unused")
+        self.temperature = temperature
+        return FakeChatModel(
+            {
+                "generated_answer": "unused",
+                "confidence_level": "high",
+                "confidence_reason": "unused",
+                "risk_level": "low",
+                "risk_reason": "unused",
+                "inconsistent_response": False,
+            }
+        )
 
 
 def test_answer_generation_service_uses_dedicated_tender_model_configuration(
     monkeypatch,
 ) -> None:
-    factory = FakeCompletionClientFactory()
+    factory = FakeChatModelFactory()
     monkeypatch.setattr(
         "app.features.tender_response.infrastructure.services.answer_generation_service."
-        "OpenAIChatCompletionsClient",
+        "ChatOpenAI",
         factory,
     )
     monkeypatch.setattr(
@@ -43,16 +69,21 @@ def test_answer_generation_service_uses_dedicated_tender_model_configuration(
     AnswerGenerationService()
 
     assert factory.model == "gpt-test-tender"
+    assert factory.temperature == 0
 
 
 async def test_generate_grounded_response_uses_historical_context_and_returns_review() -> None:
-    client = FakeCompletionClient(
-        '{"generated_answer":"Aligned answer","confidence_level":"high",'
-        '"confidence_reason":"Historical evidence directly supports the answer.",'
-        '"risk_level":"medium","risk_reason":"Security responses still need review.",'
-        '"inconsistent_response":false}'
+    model = FakeChatModel(
+        {
+            "generated_answer": "Aligned answer",
+            "confidence_level": "high",
+            "confidence_reason": "Historical evidence directly supports the answer.",
+            "risk_level": "medium",
+            "risk_reason": "Security responses still need review.",
+            "inconsistent_response": False,
+        }
     )
-    service = AnswerGenerationService(completion_client=client)
+    service = AnswerGenerationService(model=model)
 
     result = await service.generate_grounded_response(
         question=TenderQuestion(
@@ -77,30 +108,39 @@ async def test_generate_grounded_response_uses_historical_context_and_returns_re
     assert result.generated_answer == "Aligned answer"
     assert result.confidence_level == "high"
     assert result.risk_level == "medium"
-    assert "Reference 1 answer" in client.calls[0][1]
-    assert "strict json" in client.calls[0][0].lower()
-    assert "confidence_level=high" in client.calls[0][1].lower()
-    assert "confidence_level=medium" in client.calls[0][1].lower()
-    assert "confidence_level=low" in client.calls[0][1].lower()
+    assert model.method == "json_schema"
+    assert model.strict is True
+    rendered_messages = model.calls[0]
+    assert "Reference 1 answer" in rendered_messages[1].content
+    assert "confidence_level=high" in rendered_messages[1].content.lower()
+    assert "do not fabricate" in rendered_messages[0].content.lower()
 
 
 async def test_generate_grounded_response_rewrites_invalid_structured_answer_output() -> None:
-    client = FakeCompletionClient(
+    model = FakeChatModel(
         [
-            '{"generated_answer":"{\'RPO\': \'15 minutes\', \'RTO\': \'4 hours\'}",'
-            '"confidence_level":"high",'
-            '"confidence_reason":"Historical evidence directly supports the answer.",'
-            '"risk_level":"medium","risk_reason":"Operational targets should be reviewed.",'
-            '"inconsistent_response":false}',
-            '{"generated_answer":"The documented production disaster recovery targets are '
-            'an RPO of 15 minutes and an RTO of 4 hours.",'
-            '"confidence_level":"high",'
-            '"confidence_reason":"Historical evidence directly supports the answer.",'
-            '"risk_level":"medium","risk_reason":"Operational targets should be reviewed.",'
-            '"inconsistent_response":false}',
+            {
+                "generated_answer": "{'RPO': '15 minutes', 'RTO': '4 hours'}",
+                "confidence_level": "high",
+                "confidence_reason": "Historical evidence directly supports the answer.",
+                "risk_level": "medium",
+                "risk_reason": "Operational targets should be reviewed.",
+                "inconsistent_response": False,
+            },
+            {
+                "generated_answer": (
+                    "The documented production disaster recovery targets are "
+                    "an RPO of 15 minutes and an RTO of 4 hours."
+                ),
+                "confidence_level": "high",
+                "confidence_reason": "Historical evidence directly supports the answer.",
+                "risk_level": "medium",
+                "risk_reason": "Operational targets should be reviewed.",
+                "inconsistent_response": False,
+            },
         ]
     )
-    service = AnswerGenerationService(completion_client=client)
+    service = AnswerGenerationService(model=model)
 
     result = await service.generate_grounded_response(
         question=TenderQuestion(
@@ -129,5 +169,8 @@ async def test_generate_grounded_response_rewrites_invalid_structured_answer_out
     )
 
     assert result.generated_answer.startswith("The documented production disaster recovery targets")
-    assert len(client.calls) == 2
-    assert "rewrite" in client.calls[1][0].lower() or "rewrite" in client.calls[1][1].lower()
+    assert len(model.calls) == 2
+    assert (
+        "rewrite" in model.calls[1][0].content.lower()
+        or "rewrite" in model.calls[1][1].content.lower()
+    )

@@ -2,8 +2,9 @@ from io import BytesIO
 
 from starlette.datastructures import Headers, UploadFile
 
-from app.features.tender_response.application.process_tender_csv_use_case import (
-    ProcessTenderCsvUseCase,
+from app.core.config import settings
+from app.features.tender_response.application.tender_response_runner import (
+    TenderResponseRunner,
 )
 from app.features.tender_response.schemas.requests import TenderResponseRequestOptions
 from app.features.tender_response.schemas.responses import (
@@ -85,15 +86,17 @@ class FakeWorkflow:
 
 async def test_process_upload_parses_csv_and_invokes_workflow() -> None:
     workflow = FakeWorkflow()
-    use_case = ProcessTenderCsvUseCase(workflow=workflow)
+    runner = TenderResponseRunner()
+    runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
 
-    result = await use_case.process_upload(
+    result = await runner.process_upload(
         make_upload_file(
             "tender.csv",
             b"question_id,question\nq-001,\"Do you support TLS 1.2 or above?\"\n",
             "text/csv",
         ),
         TenderResponseRequestOptions(session_id="session-123", alignment_threshold=0.84),
+        workflow_name="parallel",
     )
 
     assert result.source_file_name == "tender.csv"
@@ -105,14 +108,42 @@ async def test_process_upload_parses_csv_and_invokes_workflow() -> None:
 
 
 async def test_process_upload_rejects_non_csv_files() -> None:
-    use_case = ProcessTenderCsvUseCase(workflow=FakeWorkflow())
+    runner = TenderResponseRunner()
 
     try:
-        await use_case.process_upload(
+        await runner.process_upload(
             make_upload_file("tender.md", b"# nope", "text/markdown"),
             TenderResponseRequestOptions(session_id="session-123"),
+            workflow_name="parallel",
         )
     except ValueError as exc:
         assert "csv" in str(exc).lower()
     else:
         raise AssertionError("Expected use case to reject non-CSV files")
+
+
+async def test_process_upload_prints_debug_timing_when_enabled(
+    monkeypatch,
+    capsys,
+) -> None:
+    workflow = FakeWorkflow()
+    runner = TenderResponseRunner()
+    runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
+    monkeypatch.setattr(settings, "tender_workflow_debug", True)
+
+    try:
+        await runner.process_upload(
+            make_upload_file(
+                "tender.csv",
+                b"question_id,question\nq-001,\"Do you support TLS 1.2 or above?\"\n",
+                "text/csv",
+            ),
+            TenderResponseRequestOptions(session_id="session-123", alignment_threshold=0.5),
+            workflow_name="parallel",
+        )
+    finally:
+        monkeypatch.setattr(settings, "tender_workflow_debug", False)
+
+    captured = capsys.readouterr()
+    assert "[tender_response]" in captured.out
+    assert "workflow completed" in captured.out

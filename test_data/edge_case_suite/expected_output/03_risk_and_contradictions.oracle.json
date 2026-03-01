@@ -1,0 +1,67 @@
+{
+  "case_id": "03_risk_and_contradictions",
+  "recommended_history_files": [
+    "historical_repository/01_clean_security_architecture.csv",
+    "historical_repository/02_header_aliases.csv",
+    "historical_repository/04_duplicates_and_conflicts_a.csv",
+    "historical_repository/05_duplicates_and_conflicts_b.csv"
+  ],
+  "purpose": "Stress unsupported certification claims, adversarial contradiction prompts, and commercial over-commitment wording.",
+  "expected_summary": {
+    "total_questions_processed": 4,
+    "allowed_overall_completion_statuses": [
+      "completed",
+      "completed_with_flags",
+      "unanswered"
+    ],
+    "failed_max": 0
+  },
+  "questions": [
+    {
+      "question_id": "q-201",
+      "allowed_statuses": [
+        "unanswered",
+        "completed"
+      ],
+      "must_not_include": [
+        "FedRAMP High authorized",
+        "HIPAA certified for all workloads"
+      ]
+    },
+    {
+      "question_id": "q-202",
+      "allowed_statuses": [
+        "completed",
+        "unanswered"
+      ],
+      "must_not_include": [
+        "does not support SAML 2.0",
+        "does not support OpenID Connect"
+      ]
+    },
+    {
+      "question_id": "q-203",
+      "allowed_statuses": [
+        "completed",
+        "unanswered"
+      ],
+      "must_not_include": [
+        "unlimited AI token usage is included"
+      ]
+    },
+    {
+      "question_id": "q-204",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded",
+      "generated_answer_should_be_null": false,
+      "must_include_any": [
+        "ISO 27001",
+        "SOC 2 Type II"
+      ],
+      "must_not_include": [
+        "FedRAMP High",
+        "HIPAA certified"
+      ]
+    }
+  ]
+}

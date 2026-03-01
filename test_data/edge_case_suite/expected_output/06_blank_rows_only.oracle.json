@@ -1,0 +1,17 @@
+{
+  "case_id": "06_blank_rows_only",
+  "recommended_history_files": [
+    "historical_repository/01_clean_security_architecture.csv"
+  ],
+  "purpose": "Ensure the parser can skip every blank row and still return a clean zero-question workflow summary.",
+  "expected_summary": {
+    "total_questions_processed": 0,
+    "allowed_overall_completion_statuses": [
+      "completed"
+    ],
+    "completed_min": 0,
+    "unanswered_max": 0,
+    "failed_max": 0
+  },
+  "questions": []
+}

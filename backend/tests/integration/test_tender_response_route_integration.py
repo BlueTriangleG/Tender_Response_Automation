@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
-from app.features.tender_response.api.dependencies import get_process_tender_csv_use_case
-from app.features.tender_response.application.process_tender_csv_use_case import (
-    ProcessTenderCsvUseCase,
+from app.features.tender_response.api.dependencies import get_tender_response_runner
+from app.features.tender_response.application.tender_response_runner import (
+    TenderResponseRunner,
 )
 from app.features.tender_response.domain.models import (
     GroundedAnswerResult,
@@ -16,8 +16,8 @@ from app.features.tender_response.infrastructure.services.domain_tagging_service
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
     ReferenceAssessmentResult,
 )
-from app.features.tender_response.infrastructure.workflows.tender_response_graph import (
-    create_tender_response_graph,
+from app.features.tender_response.infrastructure.workflows.parallel.graph import (
+    create_parallel_tender_response_graph,
 )
 from app.main import app
 
@@ -96,16 +96,17 @@ class FakeReferenceAssessmentService:
 
 
 def test_tender_response_route_processes_csv_end_to_end_with_fake_workflow_services() -> None:
-    workflow = create_tender_response_graph(
+    workflow = create_parallel_tender_response_graph(
         alignment_repository=FakeAlignmentRepository(),
         answer_generation_service=FakeAnswerGenerationService(),
         reference_assessment_service=FakeReferenceAssessmentService(),
         domain_tagging_service=DomainTaggingService(),
     )
-    use_case = ProcessTenderCsvUseCase(workflow=workflow)
+    runner = TenderResponseRunner()
+    runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
     client = TestClient(app)
 
-    app.dependency_overrides[get_process_tender_csv_use_case] = lambda: use_case
+    app.dependency_overrides[get_tender_response_runner] = lambda: runner
     try:
         response = client.post(
             "/api/tender/respond",

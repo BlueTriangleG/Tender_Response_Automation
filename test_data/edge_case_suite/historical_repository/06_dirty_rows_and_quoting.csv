@@ -1,0 +1,8 @@
+question,answer,domain,notes
+"What availability target do you provide?","The managed service target is 99.9 percent monthly availability, subject to the contracted service definition.",Infrastructure,clean row
+"  ","This row should be dropped because the question is blank.",Security,blank question
+"What wording should we use for penetration test evidence?","Testing summaries can be shared under NDA,
+with scope and dates redacted where appropriate.",Security,multiline answer
+"Can pricing include onboarding, support, and AI consumption?","Pricing may include onboarding, support, and baseline AI consumption in one proposal line item, but excess usage should be called out separately.",Pricing,"comma-rich answer"
+"Can you state HIPAA certification as a default claim?","",Compliance,blank answer
+"Do you support regional hosting in Australia?","Yes. Regional hosting in Australia is supported for eligible workloads."," Compliance ",domain has extra spaces

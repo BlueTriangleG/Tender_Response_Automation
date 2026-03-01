@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "tender_file": "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/input/02_no_reference_vs_insufficient.csv",
+    "history_files": [
+      "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/01_clean_security_architecture.csv",
+      "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/02_header_aliases.csv",
+      "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/06_dirty_rows_and_quoting.csv"
+    ]
+  },
+  "evaluation": {
+    "case_id": "02_no_reference_vs_insufficient",
+    "passed": false,
+    "errors": [
+      "q-103: expected grounding_status in ['no_reference'], got insufficient_reference"
+    ]
+  }
+}

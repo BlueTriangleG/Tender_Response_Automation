@@ -1,0 +1,13 @@
+question_id,domain,question
+q-301,Security,"Do you support TLS 1.2 or higher for production traffic?"
+q-302,Security,"Can the platform integrate with SAML 2.0 or OpenID Connect identity providers?"
+q-303,Architecture,"Is role-based access control available across tenant and workspace scopes?"
+q-304,Compliance,"Can customer data be hosted in Australia?"
+q-305,Infrastructure,"What recovery point objective and recovery time objective apply to the managed production service?"
+q-306,AI,"Are customer prompts or uploaded documents used to train shared AI models by default?"
+q-307,AI,"Can users inspect citations before acting on AI-generated content?"
+q-308,Security,"Do you provide tamper-proof immutable WORM audit storage for all administrator actions?"
+q-309,Compliance,"Please confirm the platform is FedRAMP High authorized for the proposed environment."
+q-310,Pricing,"Can you commit to fixed pricing for three years including unlimited AI token usage?"
+q-311,Infrastructure,"Do you support fully air-gapped on-premises deployment with zero cloud dependency?"
+q-312,Compliance,"What is your target timeframe for verified right-to-erasure requests?"

@@ -5,9 +5,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.core.config import settings
-from app.features.tender_response.api.dependencies import get_process_tender_csv_use_case
-from app.features.tender_response.application.process_tender_csv_use_case import (
-    ProcessTenderCsvUseCase,
+from app.features.tender_response.api.dependencies import get_tender_response_runner
+from app.features.tender_response.application.tender_response_runner import (
+    TenderResponseRunner,
 )
 from app.features.tender_response.schemas.requests import TenderResponseRequestOptions
 from app.features.tender_response.schemas.responses import TenderResponseWorkflowResponse
@@ -20,7 +20,7 @@ async def tender_respond(
     file: Annotated[UploadFile, File()],
     session_id: Annotated[str | None, Form(alias="sessionId")] = None,
     alignment_threshold: Annotated[float, Form(alias="alignmentThreshold")] = 0.5,
-    use_case: Annotated[ProcessTenderCsvUseCase, Depends(get_process_tender_csv_use_case)] = None,
+    runner: Annotated[TenderResponseRunner, Depends(get_tender_response_runner)] = None,
 ) -> TenderResponseWorkflowResponse:
     """Generate tender answers for the uploaded CSV and return workflow results."""
 
@@ -29,6 +29,6 @@ async def tender_respond(
         if session_id:
             option_kwargs["session_id"] = session_id
         options = TenderResponseRequestOptions(**option_kwargs)
-        return await use_case.process_upload(file, options)
+        return await runner.process_upload(file, options, workflow_name="parallel")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

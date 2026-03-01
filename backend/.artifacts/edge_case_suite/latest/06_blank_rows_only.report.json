@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "tender_file": "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/input/06_blank_rows_only.csv",
+    "history_files": [
+      "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/01_clean_security_architecture.csv"
+    ],
+    "execution_error": "AttributeError: 'NoneType' object has no attribute 'total_questions_processed'"
+  },
+  "evaluation": {
+    "case_id": "06_blank_rows_only",
+    "passed": false,
+    "errors": [
+      "AttributeError: 'NoneType' object has no attribute 'total_questions_processed'"
+    ]
+  }
+}

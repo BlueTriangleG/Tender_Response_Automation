@@ -1,0 +1,41 @@
+{
+  "case_id": "05_header_aliases_and_blank_rows",
+  "recommended_history_files": [
+    "historical_repository/01_clean_security_architecture.csv",
+    "historical_repository/02_header_aliases.csv"
+  ],
+  "purpose": "Validate tender CSV header normalization, skipped blank rows, and auto-generated row IDs for missing IDs.",
+  "expected_summary": {
+    "total_questions_processed": 4,
+    "allowed_overall_completion_statuses": [
+      "completed"
+    ],
+    "completed_min": 4,
+    "unanswered_max": 0,
+    "failed_max": 0
+  },
+  "questions": [
+    {
+      "question_id": "q-501",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded"
+    },
+    {
+      "question_id": "row-2",
+      "allowed_statuses": [
+        "completed"
+      ],
+      "expected_historical_alignment_indicator": true
+    },
+    {
+      "question_id": "q-503",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded"
+    },
+    {
+      "question_id": "q-504",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded"
+    }
+  ]
+}

@@ -13,6 +13,9 @@ It gives you a realistic local demo pack with:
   - Mixed Markdown, TXT, and JSON prior tender responses
   - Includes overlapping answers, tone variations, and one deliberate commercial conflict
   - Also includes `historical_repository_qa.csv`, a flat question-answer-domain repository for simple ingestion flows
+- `edge_case_suite/`
+  - A regression-oriented CSV/JSON suite for the current backend contract
+  - Includes ingest negatives, retrieval edge cases, safety-sensitive tender wording, and oracle files
 - `input/tender_questionnaire_sample.csv`
   - Human-readable source version of the sample questionnaire
 - `input/tender_questionnaire_sample.xlsx`
@@ -44,6 +47,19 @@ It intentionally includes:
 2. Upload `input/tender_questionnaire_sample.xlsx`.
 3. Run the LangGraph workflow per question.
 4. Compare generated output with `expected_output/tender_response_expected.json`.
+
+## Regression-Oriented Suite
+
+If you want coverage instead of just a single demo path, use `edge_case_suite/`.
+
+- `edge_case_suite/historical_repository/`
+  - CSV-only historical ingest cases aligned to the current backend
+- `edge_case_suite/input/`
+  - Tender CSV files that isolate exact-match, paraphrase, no-reference, insufficient-reference, and safety-sensitive scenarios
+- `edge_case_suite/expected_output/`
+  - Oracle JSON files describing expected workflow behavior without overfitting to exact LLM wording
+- `edge_case_suite/manifest.yaml`
+  - Machine-readable mapping between inputs, history files, and intended coverage
 
 ## Assumptions
 

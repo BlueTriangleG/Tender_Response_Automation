@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "tender_file": "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/input/03_risk_and_contradictions.csv",
+    "history_files": [
+      "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/01_clean_security_architecture.csv",
+      "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/02_header_aliases.csv",
+      "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/04_duplicates_and_conflicts_a.csv",
+      "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/05_duplicates_and_conflicts_b.csv"
+    ]
+  },
+  "evaluation": {
+    "case_id": "03_risk_and_contradictions",
+    "passed": false,
+    "errors": [
+      "q-204: expected status completed, got unanswered",
+      "q-204: expected grounding_status grounded, got insufficient_reference",
+      "q-204: expected generated_answer to be non-null",
+      "q-204: generated answer did not include any of ['ISO 27001', 'SOC 2 Type II']"
+    ]
+  }
+}

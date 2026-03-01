@@ -1,0 +1,6 @@
+question_id,domain,question
+q-001,Security,"Do you support TLS 1.2 or higher for production traffic?"
+q-002,Architecture,"Does the service provide role-based access control across tenant and workspace scopes?"
+q-003,AI,"Are customer prompts and uploaded documents excluded from shared-model training by default?"
+q-004,Compliance,"Can the proposed service be hosted in Australia for local residency obligations?"
+q-005,AI,"Can users inspect citations or supporting context before acting on AI-generated content?"

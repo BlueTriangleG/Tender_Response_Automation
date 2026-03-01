@@ -1,0 +1,7 @@
+Question Text,Approved Answer,Practice Area,Source
+"Can users inspect citations before acting on AI-generated content?","Yes. The platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action.",AI,ai_governance.json
+"Do you support right-to-erasure requests?","Yes. Verified right-to-erasure requests are operationally targeted within 30 days, subject to retention obligations.",Compliance,compliance_privacy.md
+"Do you perform independent penetration testing?","Yes. Independent penetration testing is performed at least annually and after material architectural change.",Security,security_platform_overview.md
+"Can the platform be deployed as single-tenant?","Yes. A single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements.",Infrastructure,infrastructure_resilience.md
+"Is customer-managed deployment generally available?","No. Customer-managed deployment is not the default delivery model and requires separate scoping through professional services.",Infrastructure,infrastructure_resilience.md
+"Can you offer unlimited AI usage on a fixed fee as standard?","No. Unlimited AI usage is not part of the standard approved commercial position.",Pricing,pricing_enterprise_subscription.json

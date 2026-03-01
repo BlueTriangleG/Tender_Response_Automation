@@ -1,0 +1,6 @@
+question,answer,domain
+"How long are audit logs retained?","Administrative and application audit logs are retained for at least 365 days in the regulated deployment profile.",Security
+"Can you commit to fixed pricing for three years?","Fixed pricing is only approved for defined base volumes and excludes unlimited AI consumption, overage, and custom third-party model costs.",Pricing
+"Which certifications can you currently claim?","Approved certifications do not include FedRAMP High or HIPAA certification unless separately verified for the specific environment.",Compliance
+"Is customer-managed deployment generally available?","No. Customer-managed deployment requires separate scoping and is not a standard product option.",Infrastructure
+"Do you support immutable audit logs by default?","Audit logs are retained for at least 365 days. Immutable storage is deployment-dependent and must not be assumed by default.",Security

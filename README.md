@@ -99,6 +99,7 @@ Responsibility rules:
 - `domain/`: business rules, normalization logic, domain models
 - `infrastructure/`: persistence, file parsers, SDK-backed adapters
 - `schemas/`: feature-local Pydantic contracts
+- `infrastructure/prompting/`: feature-local prompt builders for LLM-backed workflow steps
 
 ### Backend Contributor Rules
 
@@ -139,6 +140,15 @@ Run tests:
 cd backend
 UV_CACHE_DIR=/tmp/pans-software-uv-cache uv run pytest -v
 ```
+
+Run the live edge-case E2E suite:
+
+```bash
+cd backend
+UV_CACHE_DIR=/tmp/pans-software-uv-cache uv run pytest tests/e2e/live -m live_e2e -v
+```
+
+The live E2E suite will load `OPENAI_API_KEY` from `backend/.env` automatically. You can still `export OPENAI_API_KEY=...` to override it for the current shell.
 
 Run lint checks:
 
@@ -203,6 +213,8 @@ Current tender reference behavior:
 - Historical alignment references are returned inline in the JSON response for the current demo scale.
 - Each question can include up to the top 3 qualified historical references in `questions[].references`.
 - If the workflow does not find enough grounded reference support, it returns `generated_answer = null` and marks the question with `grounding_status = "no_reference"` or `grounding_status = "insufficient_reference"`.
+- Tender workflow prompts are managed under `features/tender_response/infrastructure/prompting/`, not embedded inside graph nodes.
+- Tender workflow LLM steps use LangChain chat-model interfaces (`ChatOpenAI.with_structured_output(...)`) rather than the custom OpenAI SDK wrapper.
 - This is an intentional temporary design for low-volume demo usage.
 - If the system grows, the recommended evolution is object storage for source files plus URL-style references stored in the database.
 
@@ -220,7 +232,8 @@ Current backend conventions:
 
 - feature-first packaging over global class-type buckets
 - local embedded LanceDB for RAG data
-- OpenAI SDK access behind integration adapters
+- LangGraph for orchestration, with LangChain chat-model interfaces for workflow-local LLM steps
+- prompt builders stored outside workflow nodes
 - no global `app/services/` bucket
 - limited compatibility wrappers retained temporarily only where migration is still incomplete
 

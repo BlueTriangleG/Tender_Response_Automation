@@ -1,0 +1,6 @@
+ID,Category,Question Text,Client Note
+q-501,Security,"Do you support TLS 1.2 or higher for production traffic?",exact alias header
+,Compliance,"Can customer data be hosted in Australia?",missing ID should become an auto-generated row id
+q-503,AI,"Can users inspect citations before acting on AI-generated content?",paraphrase through alias header
+q-504,Infrastructure,"Is a single-tenant deployment available for high-isolation customers?",paraphrase against single-tenant history
+q-505,Compliance,"   ",blank row should be skipped

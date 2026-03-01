@@ -1,0 +1,11 @@
+{
+  "metadata": {
+    "history_file": "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/03_ambiguous_headers.csv",
+    "response_kind": "history_ingest"
+  },
+  "evaluation": {
+    "case_id": "03_ambiguous_headers_ingest",
+    "passed": true,
+    "errors": []
+  }
+}

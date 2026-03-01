@@ -1,6 +1,8 @@
 """LLM-backed assessment of whether retrieved references are sufficient."""
 
-import json
+from langchain_core.language_models import BaseChatModel
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.features.tender_response.domain.models import (
@@ -8,7 +10,9 @@ from app.features.tender_response.domain.models import (
     ReferenceAssessmentResult,
     TenderQuestion,
 )
-from app.integrations.openai.chat_completions_client import OpenAIChatCompletionsClient
+from app.features.tender_response.infrastructure.prompting.reference_assessment import (
+    build_reference_assessment_messages,
+)
 
 
 class ReferenceAssessmentService:
@@ -16,10 +20,11 @@ class ReferenceAssessmentService:
 
     def __init__(
         self,
-        completion_client: OpenAIChatCompletionsClient | None = None,
+        model: BaseChatModel | None = None,
     ) -> None:
-        self._completion_client = completion_client or OpenAIChatCompletionsClient(
-            model=settings.openai_tender_response_model
+        self._model = model or ChatOpenAI(
+            model=settings.openai_tender_response_model,
+            temperature=0,
         )
 
     async def assess(
@@ -38,20 +43,18 @@ class ReferenceAssessmentService:
                 reason="No qualified historical references were retrieved.",
             )
 
-        prompt = self._build_prompt(question=question, references=references)
+        messages = build_reference_assessment_messages(
+            question=question,
+            references=references,
+        )
         try:
-            response = await self._completion_client.create_json_completion(
-                system_prompt=(
-                    "Decide whether the provided historical references are sufficient to answer "
-                    "the tender question without fabricating certifications or unsupported claims. "
-                    "Return strict JSON with keys can_answer, usable_reference_ids, reason."
-                ),
-                user_prompt=prompt,
+            structured_model = self._model.with_structured_output(
+                _ReferenceAssessmentPayload,
+                method="json_schema",
+                strict=True,
             )
-            payload = json.loads(response)
-            usable_reference_ids = payload.get("usable_reference_ids", [])
-            if not isinstance(usable_reference_ids, list):
-                raise ValueError("usable_reference_ids must be a list.")
+            payload = await structured_model.ainvoke(messages)
+            usable_reference_ids = payload.usable_reference_ids
             valid_reference_ids = {reference.record_id for reference in references}
             # Never trust the model to return only ids we supplied in the prompt.
             usable_reference_ids = [
@@ -60,8 +63,8 @@ class ReferenceAssessmentService:
                 if str(reference_id) in valid_reference_ids
             ]
             # "can_answer" is only honored when it is backed by at least one validated reference id.
-            can_answer = bool(payload.get("can_answer")) and bool(usable_reference_ids)
-            reason = str(payload.get("reason", "")).strip() or "Reference assessment completed."
+            can_answer = payload.can_answer and bool(usable_reference_ids)
+            reason = payload.reason.strip() or "Reference assessment completed."
         except Exception as exc:
             return ReferenceAssessmentResult(
                 can_answer=False,
@@ -85,27 +88,8 @@ class ReferenceAssessmentService:
             reason=reason,
         )
 
-    def _build_prompt(
-        self,
-        *,
-        question: TenderQuestion,
-        references: list[HistoricalReference],
-    ) -> str:
-        """Serialize the question and evidence set for strict JSON evaluation."""
 
-        reference_payload = [
-            {
-                "alignment_record_id": reference.record_id,
-                "alignment_score": reference.alignment_score,
-                "source_doc": reference.source_doc,
-                "matched_question": reference.question,
-                "matched_answer": reference.answer,
-            }
-            for reference in references
-        ]
-
-        return (
-            f"Question: {question.original_question}\n"
-            f"Candidate references: {json.dumps(reference_payload, ensure_ascii=True)}\n"
-            "Only mark can_answer=true if the references are sufficient on their own."
-        )
+class _ReferenceAssessmentPayload(BaseModel):
+    can_answer: bool
+    usable_reference_ids: list[str] = Field(default_factory=list)
+    reason: str
