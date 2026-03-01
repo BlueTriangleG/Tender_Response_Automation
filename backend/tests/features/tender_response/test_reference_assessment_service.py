@@ -41,7 +41,9 @@ class FakeChatModel:
 
 
 async def test_assess_returns_no_reference_without_llm_call() -> None:
-    model = FakeChatModel({"can_answer": True, "usable_reference_ids": [], "reason": "unused"})
+    model = FakeChatModel(
+        {"answerability": "grounded", "usable_reference_ids": [], "reason": "unused"}
+    )
     service = ReferenceAssessmentService(model=model)
 
     result = await service.assess(
@@ -62,7 +64,11 @@ async def test_assess_returns_no_reference_without_llm_call() -> None:
 
 async def test_assess_returns_grounded_when_llm_marks_references_sufficient() -> None:
     model = FakeChatModel(
-        {"can_answer": True, "usable_reference_ids": ["qa-1"], "reason": "Enough evidence."}
+        {
+            "answerability": "grounded",
+            "usable_reference_ids": ["qa-1"],
+            "reason": "Enough evidence.",
+        }
     )
     service = ReferenceAssessmentService(model=model)
 
@@ -91,7 +97,43 @@ async def test_assess_returns_grounded_when_llm_marks_references_sufficient() ->
     assert result.usable_reference_ids == ["qa-1"]
     assert model.method == "function_calling"
     assert model.strict is True
-    assert "Only mark can_answer=true" in model.runnable.calls[0][1].content
+    assert "Classify answerability as none, partial, or grounded." in model.runnable.calls[0][1].content
+
+
+async def test_assess_returns_partial_reference_when_llm_marks_references_partial() -> None:
+    model = FakeChatModel(
+        {
+            "answerability": "partial",
+            "usable_reference_ids": ["qa-1"],
+            "reason": "The references support deployment controls but not sovereign guarantees.",
+        }
+    )
+    service = ReferenceAssessmentService(model=model)
+
+    result = await service.assess(
+        question=TenderQuestion(
+            question_id="q-002",
+            original_question="Describe your sovereign hosting guarantees.",
+            declared_domain="Compliance",
+            source_file_name="tender.csv",
+            source_row_index=1,
+        ),
+        references=[
+            HistoricalReference(
+                record_id="qa-1",
+                question="Describe your hosting controls.",
+                answer="Regional hosting controls are available by deployment.",
+                domain="Compliance",
+                source_doc="history.csv",
+                alignment_score=0.88,
+            )
+        ],
+    )
+
+    assert result.can_answer is True
+    assert result.grounding_status == "partial_reference"
+    assert result.usable_reference_ids == ["qa-1"]
+    assert "deployment controls" in result.reason
 
 
 async def test_assess_returns_insufficient_reference_when_llm_fails() -> None:
@@ -127,7 +169,7 @@ def test_reference_assessment_payload_marks_all_properties_as_required_for_stric
     schema = _ReferenceAssessmentPayload.model_json_schema()
 
     assert sorted(schema["required"]) == [
-        "can_answer",
+        "answerability",
         "reason",
         "usable_reference_ids",
     ]

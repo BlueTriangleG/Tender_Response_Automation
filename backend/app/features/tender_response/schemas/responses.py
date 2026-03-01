@@ -3,7 +3,7 @@
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class QuestionFlags(BaseModel):
@@ -52,6 +52,7 @@ class TenderQuestionResponse(BaseModel):
     status: Literal["completed", "unanswered", "failed"]
     grounding_status: Literal[
         "grounded",
+        "partial_reference",
         "insufficient_reference",
         "no_reference",
         "failed",
@@ -64,6 +65,17 @@ class TenderQuestionResponse(BaseModel):
     references: list[QuestionReference] = Field(default_factory=list)
     error_message: str | None = None
     extensions: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_confidence_fields(self) -> "TenderQuestionResponse":
+        if self.confidence_reason == "":
+            raise ValueError("confidence_reason must be null or a non-empty string.")
+        if self.status == "unanswered":
+            if self.confidence_level is not None:
+                raise ValueError("unanswered responses must not set confidence_level.")
+            if self.confidence_reason is not None:
+                raise ValueError("unanswered responses must not set confidence_reason.")
+        return self
 
 
 class TenderResponseSummary(BaseModel):

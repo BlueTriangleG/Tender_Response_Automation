@@ -136,6 +136,26 @@ class FakeAlignmentRepository:
                     )
                 ],
             )
+        if question.question_id == "q-003":
+            return HistoricalAlignmentResult(
+                matched=True,
+                record_id="qa-3",
+                question="Describe your hosting controls.",
+                answer="Regional hosting controls are available by deployment.",
+                domain="Compliance",
+                source_doc="historical_repository_qa.csv",
+                alignment_score=0.68,
+                references=[
+                    HistoricalReference(
+                        record_id="qa-3",
+                        question="Describe your hosting controls.",
+                        answer="Regional hosting controls are available by deployment.",
+                        domain="Compliance",
+                        source_doc="historical_repository_qa.csv",
+                        alignment_score=0.68,
+                    )
+                ],
+            )
         return HistoricalAlignmentResult(
             matched=False,
             record_id=None,
@@ -154,7 +174,30 @@ class FakeAnswerGenerationService:
         *,
         question: TenderQuestion,
         usable_references,
+        attempt_number: int = 1,
+        validation_error: str | None = None,
+        last_invalid_answer: str | None = None,
+        last_invalid_confidence_level: str | None = None,
+        last_invalid_confidence_reason: str | None = None,
+        assessment_reason: str | None = None,
     ) -> GroundedAnswerResult:
+        if question.question_id == "q-003":
+            return GroundedAnswerResult(
+                generated_answer=(
+                    "We support regional hosting controls (jurisdiction-specific "
+                    "sovereign hosting guarantees are not evidenced in the retrieved "
+                    "references)."
+                ),
+                confidence_level="medium",
+                confidence_reason=(
+                    "Confidence is reduced because the retrieved references support "
+                    "regional hosting controls but do not evidence jurisdiction-specific "
+                    "sovereign hosting guarantees or contractual commitments."
+                ),
+                risk_level="medium",
+                risk_reason="Human review is required before making hosting commitments.",
+                inconsistent_response=False,
+            )
         return GroundedAnswerResult(
             generated_answer="Yes. Production traffic is restricted to TLS 1.2 or higher.",
             confidence_level="high",
@@ -165,6 +208,28 @@ class FakeAnswerGenerationService:
         )
 
 
+class SequentialFakeAnswerGenerationService:
+    def __init__(self, responses: list[GroundedAnswerResult]) -> None:
+        self._responses = responses
+        self.calls = 0
+
+    async def generate_grounded_response(
+        self,
+        *,
+        question: TenderQuestion,
+        usable_references,
+        attempt_number: int = 1,
+        validation_error: str | None = None,
+        last_invalid_answer: str | None = None,
+        last_invalid_confidence_level: str | None = None,
+        last_invalid_confidence_reason: str | None = None,
+        assessment_reason: str | None = None,
+    ) -> GroundedAnswerResult:
+        response = self._responses[self.calls]
+        self.calls += 1
+        return response
+
+
 class FakeReferenceAssessmentService:
     async def assess(self, *, question: TenderQuestion, references):
         if question.question_id == "q-001":
@@ -173,6 +238,13 @@ class FakeReferenceAssessmentService:
                 grounding_status="grounded",
                 usable_reference_ids=["qa-1"],
                 reason="Historical answer is sufficient.",
+            )
+        if question.question_id == "q-003":
+            return ReferenceAssessmentResult(
+                can_answer=True,
+                grounding_status="partial_reference",
+                usable_reference_ids=["qa-3"],
+                reason="The retrieved references support hosting controls but not sovereign guarantees.",
             )
         return ReferenceAssessmentResult(
             can_answer=False,
@@ -225,6 +297,8 @@ def test_tender_response_route_processes_csv_end_to_end_with_fake_workflow_servi
     assert payload["questions"][1]["generated_answer"] is None
     assert payload["questions"][1]["status"] == "unanswered"
     assert payload["questions"][1]["grounding_status"] == "no_reference"
+    assert payload["questions"][1]["confidence_level"] is None
+    assert payload["questions"][1]["confidence_reason"] is None
     assert payload["questions"][1]["references"] == []
     assert payload["summary"]["total_questions_processed"] == 2
     assert payload["summary"]["unanswered_questions"] == 1
@@ -276,6 +350,118 @@ def test_tender_response_route_processes_xlsx_end_to_end_with_fake_workflow_serv
     assert payload["questions"][1]["generated_answer"] is None
     assert payload["questions"][1]["status"] == "unanswered"
     assert payload["questions"][1]["grounding_status"] == "no_reference"
+    assert payload["questions"][1]["confidence_level"] is None
+    assert payload["questions"][1]["confidence_reason"] is None
     assert payload["questions"][1]["references"] == []
     assert payload["summary"]["total_questions_processed"] == 2
     assert payload["summary"]["unanswered_questions"] == 1
+
+
+def test_tender_response_route_returns_partial_answers_when_only_part_of_scope_is_supported() -> None:
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(),
+        answer_generation_service=FakeAnswerGenerationService(),
+        reference_assessment_service=FakeReferenceAssessmentService(),
+        domain_tagging_service=DomainTaggingService(),
+    )
+    runner = TenderResponseRunner()
+    runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
+    client = TestClient(app)
+
+    app.dependency_overrides[get_tender_response_runner] = lambda: runner
+    try:
+        response = client.post(
+            "/api/tender/respond",
+            files={
+                "file": (
+                    "tender.csv",
+                    (
+                        b"question_id,domain,question\n"
+                        b'q-003,Compliance,"Describe your sovereign hosting guarantees."\n'
+                    ),
+                    "text/csv",
+                )
+            },
+            data={"sessionId": "session-789"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_questions_processed"] == 1
+    assert payload["questions"][0]["status"] == "completed"
+    assert payload["questions"][0]["grounding_status"] == "partial_reference"
+    assert payload["questions"][0]["confidence_level"] == "medium"
+    assert "(" in payload["questions"][0]["generated_answer"]
+    assert ")" in payload["questions"][0]["generated_answer"]
+    assert "Confidence is reduced because" in payload["questions"][0]["confidence_reason"]
+    assert "sovereign hosting guarantees" in payload["questions"][0]["confidence_reason"]
+
+
+def test_tender_response_route_retries_invalid_partial_answer_until_second_attempt_succeeds() -> None:
+    answer_service = SequentialFakeAnswerGenerationService(
+        [
+            GroundedAnswerResult(
+                generated_answer="We support regional hosting controls.",
+                confidence_level="high",
+                confidence_reason="The answer is supported.",
+                risk_level="medium",
+                risk_reason="Human review is required before making hosting commitments.",
+                inconsistent_response=False,
+            ),
+            GroundedAnswerResult(
+                generated_answer=(
+                    "We support regional hosting controls (jurisdiction-specific "
+                    "sovereign hosting guarantees are not evidenced in the retrieved "
+                    "references)."
+                ),
+                confidence_level="medium",
+                confidence_reason=(
+                    "Confidence is reduced because the retrieved references support "
+                    "regional hosting controls but do not evidence jurisdiction-specific "
+                    "sovereign hosting guarantees or contractual commitments."
+                ),
+                risk_level="medium",
+                risk_reason="Human review is required before making hosting commitments.",
+                inconsistent_response=False,
+            ),
+        ]
+    )
+    workflow = create_parallel_tender_response_graph(
+        alignment_repository=FakeAlignmentRepository(),
+        answer_generation_service=answer_service,
+        reference_assessment_service=FakeReferenceAssessmentService(),
+        domain_tagging_service=DomainTaggingService(),
+    )
+    runner = TenderResponseRunner()
+    runner._workflow_registry.get = lambda workflow_name: workflow  # type: ignore[attr-defined]
+    client = TestClient(app)
+
+    app.dependency_overrides[get_tender_response_runner] = lambda: runner
+    try:
+        response = client.post(
+            "/api/tender/respond",
+            files={
+                "file": (
+                    "tender.csv",
+                    (
+                        b"question_id,domain,question\n"
+                        b'q-003,Compliance,"Describe your sovereign hosting guarantees."\n'
+                    ),
+                    "text/csv",
+                )
+            },
+            data={"sessionId": "session-790"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["questions"][0]["status"] == "completed"
+    assert payload["questions"][0]["grounding_status"] == "partial_reference"
+    assert payload["questions"][0]["generated_answer"] is not None
+    assert "(" in payload["questions"][0]["generated_answer"]
+    assert ")" in payload["questions"][0]["generated_answer"]
+    assert answer_service.calls == 2

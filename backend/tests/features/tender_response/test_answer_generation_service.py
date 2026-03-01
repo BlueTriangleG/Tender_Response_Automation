@@ -115,6 +115,66 @@ async def test_generate_grounded_response_uses_historical_context_and_returns_re
     assert "Reference 1 answer" in rendered_messages[1].content
     assert "confidence_level=high" in rendered_messages[1].content.lower()
     assert "do not fabricate" in rendered_messages[0].content.lower()
+    assert "explicitly note the missing or unsupported scope in parentheses" in (
+        rendered_messages[1].content.lower()
+    )
+
+
+async def test_generate_grounded_response_prompts_for_explicit_partial_gap_and_confidence_reason() -> None:
+    model = FakeChatModel(
+        {
+            "generated_answer": (
+                "We support regional hosting controls (jurisdiction-specific sovereign "
+                "hosting guarantees are not evidenced in the retrieved references)."
+            ),
+            "confidence_level": "medium",
+            "confidence_reason": (
+                "Confidence is reduced because the retrieved references support regional "
+                "hosting controls but do not evidence jurisdiction-specific sovereign "
+                "hosting guarantees or contractual commitments."
+            ),
+            "risk_level": "medium",
+            "risk_reason": "Human review is required before making hosting commitments.",
+            "inconsistent_response": False,
+        }
+    )
+    service = AnswerGenerationService(model=model)
+
+    result = await service.generate_grounded_response(
+        question=TenderQuestion(
+            question_id="q-003",
+            original_question="Describe your sovereign hosting guarantees.",
+            declared_domain="Compliance",
+            source_file_name="tender.csv",
+            source_row_index=2,
+        ),
+        usable_references=[
+            HistoricalReference(
+                record_id="qa-3",
+                question="Describe your hosting controls.",
+                answer="Regional hosting controls are available by deployment.",
+                domain="Compliance",
+                source_doc="history.csv",
+                alignment_score=0.89,
+            )
+        ],
+        assessment_reason=(
+            "The references support hosting controls but do not evidence "
+            "jurisdiction-specific sovereign hosting guarantees."
+        ),
+    )
+
+    rendered_messages = model.calls[0]
+
+    assert "(" in result.generated_answer and ")" in result.generated_answer
+    assert "confidence is reduced because" in result.confidence_reason.lower()
+    assert "do not evidence jurisdiction-specific sovereign hosting guarantees" in (
+        result.confidence_reason.lower()
+    )
+    assert "identify the missing evidence, scope, timeframe, certification" in (
+        rendered_messages[1].content.lower()
+    )
+    assert "reference assessment reason" in rendered_messages[1].content.lower()
 
 
 async def test_generate_grounded_response_rewrites_invalid_structured_answer_output() -> None:
@@ -174,6 +234,83 @@ async def test_generate_grounded_response_rewrites_invalid_structured_answer_out
     assert (
         "rewrite" in model.calls[1][0].content.lower()
         or "rewrite" in model.calls[1][1].content.lower()
+    )
+
+
+async def test_generate_grounded_response_retry_prompt_includes_attempt_number_and_validation_feedback() -> None:
+    model = FakeChatModel(
+        [
+            {
+                "generated_answer": "{'RPO': '15 minutes', 'RTO': '4 hours'}",
+                "confidence_level": "high",
+                "confidence_reason": "Historical evidence directly supports the answer.",
+                "risk_level": "medium",
+                "risk_reason": "Operational targets should be reviewed.",
+                "inconsistent_response": False,
+            },
+            {
+                "generated_answer": (
+                    "The documented production disaster recovery targets are "
+                    "an RPO of 15 minutes and an RTO of 4 hours."
+                ),
+                "confidence_level": "high",
+                "confidence_reason": "Historical evidence directly supports the answer.",
+                "risk_level": "medium",
+                "risk_reason": "Operational targets should be reviewed.",
+                "inconsistent_response": False,
+            },
+        ]
+    )
+    service = AnswerGenerationService(model=model)
+
+    await service.generate_grounded_response(
+        question=TenderQuestion(
+            question_id="q-009",
+            original_question=(
+                "Please confirm your production disaster recovery targets, "
+                "including RPO and RTO."
+            ),
+            declared_domain="Infrastructure",
+            source_file_name="tender.csv",
+            source_row_index=1,
+        ),
+        usable_references=[
+            HistoricalReference(
+                record_id="qa-9",
+                question="What are your production disaster recovery targets?",
+                answer=(
+                    "The documented production disaster recovery targets are an "
+                    "RPO of 15 minutes and an RTO of 4 hours."
+                ),
+                domain="Infrastructure",
+                source_doc="history.csv",
+                alignment_score=0.91,
+            )
+        ],
+        attempt_number=2,
+        validation_error="Partial answer must identify missing scope in parentheses.",
+        last_invalid_answer="We support SSO and RBAC.",
+        last_invalid_confidence_level="high",
+        last_invalid_confidence_reason="The answer is supported.",
+        assessment_reason=(
+            "The references separately support SSO and RBAC but do not explicitly "
+            "confirm identity-provider role mapping or provisioning into RBAC."
+        ),
+    )
+    retry_messages = model.calls[0]
+
+    assert "attempt 2" in retry_messages[1].content.lower()
+    assert "failed validation for this exact reason" in retry_messages[1].content.lower()
+    assert "you must fix this exact validation error" in retry_messages[1].content.lower()
+    assert "we support sso and rbac." in retry_messages[1].content.lower()
+    assert "identified this exact unsupported or missing scope" in (
+        retry_messages[1].content.lower()
+    )
+    assert "use that missing or unsupported scope directly in the parentheses" in (
+        retry_messages[1].content.lower()
+    )
+    assert "identity-provider role mapping or provisioning into rbac" in (
+        retry_messages[1].content.lower()
     )
 
 

@@ -120,6 +120,10 @@ function normalizeTenderAutofillResponse(
             question.metadata && typeof question.metadata === "object"
               ? (question.metadata as Record<string, unknown>)
               : {};
+          const extensions =
+            question.extensions && typeof question.extensions === "object"
+              ? (question.extensions as Record<string, unknown>)
+              : {};
           const references = Array.isArray(question.references)
             ? question.references
             : [];
@@ -138,8 +142,11 @@ function normalizeTenderAutofillResponse(
               question.confidence_level === "medium" ||
               question.confidence_level === "high"
                 ? question.confidence_level
-                : "low",
-            confidenceReason: String(question.confidence_reason ?? ""),
+                : null,
+            confidenceReason:
+              question.confidence_reason == null
+                ? null
+                : String(question.confidence_reason),
             historicalAlignmentIndicator: Boolean(
               question.historical_alignment_indicator,
             ),
@@ -176,6 +183,7 @@ function normalizeTenderAutofillResponse(
             }),
             errorMessage:
               question.error_message == null ? null : String(question.error_message),
+            extensions,
           };
         })
       : [],

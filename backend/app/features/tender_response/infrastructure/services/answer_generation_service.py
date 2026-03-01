@@ -33,6 +33,12 @@ class AnswerGenerationService:
         *,
         question: TenderQuestion,
         usable_references: list[HistoricalReference],
+        attempt_number: int = 1,
+        validation_error: str | None = None,
+        last_invalid_answer: str | None = None,
+        last_invalid_confidence_level: str | None = None,
+        last_invalid_confidence_reason: str | None = None,
+        assessment_reason: str | None = None,
     ) -> GroundedAnswerResult:
         """Render references into a prompt and ask for answer plus structured review."""
 
@@ -40,6 +46,12 @@ class AnswerGenerationService:
             messages=build_answer_generation_messages(
                 question=question,
                 usable_references=usable_references,
+                attempt_number=attempt_number,
+                validation_error=validation_error,
+                last_invalid_answer=last_invalid_answer,
+                last_invalid_confidence_level=last_invalid_confidence_level,
+                last_invalid_confidence_reason=last_invalid_confidence_reason,
+                assessment_reason=assessment_reason,
             )
         )
         if self._is_displayable_answer(result.generated_answer):

@@ -204,4 +204,111 @@ describe("processTenderWorkbook", () => {
 
     expect(formData.get("file")).toBe(file);
   });
+
+  test("preserves null unanswered confidence fields and partial_reference grounding status", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        request_id: "req-tender-44",
+        session_id: "session-44",
+        source_file_name: "tender.csv",
+        total_questions_processed: 2,
+        questions: [
+          {
+            question_id: "q-010",
+            original_question: "Provide your FedRAMP package identifier.",
+            generated_answer: null,
+            domain_tag: "compliance",
+            confidence_level: null,
+            confidence_reason: null,
+            historical_alignment_indicator: false,
+            status: "unanswered",
+            grounding_status: "no_reference",
+            flags: {
+              high_risk: false,
+              inconsistent_response: false,
+            },
+            metadata: {
+              source_row_index: 0,
+              alignment_record_id: null,
+              alignment_score: null,
+            },
+            risk: {
+              level: "low",
+              reason: "No grounded answer was produced.",
+            },
+            references: [],
+            error_message: null,
+            extensions: {
+              reference_assessment_reason: "No qualified historical references were retrieved.",
+            },
+          },
+          {
+            question_id: "q-011",
+            original_question: "Describe your sovereign hosting guarantees.",
+            generated_answer:
+              "We support regional hosting controls (jurisdiction-specific sovereign hosting guarantees are not evidenced in the retrieved references).",
+            domain_tag: "compliance",
+            confidence_level: "medium",
+            confidence_reason:
+              "Confidence is reduced because the retrieved references support regional hosting controls but do not evidence jurisdiction-specific sovereign hosting guarantees or contractual commitments.",
+            historical_alignment_indicator: true,
+            status: "completed",
+            grounding_status: "partial_reference",
+            flags: {
+              high_risk: false,
+              inconsistent_response: false,
+            },
+            metadata: {
+              source_row_index: 1,
+              alignment_record_id: "qa-011",
+              alignment_score: 0.68,
+            },
+            risk: {
+              level: "medium",
+              reason: "Human review is required before making hosting commitments.",
+            },
+            references: [
+              {
+                alignment_record_id: "qa-011",
+                alignment_score: 0.68,
+                source_doc: "compliance-history.csv",
+                matched_question: "Describe your hosting controls.",
+                matched_answer: "Regional hosting controls are available by deployment.",
+                used_for_answer: true,
+              },
+            ],
+            error_message: null,
+            extensions: {},
+          },
+        ],
+        summary: {
+          total_questions_processed: 2,
+          flagged_high_risk_or_inconsistent_responses: 0,
+          overall_completion_status: "completed",
+          completed_questions: 1,
+          unanswered_questions: 1,
+          failed_questions: 0,
+        },
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const file = new File(["question\nFedRAMP"], "tender.csv", { type: "text/csv" });
+
+    const response = await processTenderWorkbook(file, {
+      alignmentThreshold: 0.84,
+    });
+
+    expect(response.questions[0].status).toBe("unanswered");
+    expect(response.questions[0].confidenceLevel).toBeNull();
+    expect(response.questions[0].confidenceReason).toBeNull();
+    expect(response.questions[0].extensions.reference_assessment_reason).toBe(
+      "No qualified historical references were retrieved.",
+    );
+    expect(response.questions[1].status).toBe("completed");
+    expect(response.questions[1].groundingStatus).toBe("partial_reference");
+    expect(response.questions[1].confidenceLevel).toBe("medium");
+  });
 });

@@ -171,6 +171,88 @@ const successfulTenderResponse = {
   },
 };
 
+const partialAndUnansweredTenderResponse = {
+  request_id: "req-tender-124",
+  session_id: "session-124",
+  source_file_name: "tender.csv",
+  total_questions_processed: 2,
+  questions: [
+    {
+      question_id: "q-010",
+      original_question: "Provide your FedRAMP package identifier.",
+      generated_answer: null,
+      domain_tag: "compliance",
+      confidence_level: null,
+      confidence_reason: null,
+      historical_alignment_indicator: false,
+      status: "unanswered",
+      grounding_status: "no_reference",
+      flags: {
+        high_risk: false,
+        inconsistent_response: false,
+      },
+      risk: {
+        level: "low",
+        reason: "No grounded answer was produced.",
+      },
+      metadata: {
+        source_row_index: 0,
+        alignment_record_id: null,
+        alignment_score: null,
+      },
+      references: [],
+      error_message: null,
+      extensions: {},
+    },
+    {
+      question_id: "q-011",
+      original_question: "Describe your sovereign hosting guarantees.",
+      generated_answer:
+        "We support regional hosting controls (jurisdiction-specific sovereign hosting guarantees are not evidenced in the retrieved references).",
+      domain_tag: "compliance",
+      confidence_level: "medium",
+      confidence_reason:
+        "Confidence is reduced because the retrieved references support regional hosting controls but do not evidence jurisdiction-specific sovereign hosting guarantees or contractual commitments.",
+      historical_alignment_indicator: true,
+      status: "completed",
+      grounding_status: "partial_reference",
+      flags: {
+        high_risk: false,
+        inconsistent_response: false,
+      },
+      risk: {
+        level: "medium",
+        reason: "Human review is required before making hosting commitments.",
+      },
+      metadata: {
+        source_row_index: 1,
+        alignment_record_id: "qa-011",
+        alignment_score: 0.68,
+      },
+      references: [
+        {
+          alignment_record_id: "qa-011",
+          alignment_score: 0.68,
+          source_doc: "compliance-history.csv",
+          matched_question: "Describe your hosting controls.",
+          matched_answer: "Regional hosting controls are available by deployment.",
+          used_for_answer: true,
+        },
+      ],
+      error_message: null,
+      extensions: {},
+    },
+  ],
+  summary: {
+    total_questions_processed: 2,
+    flagged_high_risk_or_inconsistent_responses: 0,
+    overall_completion_status: "completed",
+    completed_questions: 1,
+    unanswered_questions: 1,
+    failed_questions: 0,
+  },
+};
+
 const failedIngestResponse = {
   request_id: "req-999",
   total_file_count: 2,
@@ -339,12 +421,12 @@ describe("App", () => {
     expect(dialog).toBeInTheDocument();
     expect(document.body.style.overflow).toBe("hidden");
     expect(screen.getByText(/No aligned historical answer was found/i)).toBeInTheDocument();
-    expect(screen.getByText(/Confidence/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Confidence/i)).not.toBeInTheDocument();
     expect(
-      screen.getByText(
+      screen.queryByText(
         /There is some related historical material, but the wording is broader/i,
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
     expect(screen.getByText(/Risk review/i)).toBeInTheDocument();
     expect(
       screen.getByText(/could overstate contractual hosting guarantees/i),
@@ -376,6 +458,151 @@ describe("App", () => {
     expect(screen.queryByText(/Backend health: ok/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Unanswered questions: 1/i)).toBeInTheDocument();
     expect(screen.getByText(/Workflow duration: \d+\.\d{2}s/i)).toBeInTheDocument();
+  });
+
+  test("does not render confidence ui for unanswered questions", async () => {
+    const user = userEvent.setup();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/health")) {
+          return {
+            ok: true,
+            json: async () => mockHealthResponse,
+          };
+        }
+
+        if (url.endsWith("/api/tender/respond") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => partialAndUnansweredTenderResponse,
+          };
+        }
+
+        if (url.endsWith("/api/ingest/history") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => successfulIngestResponse,
+          };
+        }
+
+        throw new Error(`Unhandled fetch for ${url}`);
+      }),
+    );
+
+    render(<App />);
+
+    await user.click(screen.getByRole("tab", { name: /Tender Response/i }));
+
+    const input = screen.getByLabelText(/Upload tender workbook/i);
+    const file = new File(["question\nFedRAMP"], "tender.csv", { type: "text/csv" });
+
+    await user.upload(input, file);
+    await user.click(screen.getByRole("button", { name: /Autofill Tender/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/2 questions analyzed for tender\.csv\./i),
+      ).toBeInTheDocument();
+    });
+
+    const unansweredRow = screen
+      .getByText(/Provide your FedRAMP package identifier\./i)
+      .closest("tr");
+
+    expect(unansweredRow).not.toBeNull();
+    expect(within(unansweredRow!).queryByText(/^Low$/i)).not.toBeInTheDocument();
+    expect(within(unansweredRow!).queryByText(/^Medium$/i)).not.toBeInTheDocument();
+    expect(within(unansweredRow!).queryByText(/^High$/i)).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /Open details for Provide your FedRAMP package identifier\./i,
+      }),
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /Autofill details/i });
+
+    expect(
+      within(dialog).queryByRole("heading", { name: /^Confidence$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("keeps confidence ui for partial answers", async () => {
+    const user = userEvent.setup();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/health")) {
+          return {
+            ok: true,
+            json: async () => mockHealthResponse,
+          };
+        }
+
+        if (url.endsWith("/api/tender/respond") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => partialAndUnansweredTenderResponse,
+          };
+        }
+
+        if (url.endsWith("/api/ingest/history") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => successfulIngestResponse,
+          };
+        }
+
+        throw new Error(`Unhandled fetch for ${url}`);
+      }),
+    );
+
+    render(<App />);
+
+    await user.click(screen.getByRole("tab", { name: /Tender Response/i }));
+
+    const input = screen.getByLabelText(/Upload tender workbook/i);
+    const file = new File(["question\nHosting"], "tender.csv", { type: "text/csv" });
+
+    await user.upload(input, file);
+    await user.click(screen.getByRole("button", { name: /Autofill Tender/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/2 questions analyzed for tender\.csv\./i),
+      ).toBeInTheDocument();
+    });
+
+    const partialRow = screen
+      .getByText(/Describe your sovereign hosting guarantees\./i)
+      .closest("tr");
+
+    expect(partialRow).not.toBeNull();
+    expect(within(partialRow!).getByText(/^Medium$/i)).toBeInTheDocument();
+    expect(within(partialRow!).getByText(/completed/i)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /Open details for Describe your sovereign hosting guarantees\./i,
+      }),
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /Autofill details/i });
+
+    expect(within(dialog).getByRole("heading", { name: /^Confidence$/i })).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        /Confidence is reduced because the retrieved references support regional hosting controls/i,
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/Partial Reference/i)).toBeInTheDocument();
   });
 
   test("hides backend health while the service is healthy", async () => {

@@ -65,5 +65,10 @@ class QuestionProcessingState(TypedDict):
     current_review: ReviewPayload | None
     current_grounded_result: GroundedAnswerResult | None
     current_answer: str | None
+    generation_attempt_count: int
+    generation_validation_error: str | None
+    generation_retry_history: list[str]
+    last_invalid_answer: str | None
+    last_invalid_confidence_level: str | None
+    last_invalid_confidence_reason: str | None
     current_result: TenderQuestionResponse | None
-

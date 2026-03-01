@@ -1,5 +1,7 @@
 """LLM-backed assessment of whether retrieved references are sufficient."""
 
+from typing import Literal
+
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
@@ -62,9 +64,11 @@ class ReferenceAssessmentService:
                 for reference_id in usable_reference_ids
                 if str(reference_id) in valid_reference_ids
             ]
-            # "can_answer" is only honored when it is backed by at least one validated reference id.
-            can_answer = payload.can_answer and bool(usable_reference_ids)
             reason = payload.reason.strip() or "Reference assessment completed."
+            if not usable_reference_ids:
+                answerability: Literal["none", "partial", "grounded"] = "none"
+            else:
+                answerability = payload.answerability
         except Exception as exc:
             return ReferenceAssessmentResult(
                 can_answer=False,
@@ -73,10 +77,18 @@ class ReferenceAssessmentService:
                 reason=f"Reference assessment failed: {exc}",
             )
 
-        if can_answer:
+        if answerability == "grounded":
             return ReferenceAssessmentResult(
                 can_answer=True,
                 grounding_status="grounded",
+                usable_reference_ids=usable_reference_ids,
+                reason=reason,
+            )
+
+        if answerability == "partial":
+            return ReferenceAssessmentResult(
+                can_answer=True,
+                grounding_status="partial_reference",
                 usable_reference_ids=usable_reference_ids,
                 reason=reason,
             )
@@ -90,6 +102,6 @@ class ReferenceAssessmentService:
 
 
 class _ReferenceAssessmentPayload(BaseModel):
-    can_answer: bool
+    answerability: Literal["none", "partial", "grounded"]
     usable_reference_ids: list[str]
     reason: str

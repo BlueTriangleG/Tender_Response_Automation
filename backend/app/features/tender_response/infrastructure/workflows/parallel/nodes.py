@@ -22,7 +22,6 @@ from app.features.tender_response.infrastructure.workflows.common.builders impor
     build_reference_payload,
     failed_question_result,
     primary_domain_tag,
-    unanswered_confidence_reason,
 )
 from app.features.tender_response.infrastructure.workflows.common.debug import debug_log
 from app.features.tender_response.infrastructure.workflows.common.state import (
@@ -37,6 +36,107 @@ from app.features.tender_response.schemas.responses import (
     TenderQuestionResponse,
     TenderResponseSummary,
 )
+
+_PARTIAL_CONFIDENCE_REASON_MARKERS = (
+    "missing",
+    "not evidence",
+    "not evidenced",
+    "not supported",
+    "unsupported",
+    "not documented",
+    "not provided",
+    "scope",
+    "partial",
+    "cannot",
+    "can't",
+    "does not",
+    "do not",
+)
+
+
+def _validate_partial_answer_contract(*, answer: str, review: ReviewPayload) -> str | None:
+    """Return a validation error when a partial answer does not explain its gap clearly."""
+
+    if "(" not in answer or ")" not in answer:
+        return "Partial answer must identify missing scope in parentheses."
+    if review["confidence_level"] not in {"low", "medium"}:
+        return "Partial answer confidence must be low or medium."
+    confidence_reason = review["confidence_reason"].strip().lower()
+    if not confidence_reason:
+        return "Partial answer confidence reason must explain missing scope."
+    if not any(marker in confidence_reason for marker in _PARTIAL_CONFIDENCE_REASON_MARKERS):
+        return "Partial answer confidence reason must identify the missing evidence or scope."
+    return None
+
+
+def _build_failed_generated_answer_result(
+    *,
+    question,
+    alignment,
+    assessment,
+    domain_tag: str,
+    review: ReviewPayload,
+    used_reference_ids: set[str],
+    error_message: str,
+) -> TenderQuestionResponse:
+    """Return a failed result for generated outputs that cannot be safely displayed."""
+
+    return TenderQuestionResponse(
+        question_id=question.question_id,
+        original_question=question.original_question,
+        generated_answer=None,
+        domain_tag=domain_tag,
+        confidence_level="low",
+        confidence_reason="Generated answer failed output validation.",
+        historical_alignment_indicator=alignment.matched,
+        status="failed",
+        grounding_status="failed",
+        flags=QuestionFlags(
+            high_risk=review["risk_level"] == "high",
+            inconsistent_response=review["inconsistent_response"],
+        ),
+        risk=QuestionRisk(level=review["risk_level"], reason=review["risk_reason"]),
+        metadata=QuestionMetadata(
+            source_row_index=question.source_row_index,
+            alignment_record_id=alignment.record_id,
+            alignment_score=alignment.alignment_score,
+        ),
+        references=build_reference_payload(
+            alignment.references,
+            used_reference_ids=used_reference_ids,
+        ),
+        error_message=error_message,
+        extensions={
+            "reference_assessment_reason": assessment.reason,
+            "confidence_review_reason": review["confidence_reason"],
+        },
+    )
+
+
+def _set_retry_feedback(
+    *,
+    state: QuestionProcessingState,
+    error_message: str,
+) -> dict:
+    """Persist compact retry memory for a recoverable generation validation error."""
+
+    review = state["current_review"] or {
+        "confidence_level": "",
+        "confidence_reason": "",
+        "risk_level": "low",
+        "risk_reason": "",
+        "inconsistent_response": False,
+    }
+    retry_history = list(state.get("generation_retry_history", []))
+    retry_history.append(error_message)
+    return {
+        "generation_validation_error": error_message,
+        "generation_retry_history": retry_history,
+        "last_invalid_answer": (state.get("current_answer") or "").strip() or None,
+        "last_invalid_confidence_level": review["confidence_level"] or None,
+        "last_invalid_confidence_reason": review["confidence_reason"] or None,
+        "current_result": None,
+    }
 
 
 def make_retrieve_alignment_node(alignment_repository: QaAlignmentRepository):
@@ -105,6 +205,12 @@ def make_generate_answer_node(answer_generation_service: AnswerGenerationService
         grounded_result = await answer_generation_service.generate_grounded_response(
             question=state["current_question"],
             usable_references=usable_references,
+            attempt_number=state.get("generation_attempt_count", 0) + 1,
+            validation_error=state.get("generation_validation_error"),
+            last_invalid_answer=state.get("last_invalid_answer"),
+            last_invalid_confidence_level=state.get("last_invalid_confidence_level"),
+            last_invalid_confidence_reason=state.get("last_invalid_confidence_reason"),
+            assessment_reason=assessment.reason,
         )
         duration_ms = (perf_counter() - started_at) * 1000
         debug_log(
@@ -123,6 +229,7 @@ def make_generate_answer_node(answer_generation_service: AnswerGenerationService
             "current_grounded_result": grounded_result,
             "current_answer": grounded_result.generated_answer,
             "current_review": review,
+            "generation_attempt_count": state.get("generation_attempt_count", 0) + 1,
         }
 
     return generate_answer
@@ -150,11 +257,8 @@ def make_finalize_unanswered_node(domain_tagging_service: DomainTaggingService):
             original_question=question.original_question,
             generated_answer=None,
             domain_tag=domain_tag,
-            confidence_level="low",
-            confidence_reason=unanswered_confidence_reason(
-                assessment=assessment,
-                alignment=alignment,
-            ),
+            confidence_level=None,
+            confidence_reason=None,
             historical_alignment_indicator=alignment.matched,
             status="unanswered",
             grounding_status=assessment.grounding_status,
@@ -208,49 +312,32 @@ def make_assess_output_node(domain_tagging_service: DomainTaggingService):
             alignment=alignment,
         )
 
-        if not answer or high_risk or inconsistent_response:
+        if not answer:
             duration_ms = (perf_counter() - started_at) * 1000
             debug_log(
-                f"question={question.question_id} assess_output downgraded_to_unanswered "
-                f"high_risk={high_risk} inconsistent={inconsistent_response} "
+                f"question={question.question_id} assess_output retry_empty_answer "
                 f"duration_ms={duration_ms:.2f}"
             )
-            result = TenderQuestionResponse(
-                question_id=question.question_id,
-                original_question=question.original_question,
-                generated_answer=None,
-                domain_tag=domain_tag,
-                confidence_level="low",
-                confidence_reason=(
-                    review["confidence_reason"]
-                    if review["confidence_reason"]
-                    else "Confidence is low because the generated answer could not be kept."
-                ),
-                historical_alignment_indicator=alignment.matched,
-                status="unanswered",
-                grounding_status="insufficient_reference",
-                flags=QuestionFlags(
-                    high_risk=review["risk_level"] == "high" or high_risk,
-                    inconsistent_response=review["inconsistent_response"]
-                    or inconsistent_response,
-                ),
-                risk=QuestionRisk(level=review["risk_level"], reason=review["risk_reason"]),
-                metadata=QuestionMetadata(
-                    source_row_index=question.source_row_index,
-                    alignment_record_id=alignment.record_id,
-                    alignment_score=alignment.alignment_score,
-                ),
-                references=build_reference_payload(
-                    alignment.references,
-                    used_reference_ids=usable_reference_ids,
-                ),
-                error_message=None,
-                extensions={
-                    "reference_assessment_reason": assessment.reason,
-                    "confidence_review_reason": review["confidence_reason"],
-                },
+            return _set_retry_feedback(
+                state=state,
+                error_message="Generated answer was empty after output validation.",
             )
-            return {"current_result": result}
+
+        if assessment.grounding_status == "partial_reference":
+            partial_validation_error = _validate_partial_answer_contract(
+                answer=answer,
+                review=review,
+            )
+            if partial_validation_error is not None:
+                duration_ms = (perf_counter() - started_at) * 1000
+                debug_log(
+                    f"question={question.question_id} assess_output retry_partial_contract "
+                    f"duration_ms={duration_ms:.2f}"
+                )
+                return _set_retry_feedback(
+                    state=state,
+                    error_message=partial_validation_error,
+                )
 
         duration_ms = (perf_counter() - started_at) * 1000
         debug_log(
@@ -266,7 +353,7 @@ def make_assess_output_node(domain_tagging_service: DomainTaggingService):
             confidence_reason=review["confidence_reason"],
             historical_alignment_indicator=alignment.matched,
             status="completed",
-            grounding_status="grounded",
+            grounding_status=assessment.grounding_status,
             flags=QuestionFlags(
                 high_risk=review["risk_level"] == "high" or high_risk,
                 inconsistent_response=review["inconsistent_response"] or inconsistent_response,
@@ -292,6 +379,45 @@ def make_assess_output_node(domain_tagging_service: DomainTaggingService):
     return assess_output
 
 
+def make_fail_generation_node(domain_tagging_service: DomainTaggingService):
+    """Create the node that materializes a failed result after retry exhaustion."""
+
+    def fail_generation(state: QuestionProcessingState) -> dict:
+        question = state["current_question"]
+        alignment = state["current_alignment"]
+        assessment = state["current_assessment"]
+        review: ReviewPayload = state["current_review"] or {  # type: ignore[assignment]
+            "confidence_level": "low",
+            "confidence_reason": "",
+            "risk_level": "low",
+            "risk_reason": "No risk review was returned.",
+            "inconsistent_response": False,
+        }
+        domain_tag = domain_tagging_service.tag(
+            question=question,
+            generated_answer=(state.get("current_answer") or ""),
+            alignment=alignment,
+        )
+        error_message = (
+            state.get("generation_validation_error")
+            or "Generated answer failed output validation."
+        )
+        used_reference_ids = set(assessment.usable_reference_ids)
+        return {
+            "current_result": _build_failed_generated_answer_result(
+                question=question,
+                alignment=alignment,
+                assessment=assessment,
+                domain_tag=domain_tag,
+                review=review,
+                used_reference_ids=used_reference_ids,
+                error_message=error_message,
+            )
+        }
+
+    return fail_generation
+
+
 def make_process_question_node(question_graph):
     """Create the batch-level node that invokes the single-question subgraph."""
 
@@ -309,6 +435,12 @@ def make_process_question_node(question_graph):
                     "current_review": None,
                     "current_grounded_result": None,
                     "current_answer": None,
+                    "generation_attempt_count": 0,
+                    "generation_validation_error": None,
+                    "generation_retry_history": [],
+                    "last_invalid_answer": None,
+                    "last_invalid_confidence_level": None,
+                    "last_invalid_confidence_reason": None,
                     "current_result": None,
                 }
             )
@@ -367,4 +499,3 @@ def summarize_batch(state: BatchTenderResponseState) -> dict:
             failed_questions=failed_questions,
         )
     }
-

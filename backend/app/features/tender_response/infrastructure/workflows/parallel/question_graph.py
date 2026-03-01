@@ -20,6 +20,7 @@ from app.features.tender_response.infrastructure.workflows.common.state import (
 )
 from app.features.tender_response.infrastructure.workflows.parallel.nodes import (
     make_assess_output_node,
+    make_fail_generation_node,
     make_assess_references_node,
     make_finalize_unanswered_node,
     make_generate_answer_node,
@@ -27,6 +28,7 @@ from app.features.tender_response.infrastructure.workflows.parallel.nodes import
 )
 from app.features.tender_response.infrastructure.workflows.parallel.routing import (
     route_after_assessment,
+    route_after_output_validation,
 )
 
 
@@ -51,12 +53,13 @@ def create_question_processing_graph(
         make_finalize_unanswered_node(domain_tagging_service),
     )
     graph.add_node("assess_output", make_assess_output_node(domain_tagging_service))
+    graph.add_node("fail_generation", make_fail_generation_node(domain_tagging_service))
     graph.set_entry_point("retrieve_alignment")
     graph.add_edge("retrieve_alignment", "assess_references")
     graph.add_conditional_edges("assess_references", route_after_assessment)
     graph.add_edge("generate_answer", "assess_output")
     graph.add_edge("finalize_unanswered", END)
-    graph.add_edge("assess_output", END)
+    graph.add_conditional_edges("assess_output", route_after_output_validation)
+    graph.add_edge("fail_generation", END)
 
     return graph.compile()
-

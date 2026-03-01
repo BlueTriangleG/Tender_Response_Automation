@@ -53,6 +53,10 @@ function confidenceTone(level: TenderAutofillQuestion["confidenceLevel"]) {
   return "danger" as const;
 }
 
+function shouldShowConfidence(question: TenderAutofillQuestion) {
+  return question.status === "completed" && question.confidenceLevel !== null;
+}
+
 function questionStatusTone(question: TenderAutofillQuestion) {
   if (question.status === "completed") {
     return "success" as const;
@@ -421,7 +425,7 @@ function App() {
                 JSON.stringify(result.originalQuestion),
                 JSON.stringify(result.generatedAnswer),
                 result.domainTag,
-                result.confidenceLevel,
+                result.confidenceLevel ?? "",
                 String(result.historicalAlignmentIndicator),
                 result.status,
               ].join(","),
@@ -837,10 +841,12 @@ function App() {
                                     label={formatStatusLabel(question.status)}
                                     tone={questionStatusTone(question)}
                                   />
-                                  <StatusBadge
-                                    label={formatStatusLabel(question.confidenceLevel)}
-                                    tone={confidenceTone(question.confidenceLevel)}
-                                  />
+                                  {shouldShowConfidence(question) ? (
+                                    <StatusBadge
+                                      label={formatStatusLabel(question.confidenceLevel ?? "")}
+                                      tone={confidenceTone(question.confidenceLevel)}
+                                    />
+                                  ) : null}
                                 </div>
                               </td>
                               <td className="result-row__answer">
@@ -963,10 +969,12 @@ function App() {
                   label={formatStatusLabel(activeQuestion.status)}
                   tone={questionStatusTone(activeQuestion)}
                 />
-                <StatusBadge
-                  label={formatStatusLabel(activeQuestion.confidenceLevel)}
-                  tone={confidenceTone(activeQuestion.confidenceLevel)}
-                />
+                {shouldShowConfidence(activeQuestion) ? (
+                  <StatusBadge
+                    label={formatStatusLabel(activeQuestion.confidenceLevel ?? "")}
+                    tone={confidenceTone(activeQuestion.confidenceLevel)}
+                  />
+                ) : null}
                 <StatusBadge
                   label={formatGroundingStatus(activeQuestion.groundingStatus)}
                   tone={
@@ -1013,19 +1021,21 @@ function App() {
                   </section>
                 ) : null}
 
-                <section className="details-card">
-                  <h3>Confidence</h3>
-                  <div className="details-card__header">
-                    <StatusBadge
-                      label={formatStatusLabel(activeQuestion.confidenceLevel)}
-                      tone={confidenceTone(activeQuestion.confidenceLevel)}
-                    />
-                  </div>
-                  <p>
-                    {activeQuestion.confidenceReason ||
-                      "No confidence rationale was returned for this answer."}
-                  </p>
-                </section>
+                {shouldShowConfidence(activeQuestion) ? (
+                  <section className="details-card">
+                    <h3>Confidence</h3>
+                    <div className="details-card__header">
+                      <StatusBadge
+                        label={formatStatusLabel(activeQuestion.confidenceLevel ?? "")}
+                        tone={confidenceTone(activeQuestion.confidenceLevel)}
+                      />
+                    </div>
+                    <p>
+                      {activeQuestion.confidenceReason ||
+                        "No confidence rationale was returned for this answer."}
+                    </p>
+                  </section>
+                ) : null}
 
                 <section className="details-card">
                   <h3>Risk review</h3>

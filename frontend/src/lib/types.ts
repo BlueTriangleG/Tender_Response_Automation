@@ -83,8 +83,8 @@ export type TenderAutofillQuestion = {
   originalQuestion: string;
   generatedAnswer: string;
   domainTag: string;
-  confidenceLevel: "high" | "medium" | "low";
-  confidenceReason: string;
+  confidenceLevel: "high" | "medium" | "low" | null;
+  confidenceReason: string | null;
   historicalAlignmentIndicator: boolean;
   alignmentScore: number | null;
   status: string;
@@ -93,6 +93,7 @@ export type TenderAutofillQuestion = {
   risk: TenderAutofillQuestionRisk | null;
   references: TenderAutofillQuestionReference[];
   errorMessage: string | null;
+  extensions: Record<string, unknown>;
 };
 
 export type TenderAutofillSummary = {
