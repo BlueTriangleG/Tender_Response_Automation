@@ -4,6 +4,29 @@ A take-home prototype for the Pan Software AI Engineer role.
 
 The system lets a team ingest their historical tender materials (past Q&As, policy docs, compliance records), then upload a new questionnaire and get back structured, grounded answers for each question — answers tied to real prior evidence rather than model hallucination.
 
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-1C3A5E?style=for-the-badge&logo=langchain&logoColor=white)
+![LanceDB](https://img.shields.io/badge/LanceDB-00A3E0?style=for-the-badge&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![uv](https://img.shields.io/badge/uv-DE5FE9?style=for-the-badge&logo=astral&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
+
+---
+
+## Demo
+
+**History ingest** — uploading historical tender materials into the repository:
+
+![History ingest demo](public/tender%20repository.gif)
+
+**Tender response** — submitting a new questionnaire and reviewing grounded answers:
+
+![Tender response demo](public/tender%20response.gif)
+
 ---
 
 ## The Problem It Solves
@@ -97,19 +120,31 @@ docs/delivery/    architecture writeups (agent design, RAG, memory/state, API)
 
 ## Testing
 
-The default test suite runs offline — no OpenAI key needed:
+### Offline suite (default)
+
+Runs 196 unit and integration tests with no external dependencies:
 
 ```bash
 npm run test:backend
 ```
 
-Live E2E tests that call real OpenAI endpoints are gated behind a marker and excluded by default:
+### Live E2E suite
+
+Runs the full edge-case regression suite against a real OpenAI-backed stack. Each case ingests a curated history file, submits a tender questionnaire, and evaluates the response against a pre-defined oracle.
+
+Requires `OPENAI_API_KEY` set in `backend/.env` and the backend running:
 
 ```bash
-npm run test:backend:live   # requires OPENAI_API_KEY
+npm run test:backend:live
 ```
 
-Full verification (tests + lint + type-check + frontend build):
+Artifacts (per-case actual output, oracle diff, pass/fail CSV) are written to `backend/.artifacts/edge_case_suite/` after each run. This makes it easy to diff results across runs or inspect exactly what the model produced for any failing case.
+
+Edge case inputs and expected oracles live in `test_data/edge_case_suite/`.
+
+### Full verification
+
+Tests + lint + type-check + frontend build in one command:
 
 ```bash
 npm run verify
@@ -119,13 +154,9 @@ npm run verify
 
 ## API
 
-```
-GET  /api/health
-POST /api/ingest/history      multipart file upload, returns per-file results
-POST /api/tender/respond      file upload + options, returns structured Q&A
-```
+Three endpoints: `GET /api/health`, `POST /api/ingest/history`, `POST /api/tender/respond`.
 
-Request examples and a Postman collection are in [docs/delivery/API_POSTMAN.md](docs/delivery/API_POSTMAN.md).
+Full curl examples, field references, sample payloads, and Postman setup are in [docs/delivery/API_POSTMAN.md](docs/delivery/API_POSTMAN.md).
 
 ---
 
