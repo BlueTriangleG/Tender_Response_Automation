@@ -1,5 +1,3 @@
-import type { AlignmentStatus, ResultStatus, RiskLevel } from "../lib/types";
-
 type BadgeTone = "neutral" | "success" | "warning" | "danger";
 
 type StatusBadgeProps = {
@@ -16,40 +14,4 @@ const toneClassMap: Record<BadgeTone, string> = {
 
 export function StatusBadge({ label, tone = "neutral" }: StatusBadgeProps) {
   return <span className={toneClassMap[tone]}>{label}</span>;
-}
-
-export function riskTone(level: RiskLevel): BadgeTone {
-  if (level === "high") {
-    return "danger";
-  }
-
-  if (level === "medium") {
-    return "warning";
-  }
-
-  return "success";
-}
-
-export function alignmentTone(status: AlignmentStatus): BadgeTone {
-  if (status === "aligned") {
-    return "success";
-  }
-
-  if (status === "inconsistent") {
-    return "danger";
-  }
-
-  return "warning";
-}
-
-export function resultTone(status: ResultStatus): BadgeTone {
-  if (status === "success") {
-    return "success";
-  }
-
-  if (status === "failed") {
-    return "danger";
-  }
-
-  return "warning";
 }

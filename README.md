@@ -23,6 +23,7 @@ At a high level, the service needs to do five things well:
 - Delivery docs:
   - Agent architecture: [AGENT_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/AGENT_ARCHITECTURE.md)
   - RAG architecture: [RAG_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/RAG_ARCHITECTURE.md)
+  - Memory and state design: [MEMORY_AND_STATE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/MEMORY_AND_STATE.md)
   - API and Postman calls: [API_POSTMAN.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/API_POSTMAN.md)
   - Sample dataset guide: [test_data/README.md](/Users/autumn/Learning/interview%20questions/pans_software/test_data/README.md)
   - Docs guide: [docs/README.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/README.md)
@@ -246,6 +247,7 @@ If you want the design rather than the code walkthrough:
 
 - workflow and agent design: [AGENT_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/AGENT_ARCHITECTURE.md)
 - retrieval and grounding design: [RAG_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/RAG_ARCHITECTURE.md)
+- memory and state design: [MEMORY_AND_STATE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/MEMORY_AND_STATE.md)
 
 ## Notes And Limitations
 

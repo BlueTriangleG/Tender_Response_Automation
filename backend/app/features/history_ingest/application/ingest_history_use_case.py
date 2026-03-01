@@ -107,11 +107,6 @@ class IngestHistoryUseCase:
             files=final_results,
         )
 
-    async def persist_processed_files(self, _: list[ProcessedHistoryFileResult]) -> None:
-        """Reserved extension point for a later persistence stage."""
-
-        return None
-
     async def _process_tabular_file(
         self,
         payload: ParsedFilePayload,

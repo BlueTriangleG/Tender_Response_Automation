@@ -35,7 +35,8 @@ def test_write_case_artifacts_creates_suite_results_csv(tmp_path: Path) -> None:
         },
     )
 
-    rows = list(csv.DictReader((tmp_path / "suite-results.csv").open(encoding="utf-8")))
+    with (tmp_path / "suite-results.csv").open(encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
 
     assert len(rows) == 1
     assert rows[0]["case_id"] == "demo-case"
@@ -62,7 +63,8 @@ def test_write_case_artifacts_records_execution_errors_without_response(tmp_path
         },
     )
 
-    rows = list(csv.DictReader((tmp_path / "suite-results.csv").open(encoding="utf-8")))
+    with (tmp_path / "suite-results.csv").open(encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
     actual_json = json.loads((tmp_path / "crashed-case.actual.json").read_text(encoding="utf-8"))
 
     assert len(rows) == 1

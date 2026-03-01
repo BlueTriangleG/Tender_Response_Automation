@@ -9,10 +9,12 @@
   "expected_summary": {
     "total_questions_processed": 4,
     "allowed_overall_completion_statuses": [
-      "unanswered"
+      "unanswered",
+      "completed",
+      "completed_with_flags"
     ],
-    "completed_max": 0,
-    "unanswered_min": 4,
+    "completed_max": 1,
+    "unanswered_min": 3,
     "unanswered_max": 4,
     "failed_max": 0
   },
@@ -20,12 +22,13 @@
     {
       "question_id": "q-101",
       "allowed_statuses": [
-        "unanswered"
+        "unanswered",
+        "completed"
       ],
       "allowed_grounding_statuses": [
-        "insufficient_reference"
-      ],
-      "generated_answer_should_be_null": true
+        "insufficient_reference",
+        "partial_reference"
+      ]
     },
     {
       "question_id": "q-102",

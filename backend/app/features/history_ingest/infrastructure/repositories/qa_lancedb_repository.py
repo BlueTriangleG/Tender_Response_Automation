@@ -12,7 +12,7 @@ class QaLanceDbRepository:
     """Upsert and lookup QA records in the configured LanceDB table."""
 
     def __init__(self, connection: DBConnection | None = None) -> None:
-        self._connection = connection or ensure_lancedb_ready()
+        self._connection = connection if connection is not None else ensure_lancedb_ready()
         self._table_name = settings.lancedb_qa_table_name
 
     def upsert_records(self, records: list[dict[str, Any]]) -> None:

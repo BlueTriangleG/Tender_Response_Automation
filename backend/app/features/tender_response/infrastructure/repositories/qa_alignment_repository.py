@@ -20,7 +20,7 @@ class QaAlignmentRepository:
         connection: DBConnection | None = None,
         embeddings_client: OpenAIEmbeddingsClient | None = None,
     ) -> None:
-        self._connection = connection or ensure_lancedb_ready()
+        self._connection = connection if connection is not None else ensure_lancedb_ready()
         self._embeddings_client = embeddings_client or OpenAIEmbeddingsClient()
         self._table_name = settings.lancedb_qa_table_name
 
