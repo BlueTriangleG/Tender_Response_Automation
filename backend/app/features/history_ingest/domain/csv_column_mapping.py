@@ -90,9 +90,7 @@ def _match_target(headers: list[str], synonyms: list[str]) -> tuple[str | None, 
 
     for synonym in synonyms:
         matches = [
-            original
-            for normalized, original in normalized_to_original
-            if normalized == synonym
+            original for normalized, original in normalized_to_original if normalized == synonym
         ]
         for match in matches:
             if match not in candidates:

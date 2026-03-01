@@ -1,8 +1,7 @@
 from io import BytesIO
 from pathlib import Path
-from zipfile import ZIP_DEFLATED, ZipFile
-
 from xml.sax.saxutils import escape
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi.testclient import TestClient
 
@@ -39,7 +38,9 @@ def build_workbook_bytes(rows: list[list[str]]) -> bytes:
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
                 '<Relationship Id="rId1" '
-                'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+                "Type="
+                '"http://schemas.openxmlformats.org/officeDocument/2006/relationships/'
+                'officeDocument" '
                 'Target="xl/workbook.xml"/>'
                 "</Relationships>"
             ),
@@ -60,7 +61,8 @@ def build_workbook_bytes(rows: list[list[str]]) -> bytes:
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
                 '<Relationship Id="rId1" '
-                'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+                "Type="
+                '"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
                 'Target="worksheets/sheet1.xml"/>'
                 "</Relationships>"
             ),
@@ -213,7 +215,11 @@ def test_history_ingest_route_supports_mixed_tabular_and_document_batches(
             files=[
                 (
                     "files",
-                    ("history.csv", b"question,answer,domain\nWhat is TLS?,TLS 1.2+,Security\n", "text/csv"),
+                    (
+                        "history.csv",
+                        b"question,answer,domain\nWhat is TLS?,TLS 1.2+,Security\n",
+                        "text/csv",
+                    ),
                 ),
                 (
                     "files",
@@ -225,7 +231,11 @@ def test_history_ingest_route_supports_mixed_tabular_and_document_batches(
                 ),
                 (
                     "files",
-                    ("operations.md", b"# Operations\n\nPeer review is required.\n", "text/markdown"),
+                    (
+                        "operations.md",
+                        b"# Operations\n\nPeer review is required.\n",
+                        "text/markdown",
+                    ),
                 ),
                 (
                     "files",
@@ -247,7 +257,9 @@ def test_history_ingest_route_supports_mixed_tabular_and_document_batches(
 
     connection = get_lancedb_connection(db_uri)
     qa_rows = connection.open_table(settings.lancedb_qa_table_name).to_arrow().to_pylist()
-    document_rows = connection.open_table(settings.lancedb_document_table_name).to_arrow().to_pylist()
+    document_rows = (
+        connection.open_table(settings.lancedb_document_table_name).to_arrow().to_pylist()
+    )
 
     assert len(qa_rows) == 2
     assert len(document_rows) == 2

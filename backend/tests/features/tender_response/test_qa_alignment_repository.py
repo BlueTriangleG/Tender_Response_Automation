@@ -73,11 +73,7 @@ async def test_find_best_match_returns_no_match_when_score_is_below_threshold(
 ) -> None:
     connection = ensure_lancedb_ready(uri=tmp_path / "lancedb")
     table = connection.open_table("qa_records")
-    expected_text = (
-        "Question: Do you support TLS 1.2 or higher?\n"
-        "Answer: Yes.\n"
-        "Domain: Security"
-    )
+    expected_text = "Question: Do you support TLS 1.2 or higher?\nAnswer: Yes.\nDomain: Security"
     table.add(
         [
             {

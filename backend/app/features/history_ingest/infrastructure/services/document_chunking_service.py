@@ -25,14 +25,12 @@ class DocumentChunkingService:
         if not normalized_text:
             return []
 
-        document_id = hashlib.sha256(
-            f"{payload.file_name}\n{normalized_text}".encode("utf-8")
-        ).hexdigest()
+        document_id = hashlib.sha256(f"{payload.file_name}\n{normalized_text}".encode()).hexdigest()
         timestamp = datetime.now(UTC).isoformat()
 
         chunks: list[DocumentChunkRecord] = []
         for chunk_index, chunk_text in enumerate(self._split_text(normalized_text)):
-            chunk_id = hashlib.sha256(f"{document_id}:{chunk_index}".encode("utf-8")).hexdigest()
+            chunk_id = hashlib.sha256(f"{document_id}:{chunk_index}".encode()).hexdigest()
             chunks.append(
                 DocumentChunkRecord(
                     id=chunk_id,

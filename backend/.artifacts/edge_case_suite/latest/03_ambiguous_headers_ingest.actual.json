@@ -2,20 +2,20 @@
   "metadata": {
     "history_file": "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/03_ambiguous_headers.csv",
     "response_kind": "history_ingest",
-    "recorded_at": "2026-03-01T09:51:33.743355+00:00"
+    "recorded_at": "2026-03-01T10:48:46.928111+00:00"
   },
   "response": {
-    "request_id": "74413df4-913e-48df-9b52-39e1beb9fe89",
+    "request_id": "6587ba46-a0ec-4b94-bdce-b6581beb77d3",
     "total_file_count": 1,
-    "processed_file_count": 0,
-    "failed_file_count": 1,
+    "processed_file_count": 1,
+    "failed_file_count": 0,
     "request_options": {
       "output_format": "json",
       "similarity_threshold": 0.72
     },
     "files": [
       {
-        "status": "failed",
+        "status": "processed",
         "payload": {
           "file_name": "03_ambiguous_headers.csv",
           "extension": ".csv",
@@ -40,12 +40,16 @@
           "row_count": 2,
           "warnings": []
         },
-        "error_code": "column_mapping_failed",
-        "error_message": "Connection error.",
-        "detected_columns": null,
-        "ingested_row_count": 0,
-        "failed_row_count": 2,
-        "storage_target": null
+        "error_code": null,
+        "error_message": null,
+        "detected_columns": {
+          "question_col": "customer_question",
+          "answer_col": "answer",
+          "domain_col": "domain"
+        },
+        "ingested_row_count": 2,
+        "failed_row_count": 0,
+        "storage_target": "qa_records"
       }
     ]
   }

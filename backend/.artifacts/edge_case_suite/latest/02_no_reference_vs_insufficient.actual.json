@@ -6,10 +6,10 @@
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/02_header_aliases.csv",
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/06_dirty_rows_and_quoting.csv"
     ],
-    "recorded_at": "2026-03-01T06:54:13.010559+00:00"
+    "recorded_at": "2026-03-01T10:48:13.969602+00:00"
   },
   "response": {
-    "request_id": "cd98eeb8-d8dc-42db-a88c-2b9ddfcfee93",
+    "request_id": "59b9f2ee-f971-4db5-b02c-4385c00c8dc5",
     "session_id": "edge-case-02_no_reference_vs_insufficient",
     "source_file_name": "02_no_reference_vs_insufficient.csv",
     "total_questions_processed": 4,
@@ -17,21 +17,21 @@
       {
         "question_id": "q-101",
         "original_question": "Do you support a fully air-gapped on-premises deployment with zero cloud dependency?",
-        "generated_answer": "The platform can be deployed as a single-tenant virtual private cloud for stronger isolation. (The provided reference does not confirm support for a fully air‑gapped, on‑premises deployment with zero cloud dependency.)",
+        "generated_answer": null,
         "domain_tag": "infrastructure",
-        "confidence_level": "medium",
-        "confidence_reason": "The reference explicitly confirms a single-tenant virtual private cloud deployment but does not mention fully air-gapped or on-premises, cloudless installations, so the response is partial and missing that evidence.",
+        "confidence_level": null,
+        "confidence_reason": null,
         "historical_alignment_indicator": true,
-        "status": "completed",
-        "grounding_status": "partial_reference",
+        "status": "unanswered",
+        "grounding_status": "insufficient_reference",
         "flags": {
           "high_risk": false,
-          "inconsistent_response": true,
+          "inconsistent_response": false,
           "has_conflict": false
         },
         "risk": {
           "level": "low",
-          "reason": "The answer strictly reflects the referenced statement and explicitly notes the missing scope, minimizing risk of unsupported claims."
+          "reason": "No grounded answer was produced."
         },
         "metadata": {
           "source_row_index": 0,
@@ -41,17 +41,20 @@
         "references": [
           {
             "alignment_record_id": "8710a217fbee734f755e18c883f541f2e465b76ebae6d7a28e523ef58d420fa6",
+            "reference_type": "qa",
             "alignment_score": 0.5163490685277522,
             "source_doc": "02_header_aliases.csv",
             "matched_question": "Can the platform be deployed as single-tenant?",
             "matched_answer": "Yes. A single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements.",
-            "used_for_answer": true
+            "excerpt": null,
+            "chunk_index": null,
+            "used_for_answer": false
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference confirms a single-tenant virtual private cloud deployment for stronger isolation, but does not state support for a fully air-gapped on-premises deployment with zero cloud dependency. Therefore it supports only part of the question (isolation options) but lacks material information about air-gapped, cloudless on-prem installations.",
-          "confidence_review_reason": "The reference explicitly confirms a single-tenant virtual private cloud deployment but does not mention fully air-gapped or on-premises, cloudless installations, so the response is partial and missing that evidence.",
+          "reference_assessment_reason": "Reference assessment failed: Connection error.",
+          "requires_human_review": false,
           "conflicts": []
         }
       },
@@ -64,7 +67,7 @@
         "confidence_reason": null,
         "historical_alignment_indicator": false,
         "status": "unanswered",
-        "grounding_status": "insufficient_reference",
+        "grounding_status": "no_reference",
         "flags": {
           "high_risk": false,
           "inconsistent_response": false,
@@ -79,35 +82,10 @@
           "alignment_record_id": null,
           "alignment_score": 0.48008954612105403
         },
-        "references": [
-          {
-            "alignment_record_id": "d0c488224fe8697665fea6fe32cefdfa62d1a91f6c43173caba249ac31f5a953",
-            "alignment_score": 0.48008954612105403,
-            "source_doc": "02_header_aliases.csv",
-            "matched_question": "Do you support right-to-erasure requests?",
-            "matched_answer": "Yes. Verified right-to-erasure requests are operationally targeted within 30 days, subject to retention obligations.",
-            "used_for_answer": false
-          },
-          {
-            "alignment_record_id": "0acccfeea66be41c3e6a069d4f62c2e9a299e0c36ed2a9c547b626ce1d768bc0",
-            "alignment_score": 0.4375232782492785,
-            "source_doc": "06_dirty_rows_and_quoting.csv",
-            "matched_question": "What wording should we use for penetration test evidence?",
-            "matched_answer": "Testing summaries can be shared under NDA,\nwith scope and dates redacted where appropriate.",
-            "used_for_answer": false
-          },
-          {
-            "alignment_record_id": "39166e292b66c0b8f18f836884468b62f5dc813e1c93346275fd0998b484b825",
-            "alignment_score": 0.43637426733269435,
-            "source_doc": "01_clean_security_architecture.csv",
-            "matched_question": "Do you provide role-based access control?",
-            "matched_answer": "Yes. Role-based access control is available across tenant, workspace, and feature scopes.",
-            "used_for_answer": false
-          }
-        ],
+        "references": [],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "None of the provided references mention audit log storage, immutability, WORM, or tamper-proof mechanisms. They cover right-to-erasure, penetration-test evidence sharing, and RBAC, which do not support answering whether tamper-proof immutable WORM audit storage for all administrator actions is provided.",
+          "reference_assessment_reason": "No qualified historical references were retrieved.",
           "requires_human_review": false,
           "conflicts": []
         }
@@ -121,7 +99,7 @@
         "confidence_reason": null,
         "historical_alignment_indicator": false,
         "status": "unanswered",
-        "grounding_status": "insufficient_reference",
+        "grounding_status": "no_reference",
         "flags": {
           "high_risk": false,
           "inconsistent_response": false,
@@ -136,35 +114,10 @@
           "alignment_record_id": null,
           "alignment_score": 0.4690851506222896
         },
-        "references": [
-          {
-            "alignment_record_id": "5e98cc4e675ff7a6aef61f8b22b7b63956f2b126ebfa575ae7aeac6b4b47ef95",
-            "alignment_score": 0.4690851506222896,
-            "source_doc": "01_clean_security_architecture.csv",
-            "matched_question": "Do you currently hold FedRAMP High authorization?",
-            "matched_answer": "FedRAMP High authorization is not an approved claim and should be escalated for human review rather than asserted.",
-            "used_for_answer": false
-          },
-          {
-            "alignment_record_id": "cce1bc53e4859f5331730ba850e1aec6e43d1f38013b6cfacd1d4361ba633854",
-            "alignment_score": 0.46039405293906377,
-            "source_doc": "02_header_aliases.csv",
-            "matched_question": "Do you perform independent penetration testing?",
-            "matched_answer": "Yes. Independent penetration testing is performed at least annually and after material architectural change.",
-            "used_for_answer": false
-          },
-          {
-            "alignment_record_id": "d0c488224fe8697665fea6fe32cefdfa62d1a91f6c43173caba249ac31f5a953",
-            "alignment_score": 0.4311332756440563,
-            "source_doc": "02_header_aliases.csv",
-            "matched_question": "Do you support right-to-erasure requests?",
-            "matched_answer": "Yes. Verified right-to-erasure requests are operationally targeted within 30 days, subject to retention obligations.",
-            "used_for_answer": false
-          }
-        ],
+        "references": [],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "None of the provided references mention IRAP or IRAP PROTECTED. They reference FedRAMP (and advise escalation), penetration testing, and right-to-erasure — unrelated to IRAP certification. Therefore they are insufficient to support any claim about IRAP PROTECTED certification.",
+          "reference_assessment_reason": "No qualified historical references were retrieved.",
           "requires_human_review": false,
           "conflicts": []
         }
@@ -172,13 +125,13 @@
       {
         "question_id": "q-104",
         "original_question": "Can you contractually guarantee a 15-minute RTO for every single-tenant and customer-managed deployment?",
-        "generated_answer": "No. You cannot contractually guarantee a 15-minute RTO for every single-tenant and customer-managed deployment. The managed production service explicitly documents a recovery time objective of 4 hours (and a 15-minute RPO), and the managed service availability target is 99.9% monthly subject to the contracted service definition. Customer-managed (single-tenant) deployment is not the default delivery model and requires separate scoping through professional services. (The provided references do not state whether a separately scoped professional-services engagement for a customer-managed or single-tenant deployment could be contracted to deliver a 15-minute RTO, so that possibility is not supported by these documents.)",
+        "generated_answer": null,
         "domain_tag": "infrastructure",
-        "confidence_level": "medium",
-        "confidence_reason": "References explicitly state managed-production RTO = 4 hours (contradicting a universal 15-minute RTO) and that customer-managed deployments require separate scoping; however, the documents do not say whether a scoped professional-services contract could achieve or guarantee a 15-minute RTO for single-tenant/customer-managed deployments, so the answer is partially constrained by missing contractual detail.",
+        "confidence_level": null,
+        "confidence_reason": null,
         "historical_alignment_indicator": false,
-        "status": "completed",
-        "grounding_status": "partial_reference",
+        "status": "unanswered",
+        "grounding_status": "no_reference",
         "flags": {
           "high_risk": false,
           "inconsistent_response": false,
@@ -186,53 +139,28 @@
         },
         "risk": {
           "level": "low",
-          "reason": "Answer is directly grounded in the cited references and avoids extrapolating about scoped professional-services outcomes or unsupported contractual promises."
+          "reason": "No grounded answer was produced."
         },
         "metadata": {
           "source_row_index": 3,
           "alignment_record_id": null,
           "alignment_score": 0.4998216371451862
         },
-        "references": [
-          {
-            "alignment_record_id": "35725a234c35606823c07a0bace7694bbe92a5eb8690a3706551682ce8558d3d",
-            "alignment_score": 0.4998216371451862,
-            "source_doc": "06_dirty_rows_and_quoting.csv",
-            "matched_question": "What availability target do you provide?",
-            "matched_answer": "The managed service target is 99.9 percent monthly availability, subject to the contracted service definition.",
-            "used_for_answer": true
-          },
-          {
-            "alignment_record_id": "a2118cb7268f761de80251e31dd58f1c321bc0c5fe71c2efcd83293f47f1325f",
-            "alignment_score": 0.49466632905050645,
-            "source_doc": "01_clean_security_architecture.csv",
-            "matched_question": "What are the managed service disaster recovery objectives?",
-            "matched_answer": "For the managed production service, the recovery point objective is 15 minutes and the recovery time objective is 4 hours.",
-            "used_for_answer": true
-          },
-          {
-            "alignment_record_id": "def1b23506da9fa92d305e539c2bf51b4e44627afd85b6b85b54f45239981da0",
-            "alignment_score": 0.4937481639555944,
-            "source_doc": "02_header_aliases.csv",
-            "matched_question": "Is customer-managed deployment generally available?",
-            "matched_answer": "No. Customer-managed deployment is not the default delivery model and requires separate scoping through professional services.",
-            "used_for_answer": true
-          }
-        ],
+        "references": [],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "One reference states managed production RPO=15 minutes and RTO=4 hours, which contradicts a 15-minute RTO commitment for managed services. Another indicates managed-service availability targets (99.9%) but not 15-minute RTO. The third notes customer-managed deployments are not default and require separate scoping. Together these support saying you cannot unilaterally guarantee a 15-minute RTO for every single-tenant or customer-managed deployment, but they do not provide exhaustive detail about single-tenant contractual options or whether a scoped/paid professional-services engagement might achieve a 15-minute RTO, so a partial answer is appropriate.",
-          "confidence_review_reason": "References explicitly state managed-production RTO = 4 hours (contradicting a universal 15-minute RTO) and that customer-managed deployments require separate scoping; however, the documents do not say whether a scoped professional-services contract could achieve or guarantee a 15-minute RTO for single-tenant/customer-managed deployments, so the answer is partially constrained by missing contractual detail.",
+          "reference_assessment_reason": "No qualified historical references were retrieved.",
+          "requires_human_review": false,
           "conflicts": []
         }
       }
     ],
     "summary": {
       "total_questions_processed": 4,
-      "flagged_high_risk_or_inconsistent_responses": 1,
-      "overall_completion_status": "completed_with_flags",
-      "completed_questions": 2,
-      "unanswered_questions": 2,
+      "flagged_high_risk_or_inconsistent_responses": 0,
+      "overall_completion_status": "unanswered",
+      "completed_questions": 0,
+      "unanswered_questions": 4,
       "failed_questions": 0,
       "conflict_count": 0
     }

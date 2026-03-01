@@ -5,11 +5,11 @@ from typing import Literal
 
 from langgraph.graph.state import CompiledStateGraph
 
-from app.features.tender_response.infrastructure.workflows.parallel.graph import (
-    create_parallel_tender_response_graph,
-)
 from app.features.tender_response.infrastructure.services.conflict_review_service import (
     ConflictReviewService,
+)
+from app.features.tender_response.infrastructure.workflows.parallel.graph import (
+    create_parallel_tender_response_graph,
 )
 from app.features.tender_response.infrastructure.workflows.sequential.graph import (
     create_sequential_tender_response_graph,

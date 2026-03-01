@@ -64,8 +64,7 @@ def test_detect_inconsistent_response_ignores_negated_historical_positioning() -
                 "business units on a fixed-fee basis."
             ),
             historical_alignment_answer=(
-                "No standard approved position supports unlimited AI usage across "
-                "all scenarios."
+                "No standard approved position supports unlimited AI usage across all scenarios."
             ),
         )
         is False
@@ -101,45 +100,45 @@ def test_detect_strong_modality_drift_flags_strengthened_language() -> None:
 
 
 def test_find_generation_validation_error_blocks_unsupported_certification_claim() -> None:
-    assert (
-        find_generation_validation_error(
-            question="Are you FedRAMP authorised?",
-            generated_answer="Yes, we are FedRAMP authorised.",
-            historical_alignment_answer="We do not hold FedRAMP authorisation.",
-        )
-        == "Generated answer makes an unsupported certification or compliance claim that is not positively evidenced in the references."
+    assert find_generation_validation_error(
+        question="Are you FedRAMP authorised?",
+        generated_answer="Yes, we are FedRAMP authorised.",
+        historical_alignment_answer="We do not hold FedRAMP authorisation.",
+    ) == (
+        "Generated answer makes an unsupported certification or compliance claim that is "
+        "not positively evidenced in the references."
     )
 
 
 def test_find_generation_validation_error_blocks_unsupported_mandatory_language() -> None:
-    assert (
-        find_generation_validation_error(
-            question="The supplier MUST enforce TLS 1.2 or higher for all production traffic.",
-            generated_answer=(
-                "Yes. We strictly enforce TLS 1.2 or higher for all production traffic."
-            ),
-            historical_alignment_answer="Yes. External production endpoints support TLS 1.2 or higher.",
-        )
-        == "Generated answer strengthens mandatory or enforcement language beyond what the references support."
+    assert find_generation_validation_error(
+        question="The supplier MUST enforce TLS 1.2 or higher for all production traffic.",
+        generated_answer=("Yes. We strictly enforce TLS 1.2 or higher for all production traffic."),
+        historical_alignment_answer=(
+            "Yes. External production endpoints support TLS 1.2 or higher."
+        ),
+    ) == (
+        "Generated answer strengthens mandatory or enforcement language beyond what "
+        "the references support."
     )
 
 
 def test_find_generation_validation_error_blocks_absolute_claim_with_exception() -> None:
-    assert (
-        find_generation_validation_error(
-            question=(
-                "Please confirm that legacy SSL is fully disabled for all production "
-                "traffic in the proposed environment."
-            ),
-            generated_answer=(
-                "Yes. Legacy SSL is fully disabled for all production traffic. "
-                "(Rare migration scenarios may allow limited temporary exceptions.)"
-            ),
-            historical_alignment_answer=(
-                "Legacy SSL is not enabled for public production access, though "
-                "isolated transition handling may be used in rare migration scenarios."
-            ),
-        )
-        == "Generated answer makes an absolute claim but then introduces exceptions or caveats that weaken it. Rewrite the answer so the claim and any limits are logically consistent."
+    assert find_generation_validation_error(
+        question=(
+            "Please confirm that legacy SSL is fully disabled for all production "
+            "traffic in the proposed environment."
+        ),
+        generated_answer=(
+            "Yes. Legacy SSL is fully disabled for all production traffic. "
+            "(Rare migration scenarios may allow limited temporary exceptions.)"
+        ),
+        historical_alignment_answer=(
+            "Legacy SSL is not enabled for public production access, though "
+            "isolated transition handling may be used in rare migration scenarios."
+        ),
+    ) == (
+        "Generated answer makes an absolute claim but then introduces exceptions or "
+        "caveats that weaken it. Rewrite the answer so the claim and any limits are "
+        "logically consistent."
     )
-

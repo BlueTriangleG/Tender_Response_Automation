@@ -1,9 +1,9 @@
 from io import BytesIO
 from unittest.mock import AsyncMock, MagicMock
+from xml.sax.saxutils import escape
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi.testclient import TestClient
-from xml.sax.saxutils import escape
 
 from app.features.tender_response.api.dependencies import get_tender_response_runner
 from app.features.tender_response.application.tender_response_runner import (
@@ -35,7 +35,8 @@ def build_workbook_bytes(rows: list[list[str]]) -> bytes:
 CONTENT_TYPES_XML = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    '<Default Extension="rels" '
+    'ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
     '<Default Extension="xml" ContentType="application/xml"/>'
     '<Override PartName="/xl/workbook.xml" '
     'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
@@ -237,7 +238,8 @@ def test_tender_response_route_accepts_csv_upload_and_returns_json() -> None:
 def test_tender_response_route_accepts_xlsx_upload_and_returns_json() -> None:
     client = TestClient(app)
     runner = TenderResponseRunner()
-    runner._workflow_registry.get = lambda workflow_name: FakeWorkflow()  # type: ignore[attr-defined]
+    # type: ignore[attr-defined]
+    runner._workflow_registry.get = lambda workflow_name: FakeWorkflow()
 
     app.dependency_overrides[get_tender_response_runner] = lambda: runner
     try:

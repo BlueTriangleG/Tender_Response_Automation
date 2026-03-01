@@ -4,18 +4,18 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.features.tender_response.infrastructure.services.historical_evidence_service import (
-    HistoricalEvidenceService,
+from app.features.tender_response.infrastructure.services.answer_generation_service import (
+    AnswerGenerationService,
 )
 from app.features.tender_response.infrastructure.services.conflict_review_service import (
     ConflictReviewService,
     NoopConflictReviewService,
 )
-from app.features.tender_response.infrastructure.services.answer_generation_service import (
-    AnswerGenerationService,
-)
 from app.features.tender_response.infrastructure.services.domain_tagging_service import (
     DomainTaggingService,
+)
+from app.features.tender_response.infrastructure.services.historical_evidence_service import (
+    HistoricalEvidenceService,
 )
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
     ReferenceAssessmentService,
@@ -25,9 +25,9 @@ from app.features.tender_response.infrastructure.workflows.common.state import (
 )
 from app.features.tender_response.infrastructure.workflows.parallel.nodes import (
     apply_conflicts,
-    prepare_conflict_review,
     make_process_question_node,
     make_review_conflict_group_node,
+    prepare_conflict_review,
     summarize_batch,
 )
 from app.features.tender_response.infrastructure.workflows.parallel.question_graph import (

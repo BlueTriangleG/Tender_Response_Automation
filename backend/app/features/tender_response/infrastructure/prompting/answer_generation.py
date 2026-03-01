@@ -98,7 +98,10 @@ def _build_user_prompt(
                         f"Reference {index} id: {reference.record_id}",
                         f"Reference {index} type: {reference.reference_type}",
                         f"Reference {index} excerpt: {reference.excerpt or ''}",
-                        f"Reference {index} chunk_index: {reference.chunk_index if reference.chunk_index is not None else ''}",
+                        (
+                            f"Reference {index} chunk_index: "
+                            f"{reference.chunk_index if reference.chunk_index is not None else ''}"
+                        ),
                         f"Reference {index} source_doc: {reference.source_doc or ''}",
                     ]
                 )
@@ -124,9 +127,7 @@ def _build_user_prompt(
             retry_lines.append(
                 f"Your previous answer failed validation for this exact reason: {validation_error}"
             )
-            retry_lines.append(
-                "You must fix this exact validation error in the next answer."
-            )
+            retry_lines.append("You must fix this exact validation error in the next answer.")
         if last_invalid_answer:
             retry_lines.append(f"Previous invalid generated_answer: {last_invalid_answer}")
         if last_invalid_confidence_level:

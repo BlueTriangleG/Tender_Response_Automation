@@ -126,7 +126,10 @@ async def test_assess_returns_grounded_when_llm_marks_references_sufficient() ->
     assert result.supported_coverage_percent == 100
     assert model.method == "function_calling"
     assert model.strict is True
-    assert "Classify answerability as none, partial, or grounded." in model.runnable.calls[0][1].content
+    assert (
+        "Classify answerability as none, partial, or grounded."
+        in model.runnable.calls[0][1].content
+    )
     assert "If any material sub-part, scope, timeframe, environment, commitment" in (
         model.runnable.calls[0][1].content
     )
@@ -410,7 +413,9 @@ async def test_assess_returns_insufficient_reference_for_human_review_only_claim
     assert model.runnable is None
 
 
-def test_reference_assessment_payload_marks_all_properties_as_required_for_strict_function_calling() -> None:
+def test_reference_assessment_payload_marks_all_properties_as_required_for_strict_function_calling() -> (  # noqa: E501
+    None
+):
     schema = _ReferenceAssessmentPayload.model_json_schema()
 
     assert sorted(schema["required"]) == [

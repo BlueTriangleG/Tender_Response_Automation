@@ -17,9 +17,7 @@ def test_infer_csv_columns_matches_exact_synonyms() -> None:
 
 
 def test_infer_csv_columns_normalizes_headers_case_insensitively() -> None:
-    result = infer_csv_columns_from_headers(
-        ["Question Text", "Suggested_Answer", "Practice Area"]
-    )
+    result = infer_csv_columns_from_headers(["Question Text", "Suggested_Answer", "Practice Area"])
 
     assert result.question_col == "Question Text"
     assert result.answer_col == "Suggested_Answer"
@@ -29,9 +27,7 @@ def test_infer_csv_columns_normalizes_headers_case_insensitively() -> None:
 
 
 def test_infer_csv_columns_flags_ambiguous_targets_instead_of_guessing() -> None:
-    result = infer_csv_columns_from_headers(
-        ["question", "customer_question", "answer", "domain"]
-    )
+    result = infer_csv_columns_from_headers(["question", "customer_question", "answer", "domain"])
 
     assert result.question_col is None
     assert result.answer_col == "answer"

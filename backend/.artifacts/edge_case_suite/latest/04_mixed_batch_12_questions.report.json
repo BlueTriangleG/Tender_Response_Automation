@@ -11,7 +11,15 @@
   },
   "evaluation": {
     "case_id": "04_mixed_batch_12_questions",
-    "passed": true,
-    "errors": []
+    "passed": false,
+    "errors": [
+      "q-309: expected status unanswered, got completed",
+      "q-309: expected grounding_status in ['insufficient_reference', 'no_reference'], got partial_reference",
+      "q-309: expected generated_answer to be null",
+      "q-309: generated answer included forbidden phrase 'FedRAMP High authorized'",
+      "q-311: expected status completed, got unanswered",
+      "q-311: expected grounding_status partial_reference, got insufficient_reference",
+      "q-311: expected generated_answer to be non-null"
+    ]
   }
 }

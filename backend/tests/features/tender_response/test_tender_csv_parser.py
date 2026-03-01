@@ -23,8 +23,7 @@ def test_tender_csv_parser_supports_missing_optional_columns() -> None:
     parser = TenderCsvParser()
 
     result = parser.parse_text(
-        "question\n"
-        '"Do you support SAML SSO?"\n',
+        'question\n"Do you support SAML SSO?"\n',
         source_file_name="tender.csv",
     )
 

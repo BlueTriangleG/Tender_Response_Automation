@@ -1,8 +1,8 @@
 from io import BytesIO
+from xml.sax.saxutils import escape
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi.testclient import TestClient
-from xml.sax.saxutils import escape
 
 from app.features.tender_response.api.dependencies import get_tender_response_runner
 from app.features.tender_response.application.tender_response_runner import (
@@ -18,8 +18,8 @@ from app.features.tender_response.infrastructure.services.domain_tagging_service
     DomainTaggingService,
 )
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
-    ReferenceAssessmentService,
     ReferenceAssessmentResult,
+    ReferenceAssessmentService,
 )
 from app.features.tender_response.infrastructure.workflows.parallel.graph import (
     create_parallel_tender_response_graph,
@@ -41,7 +41,8 @@ def build_workbook_bytes(rows: list[list[str]]) -> bytes:
 CONTENT_TYPES_XML = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    '<Default Extension="rels" '
+    'ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
     '<Default Extension="xml" ContentType="application/xml"/>'
     '<Override PartName="/xl/workbook.xml" '
     'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
@@ -263,7 +264,10 @@ class FakeReferenceAssessmentService:
                 can_answer=True,
                 grounding_status="partial_reference",
                 usable_reference_ids=["qa-3"],
-                reason="The retrieved references support hosting controls but not sovereign guarantees.",
+                reason=(
+                    "The retrieved references support hosting controls but not sovereign "
+                    "guarantees."
+                ),
             )
         return ReferenceAssessmentResult(
             can_answer=False,
@@ -487,7 +491,9 @@ def test_tender_response_route_processes_xlsx_end_to_end_with_fake_workflow_serv
     assert payload["summary"]["unanswered_questions"] == 1
 
 
-def test_tender_response_route_returns_partial_answers_when_only_part_of_scope_is_supported() -> None:
+def test_tender_response_route_returns_partial_answers_when_only_part_of_scope_is_supported() -> (
+    None
+):
     workflow = create_parallel_tender_response_graph(
         alignment_repository=FakeAlignmentRepository(),
         answer_generation_service=FakeAnswerGenerationService(),
@@ -592,7 +598,8 @@ def test_tender_response_route_returns_conflict_without_generating_answer() -> N
                     "tender.csv",
                     (
                         b"question_id,domain,question\n"
-                        b'q-013,Security,"Please confirm that legacy SSL is fully disabled for all production traffic in the proposed environment."\n'
+                        b'q-013,Security,"Please confirm that legacy SSL is fully disabled '
+                        b'for all production traffic in the proposed environment."\n'
                     ),
                     "text/csv",
                 )
@@ -619,7 +626,9 @@ def test_tender_response_route_returns_conflict_without_generating_answer() -> N
     assert payload["summary"]["conflict_count"] == 1
 
 
-def test_tender_response_route_retries_invalid_partial_answer_until_second_attempt_succeeds() -> None:
+def test_tender_response_route_retries_invalid_partial_answer_until_second_attempt_succeeds() -> (
+    None
+):
     answer_service = SequentialFakeAnswerGenerationService(
         [
             GroundedAnswerResult(

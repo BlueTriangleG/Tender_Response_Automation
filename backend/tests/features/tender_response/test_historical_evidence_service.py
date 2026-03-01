@@ -205,8 +205,7 @@ async def test_find_historical_evidence_keeps_near_threshold_ssl_conflict_refere
                     record_id="qa-migration",
                     reference_type="qa",
                     question=(
-                        "Do you support SSL and TLS, and what is enforced for "
-                        "production traffic?"
+                        "Do you support SSL and TLS, and what is enforced for production traffic?"
                     ),
                     answer=(
                         "Production traffic to external service endpoints is "

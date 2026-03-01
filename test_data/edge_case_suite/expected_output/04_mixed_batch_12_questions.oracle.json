@@ -39,7 +39,10 @@
     {
       "question_id": "q-309",
       "expected_status": "unanswered",
-      "expected_grounding_status": "conflict",
+      "allowed_grounding_statuses": [
+        "insufficient_reference",
+        "no_reference"
+      ],
       "generated_answer_should_be_null": true,
       "must_not_include": [
         "FedRAMP High authorized"

@@ -151,9 +151,7 @@ def _assert_question(
     answer_text = actual_question.get("generated_answer") or ""
     must_include_any = question_oracle.get("must_include_any", [])
     if must_include_any and not any(needle in answer_text for needle in must_include_any):
-        errors.append(
-            f"{question_id}: generated answer did not include any of {must_include_any}"
-        )
+        errors.append(f"{question_id}: generated answer did not include any of {must_include_any}")
 
     must_not_include = question_oracle.get("must_not_include", [])
     violating_phrase = next(

@@ -10,7 +10,9 @@
   },
   "evaluation": {
     "case_id": "03_risk_and_contradictions",
-    "passed": true,
-    "errors": []
+    "passed": false,
+    "errors": [
+      "q-201: generated answer included forbidden phrase 'FedRAMP High authorized'"
+    ]
   }
 }

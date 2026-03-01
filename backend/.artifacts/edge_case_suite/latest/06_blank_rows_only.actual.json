@@ -4,10 +4,10 @@
     "history_files": [
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/01_clean_security_architecture.csv"
     ],
-    "recorded_at": "2026-03-01T06:55:21.535651+00:00"
+    "recorded_at": "2026-03-01T10:48:38.638757+00:00"
   },
   "response": {
-    "request_id": "c6b4a5ec-81d9-482a-a33c-3ff4283e7d5f",
+    "request_id": "c3bfd801-59d5-48a0-92be-2552bee230af",
     "session_id": "edge-case-06_blank_rows_only",
     "source_file_name": "06_blank_rows_only.csv",
     "total_questions_processed": 0,

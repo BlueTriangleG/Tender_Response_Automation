@@ -26,16 +26,14 @@ def load_manifest() -> EdgeCaseManifest:
     payload = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
 
     historical_repository = [
-        _resolve_dataset_path(item["file"])
-        for item in payload.get("historical_repository", [])
+        _resolve_dataset_path(item["file"]) for item in payload.get("historical_repository", [])
     ]
     tender_inputs = [
         TenderCase(
             file=_resolve_dataset_path(item["file"]),
             oracle=_resolve_dataset_path(item["oracle"]),
             recommended_history=[
-                _resolve_dataset_path(path)
-                for path in item.get("recommended_history", [])
+                _resolve_dataset_path(path) for path in item.get("recommended_history", [])
             ],
         )
         for item in payload.get("tender_inputs", [])

@@ -8,7 +8,15 @@
   },
   "evaluation": {
     "case_id": "05_header_aliases_and_blank_rows",
-    "passed": true,
-    "errors": []
+    "passed": false,
+    "errors": [
+      "completed_questions below minimum: expected >= 4, got 1",
+      "unanswered_questions above maximum: expected <= 0, got 3",
+      "row-2: expected status in ['completed'], got unanswered",
+      "q-503: expected status completed, got unanswered",
+      "q-503: expected grounding_status grounded, got insufficient_reference",
+      "q-504: expected status completed, got unanswered",
+      "q-504: expected grounding_status grounded, got insufficient_reference"
+    ]
   }
 }

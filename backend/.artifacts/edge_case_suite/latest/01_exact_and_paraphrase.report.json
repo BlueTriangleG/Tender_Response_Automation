@@ -8,9 +8,7 @@
   },
   "evaluation": {
     "case_id": "01_exact_and_paraphrase",
-    "passed": false,
-    "errors": [
-      "overall_completion_status mismatch: expected one of ['completed'], got completed_with_flags"
-    ]
+    "passed": true,
+    "errors": []
   }
 }

@@ -41,9 +41,7 @@ def test_upsert_records_updates_existing_ids_without_duplication(tmp_path: Path)
     connection = ensure_lancedb_ready(uri=tmp_path / "lancedb")
     repository = QaLanceDbRepository(connection=connection)
     updated_text = (
-        "Question: What is TLS?\n"
-        "Answer: TLS 1.3 available where supported\n"
-        "Domain: Security"
+        "Question: What is TLS?\nAnswer: TLS 1.3 available where supported\nDomain: Security"
     )
 
     repository.upsert_records(

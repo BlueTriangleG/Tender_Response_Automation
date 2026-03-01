@@ -7,10 +7,10 @@
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/04_duplicates_and_conflicts_a.csv",
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/05_duplicates_and_conflicts_b.csv"
     ],
-    "recorded_at": "2026-03-01T06:54:29.958579+00:00"
+    "recorded_at": "2026-03-01T10:48:22.405930+00:00"
   },
   "response": {
-    "request_id": "4da803b4-f67b-4191-9a2c-d58af39a14ec",
+    "request_id": "ad881a88-a9c1-4bf3-8cf5-8ea74e12e595",
     "session_id": "edge-case-03_risk_and_contradictions",
     "source_file_name": "03_risk_and_contradictions.csv",
     "total_questions_processed": 4,
@@ -18,8 +18,63 @@
       {
         "question_id": "q-201",
         "original_question": "Please confirm the platform is FedRAMP High authorized and HIPAA certified for all workloads.",
-        "generated_answer": null,
+        "generated_answer": "I can’t confirm that the platform is FedRAMP High authorized or HIPAA certified for all workloads. The provided references indicate FedRAMP High authorization is not an approved claim and should be escalated for human review, and that HIPAA certification is not an approved claim unless separately verified for the specific environment. (No evidence was provided here of FedRAMP High authorization or HIPAA certification for any specific environment or workload scope.)",
         "domain_tag": "compliance",
+        "confidence_level": "medium",
+        "confidence_reason": "The references directly state that FedRAMP High should not be claimed and that HIPAA certification is not approved unless separately verified, which supports declining to confirm. Confidence is reduced because the materials do not include any verified authorization/certification details for specific environments or workloads, so the full scope ('for all workloads') cannot be assessed.",
+        "historical_alignment_indicator": true,
+        "status": "completed",
+        "grounding_status": "partial_reference",
+        "flags": {
+          "high_risk": false,
+          "inconsistent_response": false,
+          "has_conflict": false
+        },
+        "risk": {
+          "level": "low",
+          "reason": "Response avoids asserting unapproved compliance claims and stays within the references, reducing regulatory/misrepresentation risk."
+        },
+        "metadata": {
+          "source_row_index": 0,
+          "alignment_record_id": "5e98cc4e675ff7a6aef61f8b22b7b63956f2b126ebfa575ae7aeac6b4b47ef95",
+          "alignment_score": 0.5774353479155478
+        },
+        "references": [
+          {
+            "alignment_record_id": "5e98cc4e675ff7a6aef61f8b22b7b63956f2b126ebfa575ae7aeac6b4b47ef95",
+            "reference_type": "qa",
+            "alignment_score": 0.5774353479155478,
+            "source_doc": "01_clean_security_architecture.csv",
+            "matched_question": "Do you currently hold FedRAMP High authorization?",
+            "matched_answer": "FedRAMP High authorization is not an approved claim and should be escalated for human review rather than asserted.",
+            "excerpt": null,
+            "chunk_index": null,
+            "used_for_answer": true
+          },
+          {
+            "alignment_record_id": "bd72a736733f61ae7bbdeef85267df7bf0067b45127cb42c381145919e553183",
+            "reference_type": "qa",
+            "alignment_score": 0.562777231809677,
+            "source_doc": "05_duplicates_and_conflicts_b.csv",
+            "matched_question": "Which certifications can you currently claim?",
+            "matched_answer": "Approved certifications do not include FedRAMP High or HIPAA certification unless separately verified for the specific environment.",
+            "excerpt": null,
+            "chunk_index": null,
+            "used_for_answer": true
+          }
+        ],
+        "error_message": null,
+        "extensions": {
+          "reference_assessment_reason": "References explicitly state FedRAMP High is not an approved claim and should be escalated for human review, and that HIPAA certification is not approved unless separately verified for the specific environment. This supports a safe partial response: cannot confirm FedRAMP High or HIPAA certification for all workloads; requires verification. It does not provide affirmative authorization/certification details.",
+          "confidence_review_reason": "The references directly state that FedRAMP High should not be claimed and that HIPAA certification is not approved unless separately verified, which supports declining to confirm. Confidence is reduced because the materials do not include any verified authorization/certification details for specific environments or workloads, so the full scope ('for all workloads') cannot be assessed.",
+          "conflicts": []
+        }
+      },
+      {
+        "question_id": "q-202",
+        "original_question": "State that the platform does not support SAML 2.0 or OpenID Connect.",
+        "generated_answer": null,
+        "domain_tag": "security",
         "confidence_level": null,
         "confidence_reason": null,
         "historical_alignment_indicator": true,
@@ -35,55 +90,6 @@
           "reason": "Conflicting historical references require human review before answering."
         },
         "metadata": {
-          "source_row_index": 0,
-          "alignment_record_id": "5e98cc4e675ff7a6aef61f8b22b7b63956f2b126ebfa575ae7aeac6b4b47ef95",
-          "alignment_score": 0.5774353479155478
-        },
-        "references": [
-          {
-            "alignment_record_id": "5e98cc4e675ff7a6aef61f8b22b7b63956f2b126ebfa575ae7aeac6b4b47ef95",
-            "alignment_score": 0.5774353479155478,
-            "source_doc": "01_clean_security_architecture.csv",
-            "matched_question": "Do you currently hold FedRAMP High authorization?",
-            "matched_answer": "FedRAMP High authorization is not an approved claim and should be escalated for human review rather than asserted.",
-            "used_for_answer": false
-          },
-          {
-            "alignment_record_id": "bd72a736733f61ae7bbdeef85267df7bf0067b45127cb42c381145919e553183",
-            "alignment_score": 0.562777231809677,
-            "source_doc": "05_duplicates_and_conflicts_b.csv",
-            "matched_question": "Which certifications can you currently claim?",
-            "matched_answer": "Approved certifications do not include FedRAMP High or HIPAA certification unless separately verified for the specific environment.",
-            "used_for_answer": false
-          }
-        ],
-        "error_message": "Conflicting historical references provide opposing statements about the same capability or certification. Human review is required before answering.",
-        "extensions": {
-          "reference_assessment_reason": "Conflicting historical references provide opposing statements about the same capability or certification. Human review is required before answering.",
-          "requires_human_review": true,
-          "conflicts": []
-        }
-      },
-      {
-        "question_id": "q-202",
-        "original_question": "State that the platform does not support SAML 2.0 or OpenID Connect.",
-        "generated_answer": null,
-        "domain_tag": "security",
-        "confidence_level": null,
-        "confidence_reason": null,
-        "historical_alignment_indicator": true,
-        "status": "unanswered",
-        "grounding_status": "insufficient_reference",
-        "flags": {
-          "high_risk": false,
-          "inconsistent_response": false,
-          "has_conflict": false
-        },
-        "risk": {
-          "level": "low",
-          "reason": "No grounded answer was produced."
-        },
-        "metadata": {
           "source_row_index": 1,
           "alignment_record_id": "dbb921bf56e2d6a941bb5bddbcf1e8521032903291461cce4e0471f9538a59b9",
           "alignment_score": 0.5723230757474865
@@ -91,27 +97,30 @@
         "references": [
           {
             "alignment_record_id": "dbb921bf56e2d6a941bb5bddbcf1e8521032903291461cce4e0471f9538a59b9",
+            "reference_type": "qa",
             "alignment_score": 0.5723230757474865,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "Does the platform support SAML 2.0 and OpenID Connect single sign-on?",
             "matched_answer": "Yes. The platform supports both SAML 2.0 and OpenID Connect for enterprise single sign-on integrations.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": false
           }
         ],
-        "error_message": null,
+        "error_message": "The tender question asks to state the platform does NOT support SAML 2.0 or OpenID Connect, but the provided reference explicitly says the platform supports both. This is a direct material conflict, so we cannot safely answer as requested without human review.",
         "extensions": {
-          "reference_assessment_reason": "The provided reference explicitly states the platform supports both SAML 2.0 and OpenID Connect for enterprise single sign-on, which directly contradicts the requested statement that the platform does not support SAML 2.0 or OpenID Connect. Therefore the references cannot support the requested claim and are insufficient to assert non-support.",
-          "requires_human_review": false,
+          "reference_assessment_reason": "The tender question asks to state the platform does NOT support SAML 2.0 or OpenID Connect, but the provided reference explicitly says the platform supports both. This is a direct material conflict, so we cannot safely answer as requested without human review.",
+          "requires_human_review": true,
           "conflicts": []
         }
       },
       {
         "question_id": "q-203",
         "original_question": "Please confirm unlimited AI token usage is included in the standard annual subscription.",
-        "generated_answer": "No — unlimited AI token usage is not included in the standard annual subscription. The standard commercial position explicitly excludes unlimited AI usage, and AI consumption is handled through agreed volume bands alongside the annual subscription (implementation is scoped separately).",
+        "generated_answer": "No. Unlimited AI token usage is not included as standard in the annual subscription; AI usage is handled through agreed volume bands rather than unlimited usage.",
         "domain_tag": "pricing",
         "confidence_level": "high",
-        "confidence_reason": "Reference 24c32d6e... explicitly states unlimited AI usage is not part of the standard approved commercial position; Reference 055b811c... states pricing is an annual subscription with AI usage handled through agreed volume bands, directly supporting the answer.",
+        "confidence_reason": "Reference 1 explicitly states unlimited AI usage is not part of the standard approved commercial position. Reference 2 confirms AI usage is handled through agreed volume bands within an annual subscription model, reinforcing that it is not unlimited by default.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -122,7 +131,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "Both references are explicit and consistent on commercial position and pricing structure; there is no contradictory information in the provided references."
+          "reason": "The response directly reflects the referenced pricing and AI usage structure without adding unsupported details about specific limits or terms."
         },
         "metadata": {
           "source_row_index": 2,
@@ -132,35 +141,41 @@
         "references": [
           {
             "alignment_record_id": "24c32d6e2d45c261e864f33e7cd7629b2a9cacb469616d0e2d2e0441dcab1411",
+            "reference_type": "qa",
             "alignment_score": 0.6004566160201137,
             "source_doc": "02_header_aliases.csv",
             "matched_question": "Can you offer unlimited AI usage on a fixed fee as standard?",
             "matched_answer": "No. Unlimited AI usage is not part of the standard approved commercial position.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           },
           {
             "alignment_record_id": "055b811c7b6fbb1ce8edd88d329d98d55fa4eb537852a3705fd0f9c5b5b2bab8",
+            "reference_type": "qa",
             "alignment_score": 0.5044551563571356,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "How is pricing typically structured?",
             "matched_answer": "Pricing is typically structured as an annual subscription with implementation scoped separately and AI usage handled through agreed volume bands.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "Reference 24c32d6... explicitly states that unlimited AI usage is not part of the standard approved commercial position. Reference 055b811c... explains pricing is annual subscription with AI usage handled through agreed volume bands, supporting that unlimited usage is not included. Together they directly answer the question.",
-          "confidence_review_reason": "Reference 24c32d6e... explicitly states unlimited AI usage is not part of the standard approved commercial position; Reference 055b811c... states pricing is an annual subscription with AI usage handled through agreed volume bands, directly supporting the answer.",
+          "reference_assessment_reason": "Ref 24 explicitly states unlimited AI usage is not part of the standard commercial position. Ref 55 adds that AI usage is handled through agreed volume bands within an annual subscription model, reinforcing that it is not unlimited by default. Together they sufficiently address whether unlimited tokens are included in the standard annual subscription (they are not).",
+          "confidence_review_reason": "Reference 1 explicitly states unlimited AI usage is not part of the standard approved commercial position. Reference 2 confirms AI usage is handled through agreed volume bands within an annual subscription model, reinforcing that it is not unlimited by default.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-204",
         "original_question": "List only the currently approved certifications for the core platform environment.",
-        "generated_answer": "The currently approved certifications for the core platform environment are ISO 27001 and SOC 2 Type II.",
+        "generated_answer": "ISO 27001 certification and SOC 2 Type II reporting (core platform environment).",
         "domain_tag": "compliance",
         "confidence_level": "high",
-        "confidence_reason": "Reference 1 explicitly lists ISO 27001 and SOC 2 Type II as the approved claims for the core platform environment; Reference 2 is consistent by noting that FedRAMP High and HIPAA are not approved unless separately verified. Both references directly and explicitly support the stated certifications.",
+        "confidence_reason": "Reference 1 explicitly lists the currently approved claims for the core platform environment as ISO 27001 certification and SOC 2 Type II reporting. Reference 2 reinforces that other items (e.g., FedRAMP High or HIPAA) are not approved certifications to claim unless separately verified, supporting that the list should be limited to those two.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -171,7 +186,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "Answer is strictly limited to the certifications named in the provided references and does not make any unsupported claims or extrapolations."
+          "reason": "The answer repeats only the certifications/reporting explicitly approved in the provided references and does not add unsupported certifications or scope."
         },
         "metadata": {
           "source_row_index": 3,
@@ -181,25 +196,31 @@
         "references": [
           {
             "alignment_record_id": "4b9541eb8690f7af16ce3ebadd9caae2cd3ee0ec843a323e454c2dee94e967e7",
+            "reference_type": "qa",
             "alignment_score": 0.5444803074260387,
             "source_doc": "04_duplicates_and_conflicts_a.csv",
             "matched_question": "Which certifications can you currently claim?",
             "matched_answer": "The approved claims are ISO 27001 certification and SOC 2 Type II reporting for the core platform environment.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           },
           {
             "alignment_record_id": "bd72a736733f61ae7bbdeef85267df7bf0067b45127cb42c381145919e553183",
+            "reference_type": "qa",
             "alignment_score": 0.5195081837819604,
             "source_doc": "05_duplicates_and_conflicts_b.csv",
             "matched_question": "Which certifications can you currently claim?",
             "matched_answer": "Approved certifications do not include FedRAMP High or HIPAA certification unless separately verified for the specific environment.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "Both references address which certifications can currently be claimed for the core platform environment; they are consistent (one lists approved certifications, the other excludes certain certifications). Together they support answering the user's request about currently approved certifications.",
-          "confidence_review_reason": "Reference 1 explicitly lists ISO 27001 and SOC 2 Type II as the approved claims for the core platform environment; Reference 2 is consistent by noting that FedRAMP High and HIPAA are not approved unless separately verified. Both references directly and explicitly support the stated certifications.",
+          "reference_assessment_reason": "Reference 1 directly states the approved claims for the core platform environment: ISO 27001 and SOC 2 Type II. Reference 2 reinforces scope by excluding other certifications unless separately verified. Together they fully support listing only currently approved certifications for the core platform environment.",
+          "confidence_review_reason": "Reference 1 explicitly lists the currently approved claims for the core platform environment as ISO 27001 certification and SOC 2 Type II reporting. Reference 2 reinforces that other items (e.g., FedRAMP High or HIPAA) are not approved certifications to claim unless separately verified, supporting that the list should be limited to those two.",
           "conflicts": []
         }
       }
@@ -208,8 +229,8 @@
       "total_questions_processed": 4,
       "flagged_high_risk_or_inconsistent_responses": 0,
       "overall_completion_status": "conflict",
-      "completed_questions": 2,
-      "unanswered_questions": 2,
+      "completed_questions": 3,
+      "unanswered_questions": 1,
       "failed_questions": 0,
       "conflict_count": 1
     }

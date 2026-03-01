@@ -1,11 +1,11 @@
 import asyncio
 
+from app.core.config import settings
 from app.features.tender_response.domain.models import HistoricalReference, TenderQuestion
 from app.features.tender_response.infrastructure.services.answer_generation_service import (
     AnswerGenerationService,
     _GroundedAnswerPayload,
 )
-from app.core.config import settings
 
 
 class FakeStructuredRunnable:
@@ -87,8 +87,7 @@ def test_answer_generation_service_uses_dedicated_tender_model_configuration(
 ) -> None:
     factory = FakeChatModelFactory()
     monkeypatch.setattr(
-        "app.features.tender_response.infrastructure.services.answer_generation_service."
-        "ChatOpenAI",
+        "app.features.tender_response.infrastructure.services.answer_generation_service.ChatOpenAI",
         factory,
     )
     monkeypatch.setattr(
@@ -152,7 +151,9 @@ async def test_generate_grounded_response_uses_historical_context_and_returns_re
     )
 
 
-async def test_generate_grounded_response_prompts_for_explicit_partial_gap_and_confidence_reason() -> None:
+async def test_generate_grounded_response_prompts_for_explicit_partial_gap_and_confidence_reason() -> (  # noqa: E501
+    None
+):
     model = FakeChatModel(
         {
             "generated_answer": (
@@ -288,8 +289,7 @@ async def test_generate_grounded_response_rewrites_invalid_structured_answer_out
         question=TenderQuestion(
             question_id="q-002",
             original_question=(
-                "Please confirm your production disaster recovery targets, "
-                "including RPO and RTO."
+                "Please confirm your production disaster recovery targets, including RPO and RTO."
             ),
             declared_domain="Infrastructure",
             source_file_name="tender.csv",
@@ -318,7 +318,9 @@ async def test_generate_grounded_response_rewrites_invalid_structured_answer_out
     )
 
 
-async def test_generate_grounded_response_retry_prompt_includes_attempt_number_and_validation_feedback() -> None:
+async def test_generate_grounded_response_retry_prompt_includes_attempt_number_and_validation_feedback() -> (  # noqa: E501
+    None
+):
     model = FakeChatModel(
         [
             {
@@ -348,8 +350,7 @@ async def test_generate_grounded_response_retry_prompt_includes_attempt_number_a
         question=TenderQuestion(
             question_id="q-009",
             original_question=(
-                "Please confirm your production disaster recovery targets, "
-                "including RPO and RTO."
+                "Please confirm your production disaster recovery targets, including RPO and RTO."
             ),
             declared_domain="Infrastructure",
             source_file_name="tender.csv",
@@ -395,7 +396,9 @@ async def test_generate_grounded_response_retry_prompt_includes_attempt_number_a
     )
 
 
-def test_grounded_answer_payload_marks_all_properties_as_required_for_strict_function_calling() -> None:
+def test_grounded_answer_payload_marks_all_properties_as_required_for_strict_function_calling() -> (
+    None
+):
     schema = _GroundedAnswerPayload.model_json_schema()
 
     assert sorted(schema["required"]) == [

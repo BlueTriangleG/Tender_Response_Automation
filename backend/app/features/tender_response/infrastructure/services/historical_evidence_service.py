@@ -66,9 +66,7 @@ class HistoricalEvidenceService:
 
         best_reference = merged_references[0]
         qualified_references = [
-            reference
-            for reference in merged_references
-            if reference.alignment_score >= threshold
+            reference for reference in merged_references if reference.alignment_score >= threshold
         ]
         if not qualified_references:
             return HistoricalAlignmentResult(
@@ -115,9 +113,7 @@ def _normalize(text: str | None) -> str:
 def _is_absolute_ssl_disable_question(text: str) -> bool:
     normalized = _normalize(text)
     return (
-        "legacy ssl" in normalized
-        and "production" in normalized
-        and "fully disabled" in normalized
+        "legacy ssl" in normalized and "production" in normalized and "fully disabled" in normalized
     )
 
 
@@ -158,8 +154,4 @@ def _merge_returned_references(
             continue
         references_by_id[reference.record_id] = reference
 
-    return [
-        reference
-        for reference in all_references
-        if reference.record_id in references_by_id
-    ]
+    return [reference for reference in all_references if reference.record_id in references_by_id]

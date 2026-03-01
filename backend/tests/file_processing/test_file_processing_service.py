@@ -1,7 +1,6 @@
 from io import BytesIO
-from zipfile import ZIP_DEFLATED, ZipFile
-
 from xml.sax.saxutils import escape
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from starlette.datastructures import Headers, UploadFile
 
@@ -46,7 +45,9 @@ def build_workbook_bytes(rows: list[list[str]]) -> bytes:
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
                 '<Relationship Id="rId1" '
-                'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+                "Type="
+                '"http://schemas.openxmlformats.org/officeDocument/2006/relationships/'
+                'officeDocument" '
                 'Target="xl/workbook.xml"/>'
                 "</Relationships>"
             ),
@@ -67,7 +68,8 @@ def build_workbook_bytes(rows: list[list[str]]) -> bytes:
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
                 '<Relationship Id="rId1" '
-                'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+                "Type="
+                '"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
                 'Target="worksheets/sheet1.xml"/>'
                 "</Relationships>"
             ),

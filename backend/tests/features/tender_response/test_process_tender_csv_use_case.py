@@ -1,8 +1,8 @@
 from io import BytesIO
+from xml.sax.saxutils import escape
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from starlette.datastructures import Headers, UploadFile
-from xml.sax.saxutils import escape
 
 from app.core.config import settings
 from app.features.tender_response.application.tender_response_runner import (
@@ -45,7 +45,8 @@ def build_workbook_bytes(rows: list[list[str]]) -> bytes:
 CONTENT_TYPES_XML = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    '<Default Extension="rels" '
+    'ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
     '<Default Extension="xml" ContentType="application/xml"/>'
     '<Override PartName="/xl/workbook.xml" '
     'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
@@ -209,7 +210,7 @@ async def test_process_upload_parses_csv_and_invokes_workflow() -> None:
     result = await runner.process_upload(
         make_upload_file(
             "tender.csv",
-            b"question_id,question\nq-001,\"Do you support TLS 1.2 or above?\"\n",
+            b'question_id,question\nq-001,"Do you support TLS 1.2 or above?"\n',
             "text/csv",
         ),
         TenderResponseRequestOptions(session_id="session-123", alignment_threshold=0.84),
@@ -262,7 +263,7 @@ async def test_process_upload_falls_back_to_request_id_when_session_id_is_missin
     result = await runner.process_upload(
         make_upload_file(
             "tender.csv",
-            b"question_id,question\nq-001,\"Do you support TLS 1.2 or above?\"\n",
+            b'question_id,question\nq-001,"Do you support TLS 1.2 or above?"\n',
             "text/csv",
         ),
         TenderResponseRequestOptions(alignment_threshold=0.84),
@@ -323,7 +324,7 @@ async def test_process_upload_prints_debug_timing_when_enabled(
         await runner.process_upload(
             make_upload_file(
                 "tender.csv",
-                b"question_id,question\nq-001,\"Do you support TLS 1.2 or above?\"\n",
+                b'question_id,question\nq-001,"Do you support TLS 1.2 or above?"\n',
                 "text/csv",
             ),
             TenderResponseRequestOptions(session_id="session-123", alignment_threshold=0.5),

@@ -124,9 +124,7 @@ class ReferenceAssessmentService:
             )
             print_llm_bug_report(
                 service="reference_assessment_service",
-                error=(
-                    "timed out before the retrieved references could be evaluated"
-                ),
+                error=("timed out before the retrieved references could be evaluated"),
                 messages=messages,
                 metadata={
                     "question_id": question.question_id,
@@ -213,7 +211,10 @@ def _is_absolute_ssl_disable_reference(text: str) -> bool:
         "legacy ssl" in normalized
         and "fully disabled" in normalized
         and "production" in normalized
-        and ("all public and private production traffic" in normalized or "all production traffic" in normalized)
+        and (
+            "all public and private production traffic" in normalized
+            or "all production traffic" in normalized
+        )
     )
 
 
@@ -223,7 +224,11 @@ def _is_ssl_exception_reference(text: str) -> bool:
         "legacy ssl" in normalized
         and ("can remain enabled" in normalized or "may be used" in normalized)
         and "production" in normalized
-        and ("migration window" in normalized or "migration scenarios" in normalized or "transition" in normalized)
+        and (
+            "migration window" in normalized
+            or "migration scenarios" in normalized
+            or "transition" in normalized
+        )
     )
 
 

@@ -38,8 +38,6 @@ class DocumentLanceDbRepository:
         table = self._connection.open_table(self._table_name)
         wanted_ids = set(record_ids)
         existing_ids = {
-            row["id"]
-            for row in table.to_arrow().to_pylist()
-            if row.get("id") in wanted_ids
+            row["id"] for row in table.to_arrow().to_pylist() if row.get("id") in wanted_ids
         }
         return existing_ids

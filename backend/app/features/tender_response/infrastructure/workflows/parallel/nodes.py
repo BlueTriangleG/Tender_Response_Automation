@@ -1,23 +1,20 @@
 """Node factories for the parallel tender-response workflow."""
 
 import asyncio
-
 from time import perf_counter
 
 from app.core.config import settings
+from app.features.tender_response.domain.models import ReferenceAssessmentResult
 from app.features.tender_response.domain.risk_rules import (
     detect_high_risk_response,
     detect_inconsistent_response,
     find_generation_validation_error,
 )
-from app.features.tender_response.infrastructure.services.historical_evidence_service import (
-    HistoricalEvidenceService,
+from app.features.tender_response.infrastructure.services.answer_generation_service import (
+    AnswerGenerationService,
 )
 from app.features.tender_response.infrastructure.services.conflict_review_service import (
     ConflictReviewService,
-)
-from app.features.tender_response.infrastructure.services.answer_generation_service import (
-    AnswerGenerationService,
 )
 from app.features.tender_response.infrastructure.services.domain_tagging_service import (
     DomainTaggingService,
@@ -25,7 +22,6 @@ from app.features.tender_response.infrastructure.services.domain_tagging_service
 from app.features.tender_response.infrastructure.services.reference_assessment_service import (
     ReferenceAssessmentService,
 )
-from app.features.tender_response.domain.models import ReferenceAssessmentResult
 from app.features.tender_response.infrastructure.workflows.common.builders import (
     build_reference_payload,
     failed_question_result,
@@ -44,6 +40,7 @@ from app.features.tender_response.schemas.responses import (
     TenderQuestionResponse,
     TenderResponseSummary,
 )
+
 
 def _completed_results_with_answers(
     results: list[TenderQuestionResponse],
@@ -498,8 +495,7 @@ def make_fail_generation_node(domain_tagging_service: DomainTaggingService):
             alignment=alignment,
         )
         error_message = (
-            state.get("generation_validation_error")
-            or "Generated answer failed output validation."
+            state.get("generation_validation_error") or "Generated answer failed output validation."
         )
         used_reference_ids = set(assessment.usable_reference_ids)
         return {
@@ -572,9 +568,7 @@ def prepare_conflict_review(state: BatchTenderResponseState) -> dict:
     """Batch barrier before dispatching parallel conflict review jobs."""
 
     current_completed = _completed_results_with_answers(state.get("question_results", []))
-    session_completed = _completed_results_with_answers(
-        state.get("session_completed_results", [])
-    )
+    session_completed = _completed_results_with_answers(state.get("session_completed_results", []))
     debug_log(
         "prepare_conflict_review "
         f"current_results={len(state.get('question_results', []))} "
@@ -604,7 +598,8 @@ def make_review_conflict_group_node(conflict_review_service: ConflictReviewServi
         )
         debug_log(
             "conflict_review start "
-            f"targets={len(target_results)} target_ids={[item.question_id for item in target_results]} "
+            f"targets={len(target_results)} "
+            f"target_ids={[item.question_id for item in target_results]} "
             f"references={len(reference_results)}"
         )
         if not target_results or len(reference_results) < 2:
@@ -623,9 +618,7 @@ def make_review_conflict_group_node(conflict_review_service: ConflictReviewServi
             debug_log("conflict_review failed error=timed out")
             return {
                 "conflict_findings": [],
-                "conflict_review_errors": [
-                    "Session conflict review timed out and was skipped."
-                ],
+                "conflict_review_errors": ["Session conflict review timed out and was skipped."],
             }
         except Exception as exc:
             debug_log(f"conflict_review failed error={exc}")
@@ -665,7 +658,10 @@ def apply_conflicts(state: BatchTenderResponseState) -> dict:
             or target_question_id == conflicting_question_id
         ):
             continue
-        if target_question_id not in reference_by_id or conflicting_question_id not in reference_by_id:
+        if (
+            target_question_id not in reference_by_id
+            or conflicting_question_id not in reference_by_id
+        ):
             continue
 
         conflicting_result = reference_by_id[conflicting_question_id]
@@ -719,7 +715,8 @@ def apply_conflicts(state: BatchTenderResponseState) -> dict:
     debug_log(
         "apply_conflicts "
         f"validated_findings={len(state.get('conflict_findings', []))} "
-        f"conflicted_questions={sum(bool(conflict_map.get(item.question_id)) for item in updated_results)} "
+        f"conflicted_questions="
+        f"{sum(bool(conflict_map.get(item.question_id)) for item in updated_results)} "
         f"session_completed={len(updated_session_results)}"
     )
     return {

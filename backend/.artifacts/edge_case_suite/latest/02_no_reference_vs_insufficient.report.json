@@ -9,7 +9,18 @@
   },
   "evaluation": {
     "case_id": "02_no_reference_vs_insufficient",
-    "passed": true,
-    "errors": []
+    "passed": false,
+    "errors": [
+      "overall_completion_status mismatch: expected one of ['completed', 'completed_with_flags', 'conflict'], got unanswered",
+      "completed_questions below minimum: expected >= 2, got 0",
+      "unanswered_questions above maximum: expected <= 2, got 4",
+      "q-101: expected status in ['completed'], got unanswered",
+      "q-101: expected grounding_status in ['partial_reference'], got insufficient_reference",
+      "q-101: expected generated_answer to be non-null",
+      "q-102: expected grounding_status in ['insufficient_reference'], got no_reference",
+      "q-104: expected status in ['completed'], got unanswered",
+      "q-104: expected grounding_status in ['partial_reference'], got no_reference",
+      "q-104: expected generated_answer to be non-null"
+    ]
   }
 }

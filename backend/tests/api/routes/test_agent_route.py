@@ -32,9 +32,7 @@ def test_chat_passes_workflow_name_to_agent_manager() -> None:
     """workflow_name from the request body must reach the use case request model."""
     client = TestClient(app)
     mock_use_case = MagicMock()
-    mock_use_case.chat = AsyncMock(
-        return_value={"response": "ok", "session_id": "test-session"}
-    )
+    mock_use_case.chat = AsyncMock(return_value={"response": "ok", "session_id": "test-session"})
 
     app.dependency_overrides[get_agent_chat_use_case] = lambda: mock_use_case
     try:

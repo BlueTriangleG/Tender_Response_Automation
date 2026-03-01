@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from app.features.tender_response.schemas.responses import (
     QuestionFlags,
@@ -9,7 +10,6 @@ from app.features.tender_response.schemas.responses import (
     TenderResponseSummary,
     TenderResponseWorkflowResponse,
 )
-from pydantic import ValidationError
 
 
 def test_tender_question_response_contains_required_business_fields() -> None:

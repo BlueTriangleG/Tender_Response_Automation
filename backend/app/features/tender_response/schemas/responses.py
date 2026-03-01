@@ -63,9 +63,7 @@ class TenderQuestionResponse(BaseModel):
         "failed",
     ]
     flags: QuestionFlags = Field(default_factory=QuestionFlags)
-    risk: QuestionRisk = Field(
-        default_factory=lambda: QuestionRisk(level="low", reason=None)
-    )
+    risk: QuestionRisk = Field(default_factory=lambda: QuestionRisk(level="low", reason=None))
     metadata: QuestionMetadata
     references: list[QuestionReference] = Field(default_factory=list)
     error_message: str | None = None

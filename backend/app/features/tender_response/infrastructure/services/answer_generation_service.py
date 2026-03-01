@@ -123,10 +123,7 @@ class AnswerGenerationService:
             )
             print_llm_bug_report(
                 service="answer_generation_service",
-                error=(
-                    f"timed out during {phase} request after "
-                    f"{timeout_seconds:.2f}s"
-                ),
+                error=(f"timed out during {phase} request after {timeout_seconds:.2f}s"),
                 messages=messages,
                 metadata={
                     "question_id": question.question_id,
@@ -136,8 +133,7 @@ class AnswerGenerationService:
                 },
             )
             raise RuntimeError(
-                f"Answer generation timed out during {phase} request after "
-                f"{timeout_seconds:.2f}s."
+                f"Answer generation timed out during {phase} request after {timeout_seconds:.2f}s."
             ) from exc
         except Exception as exc:
             duration_ms = (perf_counter() - started_at) * 1000

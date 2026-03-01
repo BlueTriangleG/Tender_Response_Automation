@@ -8,10 +8,10 @@
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/05_duplicates_and_conflicts_b.csv",
       "/Users/autumn/Learning/interview questions/pans_software/test_data/edge_case_suite/historical_repository/06_dirty_rows_and_quoting.csv"
     ],
-    "recorded_at": "2026-03-01T06:55:02.247429+00:00"
+    "recorded_at": "2026-03-01T10:48:31.314275+00:00"
   },
   "response": {
-    "request_id": "40809b0f-9d97-4973-9cf2-a7d3f02b0a46",
+    "request_id": "377b0c8d-ddc5-4cf9-959b-f9a4fae0f91d",
     "session_id": "edge-case-04_mixed_batch_12_questions",
     "source_file_name": "04_mixed_batch_12_questions.csv",
     "total_questions_processed": 12,
@@ -19,10 +19,10 @@
       {
         "question_id": "q-301",
         "original_question": "Do you support TLS 1.2 or higher for production traffic?",
-        "generated_answer": "Yes — external production endpoints enforce TLS 1.2 or higher; legacy SSL is not enabled for public production traffic.",
+        "generated_answer": "Yes. External production endpoints enforce TLS 1.2 or higher, and legacy SSL is not enabled for public production traffic.",
         "domain_tag": "security",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic.",
+        "confidence_reason": "The provided reference explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic, directly answering the question.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -33,7 +33,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "The reference directly asserts enforcement for external production traffic and does not indicate exceptions or conflicting behavior."
+          "reason": "The answer restates the reference without adding assumptions or unsupported claims."
         },
         "metadata": {
           "source_row_index": 0,
@@ -43,27 +43,30 @@
         "references": [
           {
             "alignment_record_id": "ff18b34f828c93810aa9b35ed93e3d7b94dd5019e6fd2708deb39d270cf114e3",
+            "reference_type": "qa",
             "alignment_score": 0.7618462224774846,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "Do you support TLS 1.2 or higher for production traffic?",
             "matched_answer": "Yes. External production endpoints enforce TLS 1.2 or higher. Legacy SSL is not enabled for public production traffic.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided matched answer explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic, directly addressing the question.",
-          "confidence_review_reason": "The provided reference explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic.",
+          "reference_assessment_reason": "The provided QA reference directly answers the question, explicitly stating that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic. This fully covers TLS version support for production traffic without requiring additional assumptions.",
+          "confidence_review_reason": "The provided reference explicitly states that external production endpoints enforce TLS 1.2 or higher and that legacy SSL is not enabled for public production traffic, directly answering the question.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-302",
         "original_question": "Can the platform integrate with SAML 2.0 or OpenID Connect identity providers?",
-        "generated_answer": "Yes — the platform supports integration with both SAML 2.0 and OpenID Connect identity providers for enterprise single sign-on.",
+        "generated_answer": "Yes. The platform supports integration with both SAML 2.0 and OpenID Connect identity providers for enterprise single sign-on.",
         "domain_tag": "security",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states the platform supports both SAML 2.0 and OpenID Connect for enterprise single sign-on integrations.",
+        "confidence_reason": "The provided reference explicitly states the platform supports both SAML 2.0 and OpenID Connect for enterprise SSO integrations, which directly answers the question with no conflicting information.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -74,7 +77,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "This is a direct statement in the referenced documentation and does not require extrapolation; no unsupported claims were made."
+          "reason": "Minimal risk: the response restates the referenced capability without adding unsupported details or commitments."
         },
         "metadata": {
           "source_row_index": 1,
@@ -84,27 +87,30 @@
         "references": [
           {
             "alignment_record_id": "dbb921bf56e2d6a941bb5bddbcf1e8521032903291461cce4e0471f9538a59b9",
+            "reference_type": "qa",
             "alignment_score": 0.7016845712707886,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "Does the platform support SAML 2.0 and OpenID Connect single sign-on?",
             "matched_answer": "Yes. The platform supports both SAML 2.0 and OpenID Connect for enterprise single sign-on integrations.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference explicitly states the platform supports both SAML 2.0 and OpenID Connect for enterprise single sign-on integrations, directly answering the question.",
-          "confidence_review_reason": "The provided reference explicitly states the platform supports both SAML 2.0 and OpenID Connect for enterprise single sign-on integrations.",
+          "reference_assessment_reason": "The provided QA reference directly answers the tender question, explicitly stating the platform supports both SAML 2.0 and OpenID Connect for enterprise SSO integrations. No conflicting references are provided and the scope matches the question.",
+          "confidence_review_reason": "The provided reference explicitly states the platform supports both SAML 2.0 and OpenID Connect for enterprise SSO integrations, which directly answers the question with no conflicting information.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-303",
         "original_question": "Is role-based access control available across tenant and workspace scopes?",
-        "generated_answer": "Yes. Role-based access control (RBAC) is available across tenant and workspace scopes (the reference states RBAC is available across tenant, workspace, and feature scopes).",
+        "generated_answer": "Yes. Role-based access control is available across both tenant and workspace scopes (and also feature scopes).",
         "domain_tag": "architecture",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states: 'Yes. Role-based access control is available across tenant, workspace, and feature scopes,' directly supporting availability across tenant and workspace scopes.",
+        "confidence_reason": "The provided reference explicitly states that role-based access control is available across tenant, workspace, and feature scopes, which directly answers the question about tenant and workspace scopes.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -115,7 +121,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "This is a factual feature statement directly supported by the single provided reference; there is low risk in restating it as given."
+          "reason": "Low risk of misstatement because the answer is a direct restatement of the provided reference without additional claims."
         },
         "metadata": {
           "source_row_index": 2,
@@ -125,38 +131,41 @@
         "references": [
           {
             "alignment_record_id": "39166e292b66c0b8f18f836884468b62f5dc813e1c93346275fd0998b484b825",
+            "reference_type": "qa",
             "alignment_score": 0.730887135785293,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "Do you provide role-based access control?",
             "matched_answer": "Yes. Role-based access control is available across tenant, workspace, and feature scopes.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference explicitly states: 'Yes. Role-based access control is available across tenant, workspace, and feature scopes.' This directly and unambiguously answers whether RBAC is available across tenant and workspace scopes.",
-          "confidence_review_reason": "The provided reference explicitly states: 'Yes. Role-based access control is available across tenant, workspace, and feature scopes,' directly supporting availability across tenant and workspace scopes.",
+          "reference_assessment_reason": "The reference directly answers that RBAC is available across tenant and workspace scopes (and feature scopes). This fully covers the question without needing additional context.",
+          "confidence_review_reason": "The provided reference explicitly states that role-based access control is available across tenant, workspace, and feature scopes, which directly answers the question about tenant and workspace scopes.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-304",
         "original_question": "Can customer data be hosted in Australia?",
-        "generated_answer": "Yes. Customer data can be hosted in Australia — Australian regions are available for customers with local data residency requirements, and regional hosting in Australia is supported for eligible workloads. (The references do not specify which customers or workloads qualify, nor do they provide operational, contractual, or request-process details.)",
+        "generated_answer": "Yes. Customer data can be hosted in Australia using supported Australian regions for local data residency needs, and regional hosting in Australia is supported for eligible workloads.",
         "domain_tag": "compliance",
-        "confidence_level": "medium",
-        "confidence_reason": "Both provided references explicitly state that Australian regions/hosting are supported, but they note eligibility/local-residency constraints and do not define which customers or workloads qualify or the operational/contractual steps required, so the answer is supported but not fully specific.",
+        "confidence_level": "high",
+        "confidence_reason": "The references explicitly say Australian regional hosting is supported and that supported Australian regions are available, but they add a general eligibility constraint (“eligible workloads”) without defining it, so the answer cannot guarantee hosting for every workload.",
         "historical_alignment_indicator": true,
         "status": "completed",
-        "grounding_status": "partial_reference",
+        "grounding_status": "grounded",
         "flags": {
           "high_risk": false,
-          "inconsistent_response": true,
+          "inconsistent_response": false,
           "has_conflict": false
         },
         "risk": {
-          "level": "medium",
-          "reason": "Because eligibility criteria and operational/contractual details are not provided, there is a moderate risk of misinterpreting who qualifies or how to obtain Australian hosting; customers should confirm eligibility and process with their provider."
+          "level": "low",
+          "reason": "This is a straightforward data-residency/hosting location statement grounded in the provided references, with only a minor qualification about workload eligibility."
         },
         "metadata": {
           "source_row_index": 3,
@@ -166,25 +175,31 @@
         "references": [
           {
             "alignment_record_id": "913b1e07e5e096a65f439e627bd6ba37192311b56a09b08ff06568b09c7c40c6",
+            "reference_type": "qa",
             "alignment_score": 0.7634723350530542,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "Can customer data be hosted in Australia?",
             "matched_answer": "Yes. Supported Australian regions are available for customers with local data residency requirements.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           },
           {
             "alignment_record_id": "f890a65901c3b2fc5d30f60f0c330721b53712aa4149ff9e9ea4b370ef731468",
+            "reference_type": "qa",
             "alignment_score": 0.5763620005581127,
             "source_doc": "06_dirty_rows_and_quoting.csv",
             "matched_question": "Do you support regional hosting in Australia?",
             "matched_answer": "Yes. Regional hosting in Australia is supported for eligible workloads.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "Both references state that Australian regions/hosting are supported, but they indicate eligibility constraints (e.g., \"eligible workloads\" and \"local data residency requirements\") without detailing which customers or workloads qualify, or operational/contractual requirements. Therefore they support a yes answer but lack full scope and specifics.",
-          "confidence_review_reason": "Both provided references explicitly state that Australian regions/hosting are supported, but they note eligibility/local-residency constraints and do not define which customers or workloads qualify or the operational/contractual steps required, so the answer is supported but not fully specific.",
+          "reference_assessment_reason": "Both references directly address the same question and consistently state that Australian regional hosting is supported, satisfying the scope of whether customer data can be hosted in Australia. No conflicting conditions are introduced beyond generic eligibility/workload notes.",
+          "confidence_review_reason": "The references explicitly say Australian regional hosting is supported and that supported Australian regions are available, but they add a general eligibility constraint (“eligible workloads”) without defining it, so the answer cannot guarantee hosting for every workload.",
           "conflicts": []
         }
       },
@@ -194,7 +209,7 @@
         "generated_answer": "For the managed production service, the recovery point objective (RPO) is 15 minutes and the recovery time objective (RTO) is 4 hours.",
         "domain_tag": "infrastructure",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states the managed production service RPO is 15 minutes and the RTO is 4 hours.",
+        "confidence_reason": "The provided reference explicitly states both the RPO (15 minutes) and RTO (4 hours) for the managed production service, with no conflicting information.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -205,7 +220,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "The reference directly supports these values and there is no conflicting or missing information in the provided material."
+          "reason": "Low risk of misinformation because the answer repeats a single, direct statement from the reference without extrapolation."
         },
         "metadata": {
           "source_row_index": 4,
@@ -215,27 +230,30 @@
         "references": [
           {
             "alignment_record_id": "a2118cb7268f761de80251e31dd58f1c321bc0c5fe71c2efcd83293f47f1325f",
+            "reference_type": "qa",
             "alignment_score": 0.7113749411152631,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "What are the managed service disaster recovery objectives?",
             "matched_answer": "For the managed production service, the recovery point objective is 15 minutes and the recovery time objective is 4 hours.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference explicitly states the managed production service RPO is 15 minutes and the RTO is 4 hours, directly answering the question.",
-          "confidence_review_reason": "The provided reference explicitly states the managed production service RPO is 15 minutes and the RTO is 4 hours.",
+          "reference_assessment_reason": "Single QA reference directly states the RPO (15 minutes) and RTO (4 hours) for the managed production service; no conflicts or missing scope for this question.",
+          "confidence_review_reason": "The provided reference explicitly states both the RPO (15 minutes) and RTO (4 hours) for the managed production service, with no conflicting information.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-306",
         "original_question": "Are customer prompts or uploaded documents used to train shared AI models by default?",
-        "generated_answer": "No. Customer prompts, uploaded documents, and outputs are not used to train shared models by default. Opt-in is required for any model-improvement workflow.",
+        "generated_answer": "No. Customer prompts and uploaded documents (and the resulting outputs) are not used to train shared AI models by default; opt-in is required for any model-improvement workflow.",
         "domain_tag": "ai",
         "confidence_level": "high",
-        "confidence_reason": "The single provided reference explicitly states that customer prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required for any model-improvement workflow, directly supporting the answer.",
+        "confidence_reason": "The provided reference explicitly answers the exact question, stating that prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required for model-improvement workflows. No conflicting references are present.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -246,7 +264,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "The reference indicates the default behavior prevents use of customer data for training and requires opt-in for model-improvement, so the risk of customer data being used without opt-in is low according to the provided information."
+          "reason": "The answer restates the reference without adding unsupported claims or commitments beyond what is explicitly stated."
         },
         "metadata": {
           "source_row_index": 5,
@@ -256,27 +274,30 @@
         "references": [
           {
             "alignment_record_id": "81bf827294c598f073f2ede7f65df78c756bfb4980c595ff403df83d46f17f03",
+            "reference_type": "qa",
             "alignment_score": 0.8470614026158068,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "Are customer prompts or uploaded documents used to train shared AI models by default?",
             "matched_answer": "No. Customer prompts, uploaded documents, and outputs are not used to train shared models by default. Opt-in is required for any model-improvement workflow.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The single provided reference explicitly answers the question: it states that customer prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required for any model-improvement workflow. This directly supports a clear, complete answer.",
-          "confidence_review_reason": "The single provided reference explicitly states that customer prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required for any model-improvement workflow, directly supporting the answer.",
+          "reference_assessment_reason": "The provided QA reference directly answers the exact question, stating that prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required for model-improvement workflows. No conflicting references are provided, and scope matches the tender question.",
+          "confidence_review_reason": "The provided reference explicitly answers the exact question, stating that prompts, uploaded documents, and outputs are not used to train shared models by default and that opt-in is required for model-improvement workflows. No conflicting references are present.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-307",
         "original_question": "Can users inspect citations before acting on AI-generated content?",
-        "generated_answer": "Yes. The platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action.",
+        "generated_answer": "Yes. Users can be shown citations (along with confidence cues and workflow checkpoints) so a human reviewer can inspect the supporting context before taking action.",
         "domain_tag": "ai",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action, which directly answers the question.",
+        "confidence_reason": "The provided reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action, directly answering the question.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -287,7 +308,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "This is a descriptive claim directly supported by the reference and does not assert any unsupported guarantees, certifications, or commitments."
+          "reason": "The answer restates the reference without adding unsupported details, commitments, or scope."
         },
         "metadata": {
           "source_row_index": 6,
@@ -297,27 +318,30 @@
         "references": [
           {
             "alignment_record_id": "258f48b8809512e217b9bea42654c4f36ee950f8cc1bf069b36d21d42b3fdad0",
+            "reference_type": "qa",
             "alignment_score": 0.7880871430806703,
             "source_doc": "02_header_aliases.csv",
             "matched_question": "Can users inspect citations before acting on AI-generated content?",
             "matched_answer": "Yes. The platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided matched answer explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action, directly addressing the question.",
-          "confidence_review_reason": "The provided reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action, which directly answers the question.",
+          "reference_assessment_reason": "The single reference directly answers the question, stating the platform can expose citations and checkpoints so human reviewers can inspect supporting context before acting. No additional scope (timeframe, environment, certifications) is implied or required.",
+          "confidence_review_reason": "The provided reference explicitly states that the platform can expose citations, confidence cues, and workflow checkpoints so a human reviewer can inspect supporting context before taking action, directly answering the question.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-308",
         "original_question": "Do you provide tamper-proof immutable WORM audit storage for all administrator actions?",
-        "generated_answer": "No — immutable (WORM) tamper‑proof audit storage is not provided by default. The reference says audit logs are retained for at least 365 days, but immutable storage is deployment‑dependent and must not be assumed by default. (The reference does not state whether immutability can be configured for all administrator actions or how WORM would be implemented, so that scope is unsupported.)",
+        "generated_answer": "Not by default. Audit logs are retained for at least 365 days, but tamper-proof/immutable (WORM) audit storage is deployment-dependent and should not be assumed for all administrator actions in every deployment. (The reference does not confirm WORM coverage for all admin actions across all environments.)",
         "domain_tag": "security",
         "confidence_level": "medium",
-        "confidence_reason": "The single reference explicitly states logs are retained ≥365 days and that immutable storage is deployment‑dependent, which supports saying immutability is not provided by default. However it does not confirm whether WORM can be enabled for all administrator actions or provide details about deployment options or guarantees, so the answer is partially supported.",
+        "confidence_reason": "The reference explicitly states 365-day retention and that immutable storage is deployment-dependent and not assumed by default, which supports answering that WORM is not guaranteed by default. It does not specify whether all administrator actions are covered or which deployments provide WORM, reducing confidence.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "partial_reference",
@@ -327,8 +351,8 @@
           "has_conflict": false
         },
         "risk": {
-          "level": "medium",
-          "reason": "Because immutability must not be assumed, relying on tamper‑proof/WORM guarantees carries moderate risk—logs exist for ≥365 days but may be mutable depending on deployment. Lack of details about per‑action coverage and configuration increases the risk."
+          "level": "low",
+          "reason": "The response avoids overclaiming and mirrors the reference’s limitations; main risk is interpretation of 'administrator actions' coverage, which is explicitly flagged as unsupported."
         },
         "metadata": {
           "source_row_index": 7,
@@ -338,38 +362,41 @@
         "references": [
           {
             "alignment_record_id": "c0bec0065d317815df67966b96d98b1ae0005a8c5417332590447cd2d4d26c31",
+            "reference_type": "qa",
             "alignment_score": 0.5747348090505264,
             "source_doc": "05_duplicates_and_conflicts_b.csv",
             "matched_question": "Do you support immutable audit logs by default?",
             "matched_answer": "Audit logs are retained for at least 365 days. Immutable storage is deployment-dependent and must not be assumed by default.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The single reference states audit logs are retained at least 365 days and that immutable storage is deployment-dependent and must not be assumed by default. That supports answering that tamper‑proof/WORM immutability is not provided by default, but it does not explicitly address 'all administrator actions' or provide details on deployment configurations or available WORM options, so the coverage is partial.",
-          "confidence_review_reason": "The single reference explicitly states logs are retained ≥365 days and that immutable storage is deployment‑dependent, which supports saying immutability is not provided by default. However it does not confirm whether WORM can be enabled for all administrator actions or provide details about deployment options or guarantees, so the answer is partially supported.",
+          "reference_assessment_reason": "The reference directly addresses immutable audit logs, stating retention (365 days) and that immutable storage is deployment-dependent and not assumed by default. This supports a safe partial answer (i.e., not guaranteed WORM for all admin actions by default), but does not fully specify tamper-proof WORM coverage for all administrator actions across all deployments/environments.",
+          "confidence_review_reason": "The reference explicitly states 365-day retention and that immutable storage is deployment-dependent and not assumed by default, which supports answering that WORM is not guaranteed by default. It does not specify whether all administrator actions are covered or which deployments provide WORM, reducing confidence.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-309",
         "original_question": "Please confirm the platform is FedRAMP High authorized for the proposed environment.",
-        "generated_answer": null,
+        "generated_answer": "I can’t confirm that the platform is FedRAMP High authorized for the proposed environment; FedRAMP High authorization is not an approved claim to assert and would need to be separately verified for the specific environment. (No FedRAMP High authorization evidence is provided in the references.)",
         "domain_tag": "compliance",
-        "confidence_level": null,
-        "confidence_reason": null,
+        "confidence_level": "medium",
+        "confidence_reason": "The references explicitly state FedRAMP High is not an approved claim and should be escalated/verified per environment, which supports declining to confirm. They do not provide any authorization details for the proposed environment, so confirmation cannot be made.",
         "historical_alignment_indicator": true,
-        "status": "unanswered",
-        "grounding_status": "conflict",
+        "status": "completed",
+        "grounding_status": "partial_reference",
         "flags": {
           "high_risk": false,
           "inconsistent_response": false,
-          "has_conflict": true
+          "has_conflict": false
         },
         "risk": {
-          "level": "medium",
-          "reason": "Conflicting historical references require human review before answering."
+          "level": "low",
+          "reason": "Response avoids asserting an unapproved certification claim and stays within the references, reducing compliance and misrepresentation risk."
         },
         "metadata": {
           "source_row_index": 8,
@@ -379,46 +406,52 @@
         "references": [
           {
             "alignment_record_id": "5e98cc4e675ff7a6aef61f8b22b7b63956f2b126ebfa575ae7aeac6b4b47ef95",
+            "reference_type": "qa",
             "alignment_score": 0.59506509861684,
             "source_doc": "01_clean_security_architecture.csv",
             "matched_question": "Do you currently hold FedRAMP High authorization?",
             "matched_answer": "FedRAMP High authorization is not an approved claim and should be escalated for human review rather than asserted.",
-            "used_for_answer": false
+            "excerpt": null,
+            "chunk_index": null,
+            "used_for_answer": true
           },
           {
             "alignment_record_id": "bd72a736733f61ae7bbdeef85267df7bf0067b45127cb42c381145919e553183",
+            "reference_type": "qa",
             "alignment_score": 0.5098203499722591,
             "source_doc": "05_duplicates_and_conflicts_b.csv",
             "matched_question": "Which certifications can you currently claim?",
             "matched_answer": "Approved certifications do not include FedRAMP High or HIPAA certification unless separately verified for the specific environment.",
-            "used_for_answer": false
+            "excerpt": null,
+            "chunk_index": null,
+            "used_for_answer": true
           }
         ],
-        "error_message": "Conflicting historical references provide opposing statements about the same capability or certification. Human review is required before answering.",
+        "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "Conflicting historical references provide opposing statements about the same capability or certification. Human review is required before answering.",
-          "requires_human_review": true,
+          "reference_assessment_reason": "References do not confirm FedRAMP High authorization; instead they state it is not an approved claim and should be escalated for human review/verified for the specific environment. This supports a safe partial response: cannot confirm; requires verification.",
+          "confidence_review_reason": "The references explicitly state FedRAMP High is not an approved claim and should be escalated/verified per environment, which supports declining to confirm. They do not provide any authorization details for the proposed environment, so confirmation cannot be made.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-310",
         "original_question": "Can you commit to fixed pricing for three years including unlimited AI token usage?",
-        "generated_answer": "We can offer a three-year fixed-price arrangement for defined base platform volumes, subject to scope, usage assumptions, and renewal terms. However, unlimited AI token usage is excluded from fixed-fee commitments and is not part of the standard approved commercial position (unlimited AI consumption, overage, and custom third‑party model costs are excluded).",
+        "generated_answer": "We can offer three-year fixed pricing only for defined base platform volumes, subject to scope and usage assumptions. Unlimited AI token usage is not included/approved as part of a fixed-fee offer and is excluded from fixed pricing (overage and custom third‑party model costs are also excluded).",
         "domain_tag": "pricing",
-        "confidence_level": "high",
-        "confidence_reason": "References ab71c2d... and 3f82dde... explicitly state three-year fixed pricing can be offered for defined base platform volumes; references 3f82dde... and 24c32d... explicitly state that unlimited AI usage is excluded/not part of the standard approved commercial position.",
+        "confidence_level": "medium",
+        "confidence_reason": "The references clearly support offering three-year pricing for defined base volumes and explicitly exclude unlimited AI usage from fixed pricing, but they do not support committing to a single fixed price that includes unlimited AI token consumption.",
         "historical_alignment_indicator": true,
         "status": "completed",
-        "grounding_status": "grounded",
+        "grounding_status": "partial_reference",
         "flags": {
           "high_risk": false,
           "inconsistent_response": false,
           "has_conflict": false
         },
         "risk": {
-          "level": "medium",
-          "reason": "The fixed-price commitment is limited to defined base volumes and depends on scope, usage assumptions, and renewal terms; requiring unlimited AI tokens would be outside the supported commitment and would need separate commercial treatment, creating commercial and cost risk."
+          "level": "low",
+          "reason": "Answer stays within stated commercial positions: fixed pricing limited to defined base volumes; unlimited AI usage not standard/approved and excluded; notes exclusions without adding unsupported terms."
         },
         "metadata": {
           "source_row_index": 9,
@@ -428,54 +461,63 @@
         "references": [
           {
             "alignment_record_id": "3f82dde9879b8304e0a99f5518436de1a2b86098d120637e66fe922042a9b392",
+            "reference_type": "qa",
             "alignment_score": 0.671311219948086,
             "source_doc": "05_duplicates_and_conflicts_b.csv",
             "matched_question": "Can you commit to fixed pricing for three years?",
             "matched_answer": "Fixed pricing is only approved for defined base volumes and excludes unlimited AI consumption, overage, and custom third-party model costs.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           },
           {
             "alignment_record_id": "ab71c2d315d005776c062a104848f226fd4ae83d2d052f635ed48245a1a99630",
+            "reference_type": "qa",
             "alignment_score": 0.6232664059014326,
             "source_doc": "04_duplicates_and_conflicts_a.csv",
             "matched_question": "Can you commit to fixed pricing for three years?",
             "matched_answer": "Yes. Three-year pricing can be offered for defined base platform volumes, subject to scope, usage assumptions, and renewal terms.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           },
           {
             "alignment_record_id": "24c32d6e2d45c261e864f33e7cd7629b2a9cacb469616d0e2d2e0441dcab1411",
+            "reference_type": "qa",
             "alignment_score": 0.6214944287003521,
             "source_doc": "02_header_aliases.csv",
             "matched_question": "Can you offer unlimited AI usage on a fixed fee as standard?",
             "matched_answer": "No. Unlimited AI usage is not part of the standard approved commercial position.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The references consistently indicate that three-year fixed pricing can be offered for defined base platform volumes (refs ab71c2... and 3f82d...), and they also state that unlimited AI usage is not part of the standard approved commercial position and is excluded from fixed-fee commitments (refs 3f82d... and 24c32d...). Together they support a full answer: fixed three-year pricing possible for defined volumes, but not for unlimited AI token usage.",
-          "confidence_review_reason": "References ab71c2d... and 3f82dde... explicitly state three-year fixed pricing can be offered for defined base platform volumes; references 3f82dde... and 24c32d... explicitly state that unlimited AI usage is excluded/not part of the standard approved commercial position.",
+          "reference_assessment_reason": "References support that three-year fixed pricing may be offered but only for defined base volumes and subject to scope/usage assumptions; they also clearly state unlimited AI token usage is not standard/approved and is excluded from fixed pricing. The combined request (fixed pricing for three years including unlimited AI token usage) cannot be fully committed to from these references, but a partial answer is possible: offer 3-year fixed pricing for base volumes while excluding unlimited token consumption and handling overages/third-party model costs separately.",
+          "confidence_review_reason": "The references clearly support offering three-year pricing for defined base volumes and explicitly exclude unlimited AI usage from fixed pricing, but they do not support committing to a single fixed price that includes unlimited AI token consumption.",
           "conflicts": []
         }
       },
       {
         "question_id": "q-311",
         "original_question": "Do you support fully air-gapped on-premises deployment with zero cloud dependency?",
-        "generated_answer": "According to the provided reference, a single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements. The references do not confirm availability of a fully air-gapped on‑premises deployment with zero cloud dependency. (Unsupported: fully air-gapped on‑premises / zero cloud dependency is not stated in the provided reference.)",
+        "generated_answer": null,
         "domain_tag": "infrastructure",
-        "confidence_level": "medium",
-        "confidence_reason": "The single available reference explicitly confirms a single-tenant virtual private cloud deployment, but it does not mention a fully air-gapped on‑premises or zero-cloud option, so the claim cannot be fully supported from the provided material.",
+        "confidence_level": null,
+        "confidence_reason": null,
         "historical_alignment_indicator": true,
-        "status": "completed",
-        "grounding_status": "partial_reference",
+        "status": "unanswered",
+        "grounding_status": "insufficient_reference",
         "flags": {
           "high_risk": false,
-          "inconsistent_response": true,
+          "inconsistent_response": false,
           "has_conflict": false
         },
         "risk": {
-          "level": "medium",
-          "reason": "Answer is based on one reference and omits confirmation of on‑premises air-gap capabilities; there is moderate risk of misinterpretation if a fully air‑gapped deployment is required but not actually supported."
+          "level": "low",
+          "reason": "No grounded answer was produced."
         },
         "metadata": {
           "source_row_index": 10,
@@ -485,27 +527,30 @@
         "references": [
           {
             "alignment_record_id": "8710a217fbee734f755e18c883f541f2e465b76ebae6d7a28e523ef58d420fa6",
+            "reference_type": "qa",
             "alignment_score": 0.5145571928461737,
             "source_doc": "02_header_aliases.csv",
             "matched_question": "Can the platform be deployed as single-tenant?",
             "matched_answer": "Yes. A single-tenant virtual private cloud deployment is available for customers with stronger isolation requirements.",
-            "used_for_answer": true
+            "excerpt": null,
+            "chunk_index": null,
+            "used_for_answer": false
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The single available reference states a single-tenant virtual private cloud deployment is available for stronger isolation, which suggests isolated/cloud-based deployment options but does not confirm a fully air-gapped, on‑premises deployment with zero cloud dependency. It therefore supports a partial (not complete) answer.",
-          "confidence_review_reason": "The single available reference explicitly confirms a single-tenant virtual private cloud deployment, but it does not mention a fully air-gapped on‑premises or zero-cloud option, so the claim cannot be fully supported from the provided material.",
+          "reference_assessment_reason": "The only reference discusses availability of a single-tenant VPC deployment. It does not address fully air-gapped on-premises deployment or zero cloud dependency, so no safe answer can be supported.",
+          "requires_human_review": false,
           "conflicts": []
         }
       },
       {
         "question_id": "q-312",
         "original_question": "What is your target timeframe for verified right-to-erasure requests?",
-        "generated_answer": "We target processing verified right-to-erasure requests within 30 days, subject to retention obligations.",
+        "generated_answer": "Our operational target is to complete verified right-to-erasure requests within 30 days, subject to retention obligations.",
         "domain_tag": "compliance",
         "confidence_level": "high",
-        "confidence_reason": "The provided reference explicitly states: 'Verified right-to-erasure requests are operationally targeted within 30 days, subject to retention obligations.' This directly supports the timeframe claim.",
+        "confidence_reason": "The reference explicitly states that verified right-to-erasure requests are operationally targeted within 30 days and notes the retention-obligations condition, which directly answers the timeframe question.",
         "historical_alignment_indicator": true,
         "status": "completed",
         "grounding_status": "grounded",
@@ -516,7 +561,7 @@
         },
         "risk": {
           "level": "low",
-          "reason": "The statement closely mirrors the single provided source and does not assert any additional commitments, certifications, or details beyond that source."
+          "reason": "Low risk of overstatement because the response mirrors the provided reference and includes the stated condition (retention obligations)."
         },
         "metadata": {
           "source_row_index": 11,
@@ -526,29 +571,32 @@
         "references": [
           {
             "alignment_record_id": "d0c488224fe8697665fea6fe32cefdfa62d1a91f6c43173caba249ac31f5a953",
+            "reference_type": "qa",
             "alignment_score": 0.6661026220768111,
             "source_doc": "02_header_aliases.csv",
             "matched_question": "Do you support right-to-erasure requests?",
             "matched_answer": "Yes. Verified right-to-erasure requests are operationally targeted within 30 days, subject to retention obligations.",
+            "excerpt": null,
+            "chunk_index": null,
             "used_for_answer": true
           }
         ],
         "error_message": null,
         "extensions": {
-          "reference_assessment_reason": "The provided reference explicitly states: 'Verified right-to-erasure requests are operationally targeted within 30 days, subject to retention obligations.' This directly answers the question about target timeframe for verified right-to-erasure requests; no further supporting documents needed.",
-          "confidence_review_reason": "The provided reference explicitly states: 'Verified right-to-erasure requests are operationally targeted within 30 days, subject to retention obligations.' This directly supports the timeframe claim.",
+          "reference_assessment_reason": "The reference directly states the operational target timeframe for verified right-to-erasure requests (within 30 days) and includes the relevant condition (subject to retention obligations), fully answering the question.",
+          "confidence_review_reason": "The reference explicitly states that verified right-to-erasure requests are operationally targeted within 30 days and notes the retention-obligations condition, which directly answers the timeframe question.",
           "conflicts": []
         }
       }
     ],
     "summary": {
       "total_questions_processed": 12,
-      "flagged_high_risk_or_inconsistent_responses": 2,
-      "overall_completion_status": "conflict",
+      "flagged_high_risk_or_inconsistent_responses": 0,
+      "overall_completion_status": "completed",
       "completed_questions": 11,
       "unanswered_questions": 1,
       "failed_questions": 0,
-      "conflict_count": 1
+      "conflict_count": 0
     }
   }
 }

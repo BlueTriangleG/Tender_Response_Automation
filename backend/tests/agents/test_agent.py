@@ -8,9 +8,7 @@ from app.agents.agent import Agent
 def _mock_module(content: str = "ok") -> tuple[MagicMock, MagicMock]:
     """Build a (mock_module, mock_workflow) pair for patching importlib."""
     mock_workflow = MagicMock()
-    mock_workflow.ainvoke = AsyncMock(
-        return_value={"messages": [AIMessage(content=content)]}
-    )
+    mock_workflow.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content=content)]})
     mock_module = MagicMock()
     mock_module.create.return_value = mock_workflow
     return mock_module, mock_workflow
@@ -20,9 +18,7 @@ async def test_agent_chat_returns_last_message_content() -> None:
     mock_module = MagicMock()
     mock_workflow = MagicMock()
     mock_workflow.ainvoke = AsyncMock(
-        return_value={
-            "messages": [HumanMessage(content="3+4"), AIMessage(content="The sum is 7.")]
-        }
+        return_value={"messages": [HumanMessage(content="3+4"), AIMessage(content="The sum is 7.")]}
     )
     mock_module.create.return_value = mock_workflow
 

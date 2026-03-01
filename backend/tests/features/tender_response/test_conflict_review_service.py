@@ -203,7 +203,9 @@ async def test_conflict_review_service_filters_llm_false_positive_for_unrelated_
     assert findings == []
 
 
-async def test_conflict_review_service_filters_penetration_testing_vs_fedramp_false_positive() -> None:
+async def test_conflict_review_service_filters_penetration_testing_vs_fedramp_false_positive() -> (
+    None
+):
     service = ConflictReviewService(
         model=FakeChatModel(
             {
@@ -267,7 +269,9 @@ async def test_conflict_review_service_filters_penetration_testing_vs_fedramp_fa
     assert findings == []
 
 
-async def test_conflict_review_service_filters_penetration_testing_vs_pricing_false_positive() -> None:
+async def test_conflict_review_service_filters_penetration_testing_vs_pricing_false_positive() -> (
+    None
+):
     service = ConflictReviewService(
         model=FakeChatModel(
             {
@@ -342,7 +346,9 @@ async def test_conflict_review_service_filters_penetration_testing_vs_pricing_fa
     assert findings == []
 
 
-async def test_conflict_review_service_detects_absolute_claim_conflict_even_when_llm_returns_none() -> None:
+async def test_conflict_review_service_detects_absolute_claim_conflict_even_when_llm_returns_none() -> (  # noqa: E501
+    None
+):
     service = ConflictReviewService(
         model=FakeChatModel(
             {
@@ -373,7 +379,10 @@ async def test_conflict_review_service_detects_absolute_claim_conflict_even_when
             ),
             make_completed_result(
                 "q-14",
-                "Can legacy SSL remain enabled on selected public production endpoints during migration windows?",
+                (
+                    "Can legacy SSL remain enabled on selected public production endpoints "
+                    "during migration windows?"
+                ),
                 (
                     "Yes. Legacy SSL can remain enabled on selected public production "
                     "endpoints during approved migration windows."
@@ -396,7 +405,9 @@ async def test_conflict_review_service_detects_absolute_claim_conflict_even_when
     ]
 
 
-async def test_conflict_review_service_does_not_inject_generic_capability_conflict_when_llm_returns_none() -> None:
+async def test_conflict_review_service_does_not_inject_generic_capability_conflict_when_llm_returns_none() -> (  # noqa: E501
+    None
+):
     service = ConflictReviewService(
         model=FakeChatModel(
             {

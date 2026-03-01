@@ -62,9 +62,7 @@ def test_edge_case_manifest_contains_tender_cases() -> None:
 def test_zero_question_case_oracle_can_be_evaluated() -> None:
     manifest = load_manifest()
     case = next(
-        item
-        for item in manifest.tender_inputs
-        if item.file.name == "06_blank_rows_only.csv"
+        item for item in manifest.tender_inputs if item.file.name == "06_blank_rows_only.csv"
     )
     oracle = case.load_oracle()
 

@@ -5,8 +5,7 @@ from __future__ import annotations
 from io import BytesIO
 from pathlib import PurePosixPath
 from xml.etree import ElementTree
-from zipfile import BadZipFile
-from zipfile import ZipFile
+from zipfile import BadZipFile, ZipFile
 
 from app.features.tender_response.domain.models import TenderTabularParseResult
 from app.features.tender_response.infrastructure.parsers.tender_tabular_normalizer import (
@@ -91,7 +90,10 @@ class TenderExcelParser:
             if max_column_index == 0:
                 continue
             parsed_rows.append(
-                [cell_values.get(column_index, "") for column_index in range(1, max_column_index + 1)]
+                [
+                    cell_values.get(column_index, "")
+                    for column_index in range(1, max_column_index + 1)
+                ]
             )
 
         if not parsed_rows:
@@ -140,7 +142,11 @@ class TenderExcelParser:
         cell_type = cell.attrib.get("t")
         if cell_type == "inlineStr":
             inline_string = cell.find("main:is", SPREADSHEET_NS)
-            return "".join(text for text in inline_string.itertext()) if inline_string is not None else ""
+            return (
+                "".join(text for text in inline_string.itertext())
+                if inline_string is not None
+                else ""
+            )
 
         value = cell.findtext("main:v", default="", namespaces=SPREADSHEET_NS)
         if cell_type == "s" and value:

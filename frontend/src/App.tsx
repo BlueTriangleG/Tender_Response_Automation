@@ -24,7 +24,7 @@ const defaultKnowledgeBaseOptions: HistoryIngestOptions = {
   outputFormat: "json",
   similarityThreshold: 0.72,
 };
-const defaultAlignmentThreshold = 0.6;
+const defaultAlignmentThreshold = 0.5;
 
 function mergeKnowledgeBaseFiles(currentFiles: File[], incomingFiles: File[]) {
   const fileMap = new Map<string, File>();

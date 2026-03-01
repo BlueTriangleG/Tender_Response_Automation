@@ -13,11 +13,7 @@ LEGACY_MARKERS = [
 
 
 def _python_files(root: Path) -> list[Path]:
-    return [
-        path
-        for path in root.rglob("*.py")
-        if "__pycache__" not in path.parts
-    ]
+    return [path for path in root.rglob("*.py") if "__pycache__" not in path.parts]
 
 
 def test_no_backend_code_imports_legacy_layers() -> None:

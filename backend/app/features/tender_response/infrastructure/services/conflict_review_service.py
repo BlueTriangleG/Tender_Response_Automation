@@ -60,10 +60,7 @@ class ConflictReviewService:
             settings.tender_conflict_review_timeout_seconds,
         )
         started_at = perf_counter()
-        debug_log(
-            "conflict_review_service llm_call start "
-            f"timeout_s={timeout_seconds:.2f}"
-        )
+        debug_log(f"conflict_review_service llm_call start timeout_s={timeout_seconds:.2f}")
         messages = build_conflict_review_messages(
             target_results=target_results,
             reference_results=reference_results,
@@ -75,10 +72,7 @@ class ConflictReviewService:
             )
         except TimeoutError:
             duration_ms = (perf_counter() - started_at) * 1000
-            debug_log(
-                "conflict_review_service llm_call timeout "
-                f"duration_ms={duration_ms:.2f}"
-            )
+            debug_log(f"conflict_review_service llm_call timeout duration_ms={duration_ms:.2f}")
             print_llm_bug_report(
                 service="conflict_review_service",
                 error=f"timed out after {timeout_seconds:.2f}s",
@@ -93,8 +87,7 @@ class ConflictReviewService:
         except Exception as exc:
             duration_ms = (perf_counter() - started_at) * 1000
             debug_log(
-                "conflict_review_service llm_call failed "
-                f"duration_ms={duration_ms:.2f} error={exc}"
+                f"conflict_review_service llm_call failed duration_ms={duration_ms:.2f} error={exc}"
             )
             print_llm_bug_report(
                 service="conflict_review_service",
@@ -107,15 +100,10 @@ class ConflictReviewService:
             )
             raise
         duration_ms = (perf_counter() - started_at) * 1000
-        debug_log(
-            "conflict_review_service llm_call end "
-            f"duration_ms={duration_ms:.2f}"
-        )
+        debug_log(f"conflict_review_service llm_call end duration_ms={duration_ms:.2f}")
         target_ids = {item.question_id for item in target_results}
         reference_ids = {item.question_id for item in reference_results}
-        results_by_id = {
-            item.question_id: item for item in [*target_results, *reference_results]
-        }
+        results_by_id = {item.question_id: item for item in [*target_results, *reference_results]}
         deduped: dict[tuple[str, str], dict[str, str]] = {}
 
         for item in payload.conflicts:
@@ -241,13 +229,11 @@ def _is_legacy_ssl_conflict_pair(*, left_answer: str, right_answer: str) -> bool
 
     left_absolute = "fully disabled" in left_text and "production traffic" in left_text
     right_absolute = "fully disabled" in right_text and "production traffic" in right_text
-    left_exception = (
-        "remain enabled" in left_text
-        and ("migration" in left_text or "transition" in left_text)
+    left_exception = "remain enabled" in left_text and (
+        "migration" in left_text or "transition" in left_text
     )
-    right_exception = (
-        "remain enabled" in right_text
-        and ("migration" in right_text or "transition" in right_text)
+    right_exception = "remain enabled" in right_text and (
+        "migration" in right_text or "transition" in right_text
     )
 
     return (left_absolute and right_exception) or (right_absolute and left_exception)

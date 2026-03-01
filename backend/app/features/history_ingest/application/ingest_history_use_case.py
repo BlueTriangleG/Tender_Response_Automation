@@ -24,11 +24,11 @@ from app.features.history_ingest.infrastructure.services.csv_column_detection_se
 from app.features.history_ingest.infrastructure.services.csv_qa_normalization_service import (
     CsvQaNormalizationService,
 )
-from app.features.history_ingest.infrastructure.services.qa_embedding_service import (
-    QaEmbeddingService,
-)
 from app.features.history_ingest.infrastructure.services.document_chunking_service import (
     DocumentChunkingService,
+)
+from app.features.history_ingest.infrastructure.services.qa_embedding_service import (
+    QaEmbeddingService,
 )
 from app.features.history_ingest.schemas.requests import HistoryIngestRequestOptions
 from app.features.history_ingest.schemas.responses import (
@@ -77,15 +77,11 @@ class IngestHistoryUseCase:
                 continue
 
             if parsed_result.payload.extension in {".csv", ".xlsx"}:
-                final_results.append(
-                    await self._process_tabular_file(parsed_result.payload)
-                )
+                final_results.append(await self._process_tabular_file(parsed_result.payload))
                 continue
 
             if parsed_result.payload.extension in {".md", ".json", ".txt"}:
-                final_results.append(
-                    await self._process_document_file(parsed_result.payload)
-                )
+                final_results.append(await self._process_document_file(parsed_result.payload))
                 continue
 
             final_results.append(
@@ -93,7 +89,9 @@ class IngestHistoryUseCase:
                     status="failed",
                     payload=parsed_result.payload,
                     error_code="unsupported_ingest_type",
-                    error_message="Only CSV, XLSX, MD, JSON, and TXT files are persisted in this phase.",
+                    error_message=(
+                        "Only CSV, XLSX, MD, JSON, and TXT files are persisted in this phase."
+                    ),
                 )
             )
 

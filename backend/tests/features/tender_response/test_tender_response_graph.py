@@ -418,7 +418,9 @@ async def test_tender_response_graph_marks_flagged_responses_in_summary() -> Non
     assert result["summary"].overall_completion_status == "unanswered"
 
 
-async def test_tender_response_graph_marks_conflicting_references_as_conflict_without_answer() -> None:
+async def test_tender_response_graph_marks_conflicting_references_as_conflict_without_answer() -> (
+    None
+):
     answer_service = FakeAnswerGenerationService()
     workflow = create_parallel_tender_response_graph(
         alignment_repository=FakeAlignmentRepository(
@@ -853,7 +855,9 @@ async def test_tender_response_graph_fails_unsupported_certification_claims_afte
                     "FedRAMP authorization."
                 ),
                 risk_level="high",
-                risk_reason="This answer introduces a certification claim not supported by history.",
+                risk_reason=(
+                    "This answer introduces a certification claim not supported by history."
+                ),
                 inconsistent_response=False,
             ),
         }
@@ -931,7 +935,9 @@ async def test_tender_response_graph_fails_unsupported_certification_claims_afte
     assert result["summary"].overall_completion_status == "failed"
 
 
-async def test_tender_response_graph_fails_partial_answers_that_do_not_disclose_missing_scope() -> None:
+async def test_tender_response_graph_fails_partial_answers_that_do_not_disclose_missing_scope() -> (
+    None
+):
     answer_service = ConfigurableAnswerGenerationService(
         {
             "q-008": GroundedAnswerResult(
@@ -1011,7 +1017,9 @@ async def test_tender_response_graph_fails_partial_answers_that_do_not_disclose_
     assert "partial answer" in failed.error_message.lower()
 
 
-async def test_tender_response_graph_retries_invalid_partial_reference_until_second_attempt_is_valid() -> None:
+async def test_tender_response_graph_retries_invalid_partial_reference_until_second_attempt_is_valid() -> (  # noqa: E501
+    None
+):
     answer_service = SequentialAnswerGenerationService(
         {
             "q-011": [
@@ -1330,7 +1338,9 @@ async def test_tender_response_graph_fails_partial_reference_after_three_invalid
     assert answer_service.answer_calls == ["q-012", "q-012", "q-012"]
 
 
-async def test_tender_response_graph_retries_self_weakening_absolute_claim_until_answer_is_consistent() -> None:
+async def test_tender_response_graph_retries_self_weakening_absolute_claim_until_answer_is_consistent() -> (  # noqa: E501
+    None
+):
     answer_service = SequentialAnswerGenerationService(
         {
             "q-013": [
@@ -1443,8 +1453,6 @@ async def test_tender_response_graph_retries_self_weakening_absolute_claim_until
     assert completed.status == "completed"
     assert completed.generated_answer is not None
     assert "fully disabled for all production traffic" not in completed.generated_answer
-
-
 
 
 async def test_tender_response_graph_reviews_conflicts_for_completed_answers_only() -> None:

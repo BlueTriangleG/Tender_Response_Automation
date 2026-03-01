@@ -45,7 +45,7 @@
         "unanswered"
       ],
       "allowed_grounding_statuses": [
-        "insufficient_reference"
+        "no_reference"
       ],
       "generated_answer_should_be_null": true
     },

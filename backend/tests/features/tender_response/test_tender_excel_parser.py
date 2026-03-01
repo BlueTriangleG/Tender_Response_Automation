@@ -1,7 +1,6 @@
 from io import BytesIO
-from zipfile import ZIP_DEFLATED, ZipFile
-
 from xml.sax.saxutils import escape
+from zipfile import ZIP_DEFLATED, ZipFile
 
 
 def build_workbook_bytes(
