@@ -1,257 +1,144 @@
-# Pan Software Tender Response Automation Service
+# Pan Software — Tender Response Automation
 
-FastAPI + LangGraph + React prototype for the Pan Software AI Engineer take-home.
+A take-home prototype for the Pan Software AI Engineer role.
 
-The system ingests historical tender material, accepts a new tender questionnaire in Excel or CSV, and returns structured per-question responses grounded in prior answers rather than model memory.
+The system lets a team ingest their historical tender materials (past Q&As, policy docs, compliance records), then upload a new questionnaire and get back structured, grounded answers for each question — answers tied to real prior evidence rather than model hallucination.
 
-## What This Project Needs To Do
+---
 
-At a high level, the service needs to do five things well:
+## The Problem It Solves
 
-- find relevant historical tender evidence
-- answer each new question in a way that stays consistent with prior positioning
-- adapt that answer to the wording and constraints of the new tender
-- avoid unsupported claims and over-promising
-- process a full questionnaire without letting one bad question block the rest
+Responding to a tender questionnaire is repetitive, high-stakes work. The same questions appear across tenders. The answers need to stay consistent with past commitments. A wrong or contradictory answer in a live submission has real consequences.
 
-## Repository Details
+This prototype addresses that by treating the historical archive as the source of truth and the LLM as a reasoning layer on top of it — not the other way around.
 
-- Backend: FastAPI feature-first modular monolith in [backend](/Users/autumn/Learning/interview%20questions/pans_software/backend)
-- Frontend: React + TypeScript + Vite dashboard in [frontend](/Users/autumn/Learning/interview%20questions/pans_software/frontend)
-- Local storage: embedded LanceDB directory in [data/lancedb](/Users/autumn/Learning/interview%20questions/pans_software/data/lancedb)
-- Demo datasets: [test_data](/Users/autumn/Learning/interview%20questions/pans_software/test_data)
-- Delivery docs:
-  - Agent architecture: [AGENT_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/AGENT_ARCHITECTURE.md)
-  - RAG architecture: [RAG_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/RAG_ARCHITECTURE.md)
-  - Memory and state design: [MEMORY_AND_STATE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/MEMORY_AND_STATE.md)
-  - API and Postman calls: [API_POSTMAN.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/API_POSTMAN.md)
-  - Sample dataset guide: [test_data/README.md](/Users/autumn/Learning/interview%20questions/pans_software/test_data/README.md)
-  - Docs guide: [docs/README.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/README.md)
+---
 
-## Technology Stack
+## Quick Start
 
-- Backend: Python 3.12, FastAPI, Pydantic, LangGraph, LangChain OpenAI, LanceDB, Uvicorn
-- Frontend: React 19, TypeScript, Vite
-- Testing: Pytest, Vitest
-- Tooling: uv, Ruff, mypy, npm
-
-## Project Structure
-
-```text
-.
-├── backend/
-│   ├── app/
-│   │   ├── bootstrap/
-│   │   ├── core/
-│   │   ├── db/
-│   │   ├── features/
-│   │   │   ├── health/
-│   │   │   ├── history_ingest/
-│   │   │   └── tender_response/
-│   │   ├── integrations/
-│   │   └── shared/
-│   ├── tests/
-│   ├── pyproject.toml
-│   └── uv.lock
-├── frontend/
-│   ├── src/
-│   ├── package.json
-│   └── vite.config.ts
-├── data/
-│   └── lancedb/
-├── docs/
-│   ├── architecture/
-│   ├── delivery/
-│   └── plans/
-├── test_data/
-│   ├── historical_repository/
-│   ├── input/
-│   ├── expected_output/
-│   └── edge_case_suite/
-├── package.json
-└── README.md
-```
-
-## Core Features
-
-- Historical ingest for CSV, XLSX, Markdown, TXT, and JSON tender materials
-- LangGraph-driven tender response generation with per-question isolation
-- Shared session memory via `session_id`
-- Confidence, risk, grounding, and historical alignment metadata on every question
-- Session-level conflict review across completed answers
-- Excel and CSV questionnaire support
-- Frontend dashboard for upload, run, and result inspection
-
-## Prerequisites
-
-- Python `3.12+`
-- Node.js `18+`
-- `uv`
-- An `OPENAI_API_KEY`
-
-Before running the project:
-
-1. Copy [backend/.env.example](/Users/autumn/Learning/interview%20questions/pans_software/backend/.env.example) to `backend/.env`
-2. Add your OpenAI key:
-
-```text
-OPENAI_API_KEY=your_key_here
-```
-
-Optional frontend config:
-
-1. Copy [frontend/.env.example](/Users/autumn/Learning/interview%20questions/pans_software/frontend/.env.example) to `frontend/.env`
-2. Override `VITE_API_BASE_URL` only if your backend is not running on `http://127.0.0.1:8000`
-
-The backend `.env` is required for the LLM-backed tender workflow and the live E2E suite.
-
-## How To Run The Project
-
-Recommended local flow:
+You'll need Python 3.12+, Node 18+, `uv`, and an OpenAI API key.
 
 ```bash
+# 1. Clone and install dependencies
 npm install
 npm run setup
+
+# 2. Add your OpenAI key
+cp backend/.env.example backend/.env
+# edit backend/.env and set OPENAI_API_KEY=...
+
+# 3. Start both services
 npm run dev
 ```
 
-What these commands do:
+- Backend: `http://127.0.0.1:8000`
+- Frontend: `http://127.0.0.1:5173`
 
-- `npm install`: installs root tooling
-- `npm run setup`: installs frontend dependencies and syncs the backend `uv` environment
-- `npm run dev`: starts both services
+To run a quick demo, ingest the sample historical files from `test_data/historical_repository/`, then upload `test_data/input/tender_questionnaire_sample.xlsx` through the UI.
 
-Default local URLs:
+---
 
-- backend: `http://127.0.0.1:8000`
-- frontend: `http://127.0.0.1:5173`
+## How It Works
 
-Override the frontend backend target with `VITE_API_BASE_URL` if needed.
+**History ingest** accepts CSV, XLSX, Markdown, JSON, and TXT files. Each file is parsed, normalized into Q&A records or document chunks, embedded with `text-embedding-3-small`, and stored in a local LanceDB table. The process is idempotent — re-ingesting the same file won't create duplicates.
 
-## Optional: Run Services Separately
+**Tender response** takes a new questionnaire, splits it into individual questions, and processes them in parallel through a four-stage pipeline:
 
-Backend only:
+1. **Retrieval** — vector search over the historical Q&A and document tables to find the most relevant prior evidence
+2. **Grounding assessment** — the LLM decides whether the retrieved references are sufficient to ground an answer, or whether the question should be flagged as unanswerable
+3. **Answer generation** — if grounded, the LLM drafts an answer constrained to the retrieved evidence, with confidence and risk metadata
+4. **Conflict review** — once all questions are answered, a separate pass checks for contradictions across the full session
 
-```bash
-cd backend
-UV_CACHE_DIR=/tmp/pans-software-uv-cache uv run uvicorn app.main:app --reload
+Each question runs in its own subgraph, so a failure on one doesn't stall the rest of the batch.
+
+---
+
+## Key Design Decisions
+
+**LangGraph for orchestration** — the per-question isolation and the batch/subgraph structure came naturally from LangGraph's state model. The alternative was a manual asyncio fan-out, but having explicit state transitions makes the pipeline easier to inspect and extend. The conflict review step, which needs to see all completed answers before running, would have been awkward to coordinate without a graph.
+
+**LanceDB as the vector store** — the embedded model was the right fit here: no infra to spin up, runs alongside the API process, supports both vector search and metadata filtering. For a production deployment this would likely swap to a managed store, but it doesn't change the interface.
+
+**Feature-first module layout** — each feature (`history_ingest`, `tender_response`) owns its full stack from routes down to repositories. This makes it easy to trace any behaviour end-to-end and keeps cross-feature coupling explicit. The alternative (layer-first grouping) tends to scatter related logic across the codebase as the project grows.
+
+**Grounding before generation** — the reference assessment step runs before the LLM drafts any answer. This means the model is never asked to generate from insufficient evidence; it either gets a vetted reference set or returns a structured "can't answer" rather than a confident guess.
+
+---
+
+## Repository Layout
+
+```
+backend/          FastAPI app (feature-first modular monolith)
+  app/
+    features/
+      health/
+      history_ingest/     # ingest pipeline
+      tender_response/    # response workflow
+    core/                 # config and settings
+    db/                   # LanceDB client and schema
+    integrations/         # OpenAI wrappers
+    shared/               # bootstrap utilities
+  tests/                  # 196 tests, offline by default
+
+frontend/         React 19 + TypeScript + Vite dashboard
+
+data/lancedb/     embedded vector store (created on first run)
+
+test_data/
+  historical_repository/  sample history files for demo ingest
+  input/                  sample tender questionnaires
+  expected_output/        reference outputs for manual comparison
+  edge_case_suite/        regression cases for the live E2E suite
+
+docs/delivery/    architecture writeups (agent design, RAG, memory/state, API)
 ```
 
-Frontend only:
+---
 
-```bash
-cd frontend
-npm run dev
-```
+## Testing
 
-## API Endpoints
-
-- `GET /api/health`
-- `POST /api/ingest/history`
-- `POST /api/tender/respond`
-
-Detailed request examples and Postman instructions are in [API_POSTMAN.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/API_POSTMAN.md).
-
-## Commands To Deploy And Verify
-
-### Local Deployment Commands
-
-Use the startup flow in [How To Run The Project](#how-to-run-the-project):
-
-- `npm install`
-- `npm run setup`
-- `npm run dev`
-
-### Verification Commands
-
-Full repository verification:
-
-```bash
-npm run verify
-```
-
-This runs the same basic engineering checks the repo is organized around: tests, linting, type-checking, and the frontend production build.
-
-Backend unit/integration tests:
+The default test suite runs offline — no OpenAI key needed:
 
 ```bash
 npm run test:backend
 ```
 
-This is the default offline backend test suite. It excludes live OpenAI-backed E2E cases.
-
-Backend lint:
+Live E2E tests that call real OpenAI endpoints are gated behind a marker and excluded by default:
 
 ```bash
-npm run lint:backend
+npm run test:backend:live   # requires OPENAI_API_KEY
 ```
 
-Backend type-check:
+Full verification (tests + lint + type-check + frontend build):
 
 ```bash
-npm run typecheck:backend
+npm run verify
 ```
 
-Frontend tests:
+---
 
-```bash
-npm run test:frontend
+## API
+
+```
+GET  /api/health
+POST /api/ingest/history      multipart file upload, returns per-file results
+POST /api/tender/respond      file upload + options, returns structured Q&A
 ```
 
-Frontend production build:
+Request examples and a Postman collection are in [docs/delivery/API_POSTMAN.md](docs/delivery/API_POSTMAN.md).
 
-```bash
-npm run build:frontend
-```
+---
 
-Live E2E suite:
+## Further Reading
 
-```bash
-npm run test:backend:live
-```
+The design decisions above are expanded in the delivery docs:
 
-## Sample Data
+- [Agent and workflow architecture](docs/delivery/AGENT_ARCHITECTURE.md)
+- [RAG and retrieval design](docs/delivery/RAG_ARCHITECTURE.md)
+- [Memory and session state](docs/delivery/MEMORY_AND_STATE.md)
 
-Primary demo assets live in [test_data](/Users/autumn/Learning/interview%20questions/pans_software/test_data):
+---
 
-- Historical repository:
-  - [historical_repository/](/Users/autumn/Learning/interview%20questions/pans_software/test_data/historical_repository)
-- Sample tender input:
-  - [tender_questionnaire_sample.xlsx](/Users/autumn/Learning/interview%20questions/pans_software/test_data/input/tender_questionnaire_sample.xlsx)
-  - [tender_questionnaire_sample.csv](/Users/autumn/Learning/interview%20questions/pans_software/test_data/input/tender_questionnaire_sample.csv)
-- Example expected output:
-  - [tender_response_expected.json](/Users/autumn/Learning/interview%20questions/pans_software/test_data/expected_output/tender_response_expected.json)
-- Regression and live-e2e suite:
-  - [edge_case_suite/](/Users/autumn/Learning/interview%20questions/pans_software/test_data/edge_case_suite)
+## Known Limitations
 
-Dataset usage details are documented in [test_data/README.md](/Users/autumn/Learning/interview%20questions/pans_software/test_data/README.md).
-
-## How To Run A Demo
-
-1. Start backend and frontend.
-2. Ingest historical files from [test_data/historical_repository](/Users/autumn/Learning/interview%20questions/pans_software/test_data/historical_repository).
-3. Upload [tender_questionnaire_sample.xlsx](/Users/autumn/Learning/interview%20questions/pans_software/test_data/input/tender_questionnaire_sample.xlsx).
-4. Review generated answers, confidence, risk, unanswered cases, and conflict flags in the UI.
-
-## Architecture Notes
-
-The tender response pipeline is built around a batch graph plus an isolated per-question subgraph.
-
-- Retriever agent: retrieves top historical references from LanceDB
-- Grounding assessor agent: decides `grounded`, `partial_reference`, or fallback
-- Answer composer agent: generates answer, confidence, and risk metadata
-- Risk guard agent: validates output, retries recoverable errors, and materializes terminal states
-- Conflict reviewer agent: checks completed answers for session-level contradictions
-
-If you want the design rather than the code walkthrough:
-
-- workflow and agent design: [AGENT_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/AGENT_ARCHITECTURE.md)
-- retrieval and grounding design: [RAG_ARCHITECTURE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/RAG_ARCHITECTURE.md)
-- memory and state design: [MEMORY_AND_STATE.md](/Users/autumn/Learning/interview%20questions/pans_software/docs/delivery/MEMORY_AND_STATE.md)
-
-## Notes And Limitations
-
-- The primary output path is JSON through the API and UI.
-- The workflow uses local LanceDB for demo-scale retrieval.
-- Shared session memory is tied to runtime checkpoint state keyed by `session_id`.
-- Live E2E tests require valid OpenAI credentials.
+Session memory uses an in-process checkpoint store, so state doesn't survive a server restart. For a production version this would be replaced with a persistent backend. The rest of the architecture is designed to be storage-agnostic so that swap is contained to a single wiring point.
