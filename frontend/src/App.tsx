@@ -459,51 +459,6 @@ function App() {
     }
   }
 
-  function handleDownload(kind: "json" | "excel") {
-    if (!session) {
-      setScreenMessage("Run a processing session before downloading outputs.");
-      return;
-    }
-
-    // The download payload is intentionally simple; the goal is to demonstrate
-    // the output affordance expected by the brief, not a real export pipeline.
-    const payload =
-      kind === "json"
-        ? JSON.stringify(session, null, 2)
-        : [
-            "Question,Answer,Domain,Confidence,Aligned,Status",
-            ...session.questions.map((result) =>
-              [
-                JSON.stringify(result.originalQuestion),
-                JSON.stringify(result.generatedAnswer),
-                result.domainTag,
-                result.confidenceLevel ?? "",
-                String(result.historicalAlignmentIndicator),
-                result.status,
-              ].join(","),
-            ),
-          ].join("\n");
-
-    const mimeType =
-      kind === "json"
-        ? "application/json"
-        : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-    const extension = kind === "json" ? "json" : "csv";
-    const blob = new Blob([payload], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-
-    anchor.href = url;
-    anchor.download = `${session.sessionId}.${extension}`;
-    anchor.click();
-    window.URL.revokeObjectURL(url);
-
-    setScreenMessage(
-      `Prepared ${kind.toUpperCase()} download for ${session.sourceFileName}.`,
-    );
-  }
-
   const activeQuestion = useMemo(
     () =>
       activeQuestionId == null
@@ -986,22 +941,6 @@ function App() {
                       </p>
                     </div>
 
-                    <div className="download-actions">
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => handleDownload("json")}
-                      >
-                        Download JSON
-                      </button>
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => handleDownload("excel")}
-                      >
-                        Download Excel
-                      </button>
-                    </div>
                   </article>
                 ) : null}
               </section>
