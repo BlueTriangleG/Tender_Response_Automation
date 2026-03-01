@@ -75,6 +75,12 @@ tender_inputs:
     recommended_history:
       - historical_repository/01_clean_security_architecture.csv
       - historical_repository/02_header_aliases.csv
+  - file: input/08_partial_knowledge_mixed.csv
+    oracle: expected_output/08_partial_knowledge_mixed.oracle.json
+    recommended_history:
+      - historical_repository/01_clean_security_architecture.csv
+      - historical_repository/02_header_aliases.csv
+      - historical_repository/06_dirty_rows_and_quoting.csv
 
 validation_notes:
   - Oracle JSON files capture behavioral expectations instead of exact generated prose.

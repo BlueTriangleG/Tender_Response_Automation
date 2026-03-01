@@ -52,13 +52,13 @@ class IngestHistoryUseCase:
         document_chunking_service: DocumentChunkingService | None = None,
         document_repository: DocumentLanceDbRepository | None = None,
     ) -> None:
-        self._file_processing_service = file_processing_service or FileProcessingService()
-        self._csv_column_detection_service = csv_column_detection_service
-        self._csv_qa_normalization_service = csv_qa_normalization_service
-        self._qa_embedding_service = qa_embedding_service
-        self._qa_repository = qa_repository
-        self._document_chunking_service = document_chunking_service
-        self._document_repository = document_repository
+        self._file_processing_service = file_processing_service if file_processing_service is not None else FileProcessingService()
+        self._csv_column_detection_service = csv_column_detection_service if csv_column_detection_service is not None else CsvColumnDetectionService()
+        self._csv_qa_normalization_service = csv_qa_normalization_service if csv_qa_normalization_service is not None else CsvQaNormalizationService()
+        self._qa_embedding_service = qa_embedding_service if qa_embedding_service is not None else QaEmbeddingService()
+        self._qa_repository = qa_repository if qa_repository is not None else QaLanceDbRepository()
+        self._document_chunking_service = document_chunking_service if document_chunking_service is not None else DocumentChunkingService()
+        self._document_repository = document_repository if document_repository is not None else DocumentLanceDbRepository()
 
     async def process_files(
         self,
@@ -115,7 +115,7 @@ class IngestHistoryUseCase:
 
         headers = self._extract_csv_headers(payload.raw_text)
         deterministic_result = infer_csv_columns_from_headers(headers)
-        detection_result = await self._get_csv_column_detection_service().detect_columns(
+        detection_result = await self._csv_column_detection_service.detect_columns(
             headers=headers,
             sample_rows=payload.structured_data or [],
             deterministic_result=deterministic_result,
@@ -130,7 +130,7 @@ class IngestHistoryUseCase:
                 failed_row_count=payload.row_count or 0,
             )
 
-        normalization_result = self._get_csv_qa_normalization_service().normalize_rows(
+        normalization_result = self._csv_qa_normalization_service.normalize_rows(
             file_name=payload.file_name,
             detected_columns=detection_result.detected_columns,
             rows=payload.structured_data or [],
@@ -158,7 +158,7 @@ class IngestHistoryUseCase:
                 storage_target="qa_records",
             )
 
-        vectors = await self._get_qa_embedding_service().embed_texts(
+        vectors = await self._qa_embedding_service.embed_texts(
             [record.text for record in new_records]
         )
         repository_records = []
@@ -180,7 +180,7 @@ class IngestHistoryUseCase:
                 }
             )
 
-        self._get_qa_repository().upsert_records(repository_records)
+        self._qa_repository.upsert_records(repository_records)
         return ProcessedHistoryFileResult(
             status="processed",
             payload=payload,
@@ -196,7 +196,7 @@ class IngestHistoryUseCase:
     ) -> ProcessedHistoryFileResult:
         """Persist MD/JSON/TXT files as document chunks."""
 
-        chunk_records = self._get_document_chunking_service().build_chunks(payload)
+        chunk_records = self._document_chunking_service.build_chunks(payload)
         if not chunk_records:
             return ProcessedHistoryFileResult(
                 status="failed",
@@ -214,7 +214,7 @@ class IngestHistoryUseCase:
                 storage_target="document_records",
             )
 
-        vectors = await self._get_qa_embedding_service().embed_texts(
+        vectors = await self._qa_embedding_service.embed_texts(
             [record.text for record in new_chunk_records]
         )
         repository_records: list[dict[str, Any]] = []
@@ -238,7 +238,7 @@ class IngestHistoryUseCase:
                 }
             )
 
-        self._get_document_repository().upsert_records(repository_records)
+        self._document_repository.upsert_records(repository_records)
         return ProcessedHistoryFileResult(
             status="processed",
             payload=payload,
@@ -252,48 +252,6 @@ class IngestHistoryUseCase:
         reader = csv.reader(StringIO(raw_text))
         return next(reader, [])
 
-    def _get_csv_column_detection_service(self) -> CsvColumnDetectionService:
-        """Lazily construct the column detection dependency."""
-
-        if self._csv_column_detection_service is None:
-            self._csv_column_detection_service = CsvColumnDetectionService()
-        return self._csv_column_detection_service
-
-    def _get_csv_qa_normalization_service(self) -> CsvQaNormalizationService:
-        """Lazily construct the row-normalization dependency."""
-
-        if self._csv_qa_normalization_service is None:
-            self._csv_qa_normalization_service = CsvQaNormalizationService()
-        return self._csv_qa_normalization_service
-
-    def _get_qa_embedding_service(self) -> QaEmbeddingService:
-        """Lazily construct the embeddings dependency."""
-
-        if self._qa_embedding_service is None:
-            self._qa_embedding_service = QaEmbeddingService()
-        return self._qa_embedding_service
-
-    def _get_qa_repository(self) -> QaLanceDbRepository:
-        """Lazily construct the persistence dependency."""
-
-        if self._qa_repository is None:
-            self._qa_repository = QaLanceDbRepository()
-        return self._qa_repository
-
-    def _get_document_chunking_service(self) -> DocumentChunkingService:
-        """Lazily construct the document chunking dependency."""
-
-        if self._document_chunking_service is None:
-            self._document_chunking_service = DocumentChunkingService()
-        return self._document_chunking_service
-
-    def _get_document_repository(self) -> DocumentLanceDbRepository:
-        """Lazily construct the document persistence dependency."""
-
-        if self._document_repository is None:
-            self._document_repository = DocumentLanceDbRepository()
-        return self._document_repository
-
     def _filter_new_records(self, records):
         """Deduplicate within the batch, then skip ids already stored in LanceDB."""
 
@@ -303,7 +261,7 @@ class IngestHistoryUseCase:
             unique_records_by_id.setdefault(record.id, record)
 
         unique_records = list(unique_records_by_id.values())
-        existing_ids = self._get_qa_repository().get_existing_record_ids(
+        existing_ids = self._qa_repository.get_existing_record_ids(
             [record.id for record in unique_records]
         )
         return [record for record in unique_records if record.id not in existing_ids]
@@ -316,7 +274,7 @@ class IngestHistoryUseCase:
             unique_records_by_id.setdefault(record.id, record)
 
         unique_records = list(unique_records_by_id.values())
-        existing_ids = self._get_document_repository().get_existing_record_ids(
+        existing_ids = self._document_repository.get_existing_record_ids(
             [record.id for record in unique_records]
         )
         return [record for record in unique_records if record.id not in existing_ids]

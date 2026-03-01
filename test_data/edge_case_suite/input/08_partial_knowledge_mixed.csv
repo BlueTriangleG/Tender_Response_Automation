@@ -1,0 +1,7 @@
+question_id,domain,question
+q-801,Security,"Do you support TLS 1.2 or higher for production traffic?"
+q-802,Security,"Does the platform support SAML 2.0 and OpenID Connect single sign-on?"
+q-803,Compliance,"What is your operational target for verified right-to-erasure requests?"
+q-804,Infrastructure,"Do you support fully air-gapped on-premises deployment with zero cloud dependency?"
+q-805,Security,"Do you provide tamper-proof immutable WORM audit storage for all administrator actions?"
+q-806,Compliance,"Are you FedRAMP High authorized today for the proposed environment?"

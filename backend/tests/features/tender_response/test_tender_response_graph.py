@@ -1,5 +1,7 @@
 import asyncio
 
+from langgraph.checkpoint.memory import MemorySaver
+
 from app.core.config import settings
 from app.features.tender_response.domain.models import (
     GroundedAnswerResult,
@@ -1912,3 +1914,36 @@ async def test_tender_response_graph_maps_confidence_from_supported_coverage() -
     assert results_by_id["q-low"].confidence_level == "low"
     assert results_by_id["q-medium"].confidence_level == "medium"
     assert results_by_id["q-high"].confidence_level == "high"
+
+
+async def test_tender_response_graph_accepts_injected_checkpointer() -> None:
+    """Workflow factory should accept an externally managed checkpointer."""
+
+    workflow = create_parallel_tender_response_graph(
+        checkpointer=MemorySaver(),
+        alignment_repository=FakeAlignmentRepository({}),
+        answer_generation_service=FakeAnswerGenerationService(),
+        reference_assessment_service=FakeReferenceAssessmentService({}),
+        domain_tagging_service=DomainTaggingService(),
+    )
+
+    result = await workflow.ainvoke(
+        {
+            "session_id": "session-injected-checkpointer",
+            "source_file_name": "empty.csv",
+            "alignment_threshold": 0.82,
+            "questions": [],
+            "question_results": [],
+            "session_completed_results": [],
+            "conflict_findings": [],
+            "conflict_review_errors": [],
+            "summary": None,
+            "run_errors": [],
+            "current_question": None,
+            "current_conflict_job": None,
+        },
+        config={"configurable": {"thread_id": "session-injected-checkpointer"}},
+    )
+
+    assert result["summary"] is not None
+    assert result["summary"].total_questions_processed == 0

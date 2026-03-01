@@ -1,5 +1,7 @@
 """Batch graph wiring for the parallel tender-response workflow."""
 
+from typing import Any
+
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -46,6 +48,7 @@ def create_parallel_tender_response_graph(
     reference_assessment_service: ReferenceAssessmentService | None = None,
     domain_tagging_service: DomainTaggingService | None = None,
     conflict_review_service: ConflictReviewer | None = None,
+    checkpointer: Any | None = None,
 ) -> CompiledStateGraph:
     """Create the batch graph that fans out tender questions and summarizes the run."""
 
@@ -62,7 +65,7 @@ def create_parallel_tender_response_graph(
         reference_assessment_service=resolved_reference_assessment_service,
         domain_tagging_service=resolved_domain_tagging_service,
     )
-    checkpointer = MemorySaver()
+    resolved_checkpointer = checkpointer or MemorySaver()
 
     graph = StateGraph(BatchTenderResponseState)
     graph.add_node("process_question", make_process_question_node(question_graph))
@@ -80,4 +83,4 @@ def create_parallel_tender_response_graph(
     graph.add_edge("apply_conflicts", "summarize_batch")
     graph.add_edge("summarize_batch", END)
 
-    return graph.compile(checkpointer=checkpointer)
+    return graph.compile(checkpointer=resolved_checkpointer)

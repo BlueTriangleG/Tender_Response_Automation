@@ -19,7 +19,7 @@ def _extend_question_results(
     right: list[TenderQuestionResponse],
 ) -> list[TenderQuestionResponse]:
     if not right:
-        return []
+        return left
 
     merged_by_id: dict[str, TenderQuestionResponse] = {}
     order: list[str] = []
@@ -32,13 +32,13 @@ def _extend_question_results(
 
 def _extend_errors(left: list[str], right: list[str]) -> list[str]:
     if not right:
-        return []
+        return left
     return left + right
 
 
 def _extend_conflict_findings(left: list[dict], right: list[dict]) -> list[dict]:
     if not right:
-        return []
+        return left
     return left + right
 
 

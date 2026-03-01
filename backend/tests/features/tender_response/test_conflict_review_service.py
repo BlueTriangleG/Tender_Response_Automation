@@ -396,9 +396,9 @@ async def test_conflict_review_service_detects_absolute_claim_conflict_even_when
             "target_question_id": "q-13",
             "conflicting_question_id": "q-14",
             "reason": (
-                "One answer says legacy SSL is fully disabled for production traffic, "
-                "while another says legacy SSL can remain enabled in a production "
-                "migration scenario."
+                "One answer asserts a capability is fully disabled for production "
+                "traffic, while another allows limited production-time exceptions "
+                "during migration scenarios."
             ),
             "severity": "high",
         }

@@ -1,0 +1,68 @@
+{
+  "case_id": "08_partial_knowledge_mixed",
+  "recommended_history_files": [
+    "historical_repository/01_clean_security_architecture.csv",
+    "historical_repository/02_header_aliases.csv",
+    "historical_repository/06_dirty_rows_and_quoting.csv"
+  ],
+  "purpose": "Mixed dataset where some questions are fully grounded, some are partially supported, and some are unsupported by current RAG knowledge.",
+  "expected_summary": {
+    "total_questions_processed": 6,
+    "allowed_overall_completion_statuses": [
+      "completed",
+      "completed_with_flags",
+      "unanswered"
+    ],
+    "completed_min": 3,
+    "unanswered_min": 2,
+    "failed_max": 0
+  },
+  "questions": [
+    {
+      "question_id": "q-801",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded"
+    },
+    {
+      "question_id": "q-802",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded"
+    },
+    {
+      "question_id": "q-803",
+      "expected_status": "completed",
+      "expected_grounding_status": "grounded"
+    },
+    {
+      "question_id": "q-804",
+      "allowed_statuses": [
+        "completed",
+        "unanswered"
+      ],
+      "allowed_grounding_statuses": [
+        "partial_reference",
+        "insufficient_reference"
+      ]
+    },
+    {
+      "question_id": "q-805",
+      "expected_status": "unanswered",
+      "allowed_grounding_statuses": [
+        "insufficient_reference",
+        "no_reference"
+      ],
+      "generated_answer_should_be_null": true
+    },
+    {
+      "question_id": "q-806",
+      "expected_status": "unanswered",
+      "allowed_grounding_statuses": [
+        "insufficient_reference"
+      ],
+      "generated_answer_should_be_null": true,
+      "must_not_include": [
+        "FedRAMP High authorized"
+      ]
+    }
+  ]
+}

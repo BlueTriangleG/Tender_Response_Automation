@@ -82,6 +82,10 @@ Intentional zero-question batch. Every row has a blank question value, so parsin
 
 Workbook version of the happy-path exact/paraphrase case. Use this to confirm XLSX uploads receive the same preprocessing and grounding behavior as the equivalent CSV path.
 
+### `input/08_partial_knowledge_mixed.csv`
+
+Mixed-coverage validation set. Some questions are directly supported by existing historical knowledge, some are only partially supported, and some should remain unanswered because no safe supporting evidence exists.
+
 ## Oracle Files
 
 Oracle JSON files in `expected_output/` are not literal backend responses. They describe the expected behavioral outcome for each tender file:
@@ -118,6 +122,10 @@ This keeps the dataset useful for LLM-based workflows where exact prose may vary
 - `07_exact_and_paraphrase.xlsx`
   - ingest `01_clean_security_architecture.csv`
   - ingest `02_header_aliases.csv`
+- `08_partial_knowledge_mixed.csv`
+  - ingest `01_clean_security_architecture.csv`
+  - ingest `02_header_aliases.csv`
+  - optionally ingest `06_dirty_rows_and_quoting.csv`
 
 ## Notes
 

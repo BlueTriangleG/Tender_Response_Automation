@@ -334,6 +334,7 @@ async def test_assess_returns_conflict_for_conflicting_ssl_history() -> None:
     assert result.usable_reference_ids == []
     assert "conflicting historical references" in result.reason.lower()
     assert "human review" in result.reason.lower()
+    assert "legacy ssl" not in result.reason.lower()
     assert model.runnable is None
 
 

@@ -243,10 +243,19 @@ def _normalize(text: str | None) -> str:
     return " ".join((text or "").lower().split())
 
 
-def _is_absolute_ssl_disable_reference(text: str) -> bool:
+def _mentions_legacy_protocol(text: str) -> bool:
     normalized = _normalize(text)
     return (
         "legacy ssl" in normalized
+        or "legacy protocol" in normalized
+        or "deprecated protocol" in normalized
+    )
+
+
+def _is_absolute_disable_reference(text: str) -> bool:
+    normalized = _normalize(text)
+    return (
+        _mentions_legacy_protocol(normalized)
         and "fully disabled" in normalized
         and "production" in normalized
         and (
@@ -256,10 +265,10 @@ def _is_absolute_ssl_disable_reference(text: str) -> bool:
     )
 
 
-def _is_ssl_exception_reference(text: str) -> bool:
+def _is_migration_exception_reference(text: str) -> bool:
     normalized = _normalize(text)
     return (
-        "legacy ssl" in normalized
+        _mentions_legacy_protocol(normalized)
         and ("can remain enabled" in normalized or "may be used" in normalized)
         and "production" in normalized
         and (
@@ -279,21 +288,17 @@ def _detect_material_reference_conflict(
 
     normalized_question = _normalize(question.original_question)
 
-    if (
-        "legacy ssl" in normalized_question
-        and "production" in normalized_question
-        and "fully disabled" in normalized_question
-    ):
+    if _is_absolute_disable_reference(normalized_question):
         has_absolute_disable = any(
-            _is_absolute_ssl_disable_reference(reference.answer) for reference in references
+            _is_absolute_disable_reference(reference.answer) for reference in references
         )
         has_exception_enable = any(
-            _is_ssl_exception_reference(reference.answer) for reference in references
+            _is_migration_exception_reference(reference.answer) for reference in references
         )
         if has_absolute_disable and has_exception_enable:
             return (
-                "Conflicting historical references disagree on whether legacy SSL is fully "
-                "disabled for production traffic or can remain enabled during approved "
+                "Conflicting historical references disagree on whether a legacy protocol is "
+                "fully disabled for production traffic or can remain enabled during approved "
                 "migration scenarios. Human review is required before answering."
             )
 

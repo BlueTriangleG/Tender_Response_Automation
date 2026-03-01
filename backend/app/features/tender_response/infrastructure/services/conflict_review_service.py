@@ -167,7 +167,7 @@ class ConflictReviewService:
             for reference in reference_results:
                 if reference.question_id == target.question_id:
                     continue
-                if not _is_legacy_ssl_conflict_pair(
+                if not _is_absolute_vs_exception_conflict_pair(
                     left_answer=target.generated_answer or "",
                     right_answer=reference.generated_answer or "",
                 ):
@@ -221,22 +221,27 @@ class _ConflictReviewPayload(BaseModel):
 
 
 def _build_conflict_reason(*, left_answer: str, right_answer: str) -> str:
-    left_text = normalize_conflict_text(left_answer)
-    right_text = normalize_conflict_text(right_answer)
-    if "legacy ssl" in left_text and "legacy ssl" in right_text:
+    if _is_absolute_vs_exception_conflict_pair(left_answer=left_answer, right_answer=right_answer):
         return (
-            "One answer says legacy SSL is fully disabled for production traffic, "
-            "while another says legacy SSL can remain enabled in a production "
-            "migration scenario."
+            "One answer asserts a capability is fully disabled for production traffic, "
+            "while another allows limited production-time exceptions during migration scenarios."
         )
     return "These answers make incompatible statements about the same capability or claim."
 
 
-def _is_legacy_ssl_conflict_pair(*, left_answer: str, right_answer: str) -> bool:
+def _mentions_legacy_protocol(text: str) -> bool:
+    return (
+        "legacy ssl" in text
+        or "legacy protocol" in text
+        or "deprecated protocol" in text
+    )
+
+
+def _is_absolute_vs_exception_conflict_pair(*, left_answer: str, right_answer: str) -> bool:
     left_text = normalize_conflict_text(left_answer)
     right_text = normalize_conflict_text(right_answer)
 
-    if "legacy ssl" not in left_text or "legacy ssl" not in right_text:
+    if not _mentions_legacy_protocol(left_text) or not _mentions_legacy_protocol(right_text):
         return False
 
     left_absolute = "fully disabled" in left_text and "production traffic" in left_text
