@@ -1,4 +1,4 @@
-"""Workflow registry for tender-response workflow families."""
+"""Workflow registry for supported tender-response workflow families."""
 
 from functools import lru_cache
 from typing import Literal
@@ -11,11 +11,8 @@ from app.features.tender_response.infrastructure.services.conflict_review_servic
 from app.features.tender_response.infrastructure.workflows.parallel.graph import (
     create_parallel_tender_response_graph,
 )
-from app.features.tender_response.infrastructure.workflows.sequential.graph import (
-    create_sequential_tender_response_graph,
-)
 
-TenderWorkflowName = Literal["parallel", "sequential"]
+TenderWorkflowName = Literal["parallel"]
 
 
 class TenderWorkflowRegistry:
@@ -26,8 +23,6 @@ class TenderWorkflowRegistry:
 
         if workflow_name == "parallel":
             return self._parallel_graph()
-        if workflow_name == "sequential":
-            return self._sequential_graph()
         raise ValueError(f"Unsupported tender workflow: {workflow_name}")
 
     @staticmethod
@@ -36,8 +31,3 @@ class TenderWorkflowRegistry:
         return create_parallel_tender_response_graph(
             conflict_review_service=ConflictReviewService()
         )
-
-    @staticmethod
-    @lru_cache
-    def _sequential_graph() -> CompiledStateGraph:
-        return create_sequential_tender_response_graph()

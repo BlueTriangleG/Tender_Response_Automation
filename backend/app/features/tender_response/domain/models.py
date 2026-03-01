@@ -27,6 +27,7 @@ class TenderTabularParseResult:
 TenderCsvParseResult = TenderTabularParseResult
 
 
+
 @dataclass(slots=True)
 class HistoricalReference:
     """A historical QA row or document chunk retrieved as supporting evidence."""

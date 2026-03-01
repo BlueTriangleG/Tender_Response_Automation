@@ -46,10 +46,8 @@ At a high level, the service needs to do five things well:
 │   │   ├── features/
 │   │   │   ├── health/
 │   │   │   ├── history_ingest/
-│   │   │   ├── tender_response/
-│   │   │   └── agent_chat/
+│   │   │   └── tender_response/
 │   │   ├── integrations/
-│   │   ├── memory/
 │   │   └── shared/
 │   ├── tests/
 │   ├── pyproject.toml
@@ -179,6 +177,8 @@ Backend unit/integration tests:
 npm run test:backend
 ```
 
+This is the default offline backend test suite. It excludes live OpenAI-backed E2E cases.
+
 Backend lint:
 
 ```bash
@@ -206,8 +206,7 @@ npm run build:frontend
 Live E2E suite:
 
 ```bash
-cd backend
-UV_CACHE_DIR=/tmp/pans-software-uv-cache uv run pytest tests/e2e/live -m live_e2e -v
+npm run test:backend:live
 ```
 
 ## Sample Data

@@ -59,14 +59,13 @@ def live_client(tmp_path: Path, monkeypatch) -> TestClient:
     #
     # 1. get_tender_response_runner — the FastAPI dependency that holds the
     #    TenderResponseRunner (and its TenderWorkflowRegistry).
-    # 2. TenderWorkflowRegistry._parallel_graph / _sequential_graph — static
-    #    lru_cache methods that embed a QaAlignmentRepository.  If only the
+    # 2. TenderWorkflowRegistry._parallel_graph — static
+    #    lru_cache method that embeds a QaAlignmentRepository.  If only the
     #    outer runner cache is cleared the compiled graph (and its repository
     #    connection) from the first test case is silently reused by all later
     #    cases, causing alignment searches to target the wrong database.
     get_tender_response_runner.cache_clear()
     TenderWorkflowRegistry._parallel_graph.cache_clear()
-    TenderWorkflowRegistry._sequential_graph.cache_clear()
 
     with TestClient(app) as client:
         yield client
@@ -74,4 +73,3 @@ def live_client(tmp_path: Path, monkeypatch) -> TestClient:
     app.dependency_overrides.clear()
     get_tender_response_runner.cache_clear()
     TenderWorkflowRegistry._parallel_graph.cache_clear()
-    TenderWorkflowRegistry._sequential_graph.cache_clear()

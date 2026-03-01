@@ -27,7 +27,6 @@ def test_tender_response_feature_modules_are_importable() -> None:
         "app.features.tender_response.infrastructure.workflows.parallel.question_graph",
         "app.features.tender_response.infrastructure.workflows.parallel.routing",
         "app.features.tender_response.infrastructure.workflows.parallel.graph",
-        "app.features.tender_response.infrastructure.workflows.sequential.graph",
         "app.features.tender_response.schemas.requests",
         "app.features.tender_response.schemas.responses",
     ]
