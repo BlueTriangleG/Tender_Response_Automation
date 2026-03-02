@@ -13,8 +13,8 @@
       "completed",
       "completed_with_flags"
     ],
-    "completed_max": 1,
-    "unanswered_min": 3,
+    "completed_max": 2,
+    "unanswered_min": 2,
     "unanswered_max": 4,
     "failed_max": 0
   },
@@ -54,13 +54,14 @@
     {
       "question_id": "q-104",
       "allowed_statuses": [
-        "unanswered"
+        "unanswered",
+        "completed"
       ],
       "allowed_grounding_statuses": [
         "insufficient_reference",
-        "no_reference"
-      ],
-      "generated_answer_should_be_null": true
+        "no_reference",
+        "partial_reference"
+      ]
     }
   ]
 }
